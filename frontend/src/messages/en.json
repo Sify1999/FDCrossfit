@@ -1,0 +1,47 @@
+{
+  "site": {
+    "title": "FD Crossfit",
+    "description": "FD Crossfit Gym - The best place for Crossfit training"
+  },
+  "home": {
+    "hero": {
+      "title": "Welcome to FD Crossfit",
+      "subtitle": "Stronger than yesterday, more determined than ever",
+      "cta": "Get Started"
+    },
+    "about": {
+      "title": "About Us",
+      "description": "FD Crossfit is a specialized Crossfit gym with top equipment and experienced coaches, providing a professional environment for your workouts."
+    },
+    "features": {
+      "title": "Why FD Crossfit?",
+      "coaching": "Professional & experienced coaches",
+      "equipment": "Modern & standardized equipment",
+      "community": "Dynamic & friendly community"
+    },
+    "cta": {
+      "title": "Try a Free Session",
+      "description": "Register now and experience your first training session for free.",
+      "button": "Book Free Session"
+    }
+  },
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "plans": "Plans & Pricing",
+    "contact": "Contact"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full Name",
+    "phone": "Phone Number"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry"
+  }
+}
