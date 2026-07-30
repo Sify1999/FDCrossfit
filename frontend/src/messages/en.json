@@ -29,7 +29,8 @@
     "home": "Home",
     "about": "About",
     "plans": "Plans & Pricing",
-    "contact": "Contact"
+    "contact": "Contact",
+    "coaches": "Coaches"
   },
   "auth": {
     "login": "Login",

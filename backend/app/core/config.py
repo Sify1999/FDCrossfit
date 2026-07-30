@@ -31,6 +31,10 @@ class Settings(BaseSettings):
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
+    @property
+    def database_url_async(self) -> str:
+        """Async URL alias, used by Alembic's async migration runner."""
+        return self.database_url
     # Backend
     BACKEND_PORT: int = 8000
     SECRET_KEY: str = "change-this-to-a-long-random-string"
