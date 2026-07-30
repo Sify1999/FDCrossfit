@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -47,9 +48,15 @@ export default function Navbar() {
         ))}
       </nav>
 
-      {/* Right side: Login / Dashboard */}
+      {/* Right side: Language / Login / Dashboard */}
       <div className="flex shrink-0 items-center gap-5">
-        
+        <LanguageSwitcher />
+        <Link
+          href={`/${locale}/auth/login`}
+          className="text-sm font-medium text-white transition-colors duration-300 hover:text-[#B4E3BD]"
+        >
+          {tAuth("login")}
+        </Link>
         <Link
           href={`/${locale}/dashboard`}
           className="rounded-full bg-[#B4E3BD] px-5 py-2 text-sm font-semibold text-black transition-all duration-300 hover:scale-105 hover:bg-white"
@@ -72,7 +79,6 @@ function NavLink({
 }) {
   return (
     <Link href={href} className="group relative px-4 py-7 text-sm font-medium">
-      {/* animated active/hover background */}
       <span
         className={`absolute inset-x-1 inset-y-4 rounded-lg transition-all duration-300 ease-out ${
           active
@@ -87,12 +93,6 @@ function NavLink({
       >
         {name}
       </span>
-      {/* underline that grows in from the center when active */}
-      <span
-        className={`absolute bottom-3 left-1/2 h-0.5 -translate-x-1/2 bg-[#B4E3BD] transition-all duration-300 ease-out ${
-          active ? "w-6 opacity-0" : "w-0 opacity-0"
-        }`}
-      />
     </Link>
   );
 }

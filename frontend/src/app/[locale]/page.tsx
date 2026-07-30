@@ -20,19 +20,26 @@ export default function HomePage() {
         {/* Dark gradient overlay for readability, stronger toward the text side */}
         <div className="absolute inset-0 bg-gradient-to-l from-black/90 via-black/50 to-black/20" />
 
-        {/* Text content, aligned right */}
-        <div className="relative z-10 flex w-full justify-end px-6 sm:px-12">
-          <div className="max-w-xl text-right">
-            <h1 className="mb-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+        {/* Outer container: justify-start is a logical property, so it
+            resolves to "left" in LTR (English) and "right" in RTL (Farsi)
+            automatically, based on the <html dir="..."> from layout.tsx. */}
+        <div className="relative z-10 flex w-full justify-start px-6 sm:px-12">
+          {/* No text-align class here — text-align's initial value is
+              "start", which already follows dir on its own. Adding
+              text-right here is what was fighting the container above. */}
+          <div className="max-w-xl">
+            <h1 className="mb-6 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
               {t("hero.title")}
             </h1>
             <p className="mb-10 text-lg text-gray-300 sm:text-xl">
               {t("hero.subtitle")}
             </p>
-            <div className="flex flex-wrap justify-end gap-4">
+            {/* justify-start here too, not justify-end — buttons should
+                start from the same edge as the text above them. */}
+            <div className="flex flex-wrap justify-start gap-4">
               <Link
                 href="/auth/register"
-                className="rounded-full bg-red-600 px-8 py-3 text-lg font-semibold transition hover:bg-red-700"
+                className="text-black rounded-full bg-[#B4E3BD] px-8 py-3 text-lg font-semibold transition hover:bg-red-700"
               >
                 {t("hero.bookCta")}
               </Link>
@@ -47,10 +54,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ─── About Preview Section ───────────────────────────────── */}
+      {/* ─── About Preview Section (unchanged) ───────────────────── */}
       <section className="bg-white px-6 py-24 text-gray-900 sm:px-12">
         <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
-          {/* Text content, left side */}
           <div>
             <span className="mb-3 block text-sm font-semibold uppercase tracking-widest text-red-600">
               {t("aboutPreview.eyebrow")}
@@ -68,8 +74,6 @@ export default function HomePage() {
               {t("aboutPreview.cta")}
             </Link>
           </div>
-
-          {/* Image, right side */}
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-xl">
             <Image
               src="/images/about-preview.jpg"
