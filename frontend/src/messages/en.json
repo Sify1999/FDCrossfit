@@ -5,9 +5,16 @@
   },
   "home": {
     "hero": {
-      "title": "Welcome to FD Crossfit",
-      "subtitle": "Stronger than yesterday, more determined than ever",
-      "cta": "Get Started"
+      "title": "Leave Your Body & Happiness To Us",
+      "subtitle": "Train hard, recover smart, and become the strongest version of yourself.",
+      "bookCta": "Book a Free Session",
+      "contactCta": "Contact Us"
+    },
+    "aboutPreview": {
+      "eyebrow": "Who We Are",
+      "title": "More Than a Gym",
+      "description": "FD Crossfit is a specialized training facility built around community, expert coaching, and real results. Whatever your starting point, we'll meet you there and help you go further.",
+      "cta": "Learn More About Us"
     },
     "about": {
       "title": "About Us",
@@ -35,10 +42,64 @@
   "auth": {
     "login": "Login",
     "register": "Register",
+    "dashboard": "Dashboard",
     "email": "Email",
     "password": "Password",
     "fullName": "Full Name",
-    "phone": "Phone Number"
+    "phone": "Phone Number",
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Log in to manage your bookings and membership.",
+    "registerTitle": "Create your account",
+    "registerSubtitle": "Join FD Crossfit and book your free trial session.",
+    "submit": "Submit",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "signUp": "Sign up",
+    "signIn": "Sign in"
+  },
+  "aboutPage": {
+    "title": "About FD Crossfit",
+    "intro": "FD Crossfit was founded to bring world-class strength and conditioning training to our community.",
+    "missionTitle": "Our Mission",
+    "mission": "We believe fitness should be challenging, inclusive, and fun. Every workout is scaled to your level, coached by professionals who care about your progress.",
+    "valuesTitle": "Our Values",
+    "value1Title": "Community First",
+    "value1": "We train together, push each other, and celebrate every win — big or small.",
+    "value2Title": "Expert Coaching",
+    "value2": "Every session is led by certified coaches focused on safe, effective technique.",
+    "value3Title": "Real Results",
+    "value3": "Structured programming that builds strength, endurance, and confidence over time."
+  },
+  "coachesPage": {
+    "title": "Meet Our Coaches",
+    "subtitle": "Certified, experienced, and here to help you reach your goals.",
+    "specialtiesLabel": "Specialties"
+  },
+  "pricingPage": {
+    "title": "Plans & Pricing",
+    "subtitle": "Choose the plan that fits your goals.",
+    "perMonth": "/ month",
+    "cta": "Choose Plan",
+    "popular": "Most Popular"
+  },
+  "contactPage": {
+    "title": "Get in Touch",
+    "subtitle": "Questions about classes, membership, or your first session? Send us a message.",
+    "name": "Name",
+    "email": "Email",
+    "message": "Message",
+    "send": "Send Message",
+    "successMessage": "Thanks! We'll get back to you soon.",
+    "infoTitle": "Visit Us",
+    "address": "123 Fitness Street, Tehran",
+    "hoursTitle": "Hours",
+    "hours": "Sat - Thu: 6:00 - 22:00"
+  },
+  "dashboardPage": {
+    "title": "Dashboard",
+    "welcome": "Welcome back",
+    "notLoggedIn": "You need to log in to view your dashboard.",
+    "goToLogin": "Go to Login"
   },
   "common": {
     "loading": "Loading...",
