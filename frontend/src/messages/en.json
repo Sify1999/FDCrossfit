@@ -5,8 +5,10 @@
   },
   "home": {
     "hero": {
-      "title": "Welcome To FD Crossfit",
-      "subtitle": "Train hard and become the strongest version of yourself.      Built Through Discipline",
+      "title": "Welcome To",
+      "name" : "FD Crossfit",
+      "welcome" : " ",
+      "subtitle": "Train hard and become the strongest version of yourself.\n Built Through Discipline",
       "bookCta": "Book a Free Session",
       "contactCta": "Contact Us"
     },

@@ -27,9 +27,15 @@ export default function HomePage() {
           {/* No text-align class here — text-align's initial value is
               "start", which already follows dir on its own. Adding
               text-right here is what was fighting the container above. */}
-          <div className="max-w-xl">
+          <div className="max-w-lg">
             <h1 className="mb-6 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
               {t("hero.title")}
+            </h1>
+            <h1 className="mb-6 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl text-[#B4E3BD]">
+              {t("hero.name")}
+            </h1>
+            <h1 className="mb-6 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+              {t("hero.welcome")}
             </h1>
             <p className="mb-10 text-lg text-gray-300 sm:text-xl">
               {t("hero.subtitle")}
@@ -55,10 +61,10 @@ export default function HomePage() {
       </section>
 
       {/* ─── About Preview Section (unchanged) ───────────────────── */}
-      <section className="bg-white px-6 py-24 text-gray-900 sm:px-12">
+      <section className="bg-white px-6 py-40 text-gray-900 sm:px-12">
         <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
           <div>
-            <span className="mb-3 block text-sm font-semibold uppercase tracking-widest text-red-600">
+            <span className="mb-3 block text-sm font-semibold uppercase tracking-widest text-[#91C78C]">
               {t("aboutPreview.eyebrow")}
             </span>
             <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl">
@@ -84,6 +90,16 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <section className="px-6 py-24 text-gray-900 sm:px-12 bg-black">
+        <div>
+
+        </div>
+      </section>
+
+
+
+
+
     </main>
   );
 }
