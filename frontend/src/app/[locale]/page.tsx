@@ -1,6 +1,10 @@
 import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
+import CoachSpotlight from "./components/CoachSpotlight";
+import Footer from "./components/Footer";
+import GymGallery from "./components/GymGallery";
+
 
 export default function HomePage() {
   const t = useTranslations("home");
@@ -11,7 +15,7 @@ export default function HomePage() {
       <section className="relative flex min-h-[90vh] w-full items-center overflow-hidden">
         {/* Background image */}
         <Image
-          src="/images/hero-bg.jpg"
+          src="/images/hero-bg.png"
           alt="FD Crossfit training"
           fill
           priority
@@ -90,13 +94,10 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <section className="px-6 py-24 text-gray-900 sm:px-12 bg-black">
-        <div>
-
-        </div>
-      </section>
-
-
+        <CoachSpotlight />
+        <GymGallery />
+        <Footer />
+      
 
 
 

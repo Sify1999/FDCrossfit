@@ -32,6 +32,22 @@
       "title": "Try a Free Session",
       "description": "Register now and experience your first training session for free.",
       "button": "Book Free Session"
+    },
+    "coachSpotlight": {
+      "eyebrow": "Meet the Team",
+      "title": "Coached By People Who Care",
+      "prev": "Previous coach",
+      "next": "Next coach",
+      "notes": {
+        "ali": "\"Technique before load, every single time.\"",
+        "ahmad": "\"Mobility isn't optional — it's the foundation.\"",
+        "arsalan": "\"Consistency beats intensity in the long run.\"",
+        "arvin": "\"Every athlete starts somewhere. I meet you there.\""
+      }
+    },
+    "gymGallery": {
+      "eyebrow": "Gallery",
+      "title" : "Built Different"
     }
   },
   "nav": {
@@ -107,5 +123,22 @@
     "loading": "Loading...",
     "error": "Error",
     "retry": "Retry"
+  },
+  "footer": {
+    "description": "Train harder. Build discipline. Become stronger.",
+    "join": "Join Now",
+    "navigation": "Navigation",
+    "contact": "Contact",
+    "address": "Gym Address",
+    "phone": "+123456789",
+    "email": "info@gym.com",
+    "rights": " All rights reserved.",
+    "links": {
+      "home": "Home",
+      "about": "About",
+      "coaches": "Coaches",
+      "pricing": "Pricing",
+      "contact": "Contact"
+    }
   }
 }
