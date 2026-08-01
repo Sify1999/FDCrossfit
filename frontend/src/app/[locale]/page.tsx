@@ -41,7 +41,7 @@ export default function HomePage() {
             <h1 className="mb-6 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
               {t("hero.welcome")}
             </h1>
-            <p className="mb-10 text-lg text-gray-300 sm:text-xl">
+            <p className="mb-10 whitespace-pre-line text-lg text-gray-300 sm:text-2xl">
               {t("hero.subtitle")}
             </p>
             {/* justify-start here too, not justify-end — buttons should

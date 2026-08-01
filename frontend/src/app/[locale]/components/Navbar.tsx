@@ -166,6 +166,7 @@ export default function Navbar() {
         gap-1
         lg:flex
         "
+        dir={locale==="fa" ? "rtl" : "ltr"}
       >
 
         {navItems.map(item=>(
