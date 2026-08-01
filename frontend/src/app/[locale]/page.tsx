@@ -49,7 +49,7 @@ export default function HomePage() {
             <div className="flex flex-wrap justify-start gap-4">
               <Link
                 href="/auth/register"
-                className="text-black rounded-full bg-[#B4E3BD] px-8 py-3 text-lg font-semibold transition hover:bg-red-700"
+                className="text-black rounded-full bg-[#B4E3BD] px-8 py-3 text-lg font-semibold transition hover:bg-white"
               >
                 {t("hero.bookCta")}
               </Link>
@@ -79,14 +79,14 @@ export default function HomePage() {
             </p>
             <Link
               href="/about"
-              className="inline-block rounded-full bg-gray-900 px-8 py-3 text-lg font-semibold text-white transition hover:bg-black"
+              className="inline-block rounded-full bg-gray-900 px-8 py-3 text-lg font-semibold text-white transition hover:bg-[#91C78C]"
             >
               {t("aboutPreview.cta")}
             </Link>
           </div>
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-xl">
             <Image
-              src="/images/about-preview.jpg"
+              src="/images/about-preview.png"
               alt="Inside FD Crossfit gym"
               fill
               className="object-cover"

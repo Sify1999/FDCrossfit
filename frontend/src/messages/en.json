@@ -109,7 +109,7 @@
     "send": "Send Message",
     "successMessage": "Thanks! We'll get back to you soon.",
     "infoTitle": "Visit Us",
-    "address": "123 Fitness Street, Tehran",
+    "address": "Alborz Province, Karaj, Azimieh, Kaj Blvd",
     "hoursTitle": "Hours",
     "hours": "Sat - Thu: 6:00 - 22:00"
   },
@@ -129,9 +129,10 @@
     "join": "Join Now",
     "navigation": "Navigation",
     "contact": "Contact",
-    "address": "Gym Address",
-    "phone": "+123456789",
+    "address": "Karaj, Azimieh, Kaj Blvd",
+    "phone": "+989102901448",
     "email": "info@gym.com",
+    "ig": "@crossfit.fd",
     "rights": " All rights reserved.",
     "links": {
       "home": "Home",

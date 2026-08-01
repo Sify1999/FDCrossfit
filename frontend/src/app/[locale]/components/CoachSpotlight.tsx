@@ -12,7 +12,7 @@ type Coach = {
 };
 
 const COACHES: Coach[] = [
-  { id: "ali", name: "Ali", role: "Head Coach", image: "/images/coaches/ali.jpg" },
+  { id: "ali", name: "Ali Ghasemi", role: "Head Coach", image: "/images/coaches/ali.jpg" },
   { id: "ahmad", name: "Ahmad", role: "Coach", image: "/images/coaches/ahmad.jpg" },
   { id: "arsalan", name: "Arsalan", role: "Coach", image: "/images/coaches/arsalan.jpg" },
   { id: "arvin", name: "Arvin", role: "Coach", image: "/images/coaches/arvin.jpg" },

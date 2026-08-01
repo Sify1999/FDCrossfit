@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { useTranslations } from "next-intl";
-
+import { useLocale, useTranslations } from "next-intl";
 // Images are stored as data so adding a new gym photo
 // only requires adding another object here.
 const GYM_IMAGES = [
@@ -22,18 +21,18 @@ export default function GymGallery() {
 
   // Stores where the drag started.
   // Pointer events work for both mouse and touch screens.
-  const [dragStart, setDragStart] = useState<number | null>(null);
-
+  const [dragStart, setDragStart] = useState<number | null>(null);  
+  const locale = useLocale();
+  const isRTL = locale === "fa";
 
 
   function next() {
-    setIndex((i) => (i + 1) % GYM_IMAGES.length);
+  setIndex((i) => (i + 1) % GYM_IMAGES.length);
   }
 
-
   function previous() {
-    setIndex(
-      (i) => (i - 1 + GYM_IMAGES.length) % GYM_IMAGES.length
+    setIndex((i) => 
+      (i - 1 + GYM_IMAGES.length) % GYM_IMAGES.length
     );
   }
 
@@ -63,13 +62,19 @@ export default function GymGallery() {
     // Minimum movement required
     // to prevent accidental slides.
 
-    if (distance > 50)
-      next();
-
-
-    if (distance < -50)
-      previous();
-
+    if(isRTL){
+      if (distance > 50)
+        previous();
+      
+      if (distance < 50)
+        next();
+    }else{ 
+      if (distance > 50)
+        next();
+      
+      if (distance < 50)
+        previous();
+    }
 
     setDragStart(null);
 

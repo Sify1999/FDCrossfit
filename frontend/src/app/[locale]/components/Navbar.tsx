@@ -38,6 +38,7 @@ export default function Navbar() {
 
     <header
       className="
+      relative
       flex
       h-20
       w-full
@@ -51,21 +52,53 @@ export default function Navbar() {
     >
 
 
-      {/* Logo */}
+      {/* Mobile Hamburger — left side on small screens */}
+
+      <button
+        onClick={()=>setOpen(true)}
+        aria-label="Open menu"
+        className="
+        text-3xl
+        text-white
+        lg:hidden
+        "
+      >
+        ☰
+      </button>
+
+
+
+      {/* Logo — centered (image only) on small screens,
+          left-aligned with full wordmark on desktop */}
 
       <Link
         href={`/${locale}`}
-        className="flex items-center"
+        className="
+        absolute
+        left-1/2
+        top-1/2
+        flex
+        -translate-x-1/2
+        -translate-y-1/2
+        items-center
+        lg:static
+        lg:left-auto
+        lg:top-auto
+        lg:order-first
+        lg:translate-x-0
+        lg:translate-y-0
+        "
       >
 
         <Image
           src="/images/fdLogo.png"
           alt="FD Logo"
-          width={75}
-          height={75}
+          width={120}
+          height={120}
+          className="lg:h-[120px] lg:w-[120px]"
         />
 
-        <h1 className="-ml-3 text-2xl font-bold text-[#B4E3BD]">
+        <h1 className="-ml-5 hidden text-2xl font-bold text-[#B4E3BD] lg:block">
           FDCrossfit
         </h1>
 
@@ -85,6 +118,7 @@ export default function Navbar() {
         gap-1
         lg:flex
         "
+        dir={locale === "fa" ? "rtl" : "ltr"}
       >
 
         {navItems.map(item=>(
@@ -151,18 +185,11 @@ export default function Navbar() {
 
 
 
-      {/* Mobile Hamburger */}
+      {/* Mobile Language Switcher — right side on small screens */}
 
-      <button
-        onClick={()=>setOpen(true)}
-        className="
-        text-3xl
-        text-white
-        lg:hidden
-        "
-      >
-        ☰
-      </button>
+      <div className="lg:hidden">
+        <LanguageSwitcher />
+      </div>
 
 
     </header>

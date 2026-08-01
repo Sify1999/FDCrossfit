@@ -1,10 +1,10 @@
 import { useTranslations } from "next-intl";
 
 const COACHES = [
-  { name: "Ali Rezaei", role: "Head Coach", specialties: ["Olympic Lifting", "Programming"], emoji: "🏋️" },
-  { name: "Sara Ahmadi", role: "Coach", specialties: ["Gymnastics", "Mobility"], emoji: "🤸" },
-  { name: "Reza Karimi", role: "Coach", specialties: ["Endurance", "Nutrition"], emoji: "🏃" },
-  { name: "Niloofar Hosseini", role: "Coach", specialties: ["Beginner Training", "Rehab"], emoji: "💪" },
+  { name: "Ali Ghasemi", role: "Head Coach", specialties: ["Olympic Lifting", "Programming"], emoji: "🏋️" },
+  { name: "Arsalan", role: "Coach", specialties: ["Endurance", "Nutrition"], emoji: "🏃" },
+  { name: "Ahmad", role: "Coach", specialties: ["Gymnastics", "Mobility"], emoji: "💪" },
+  { name: "Arvin", role: "Coach", specialties: ["Beginner Training", "Rehab"], emoji: "💪" },
 ];
 
 export default function CoachesPage() {
