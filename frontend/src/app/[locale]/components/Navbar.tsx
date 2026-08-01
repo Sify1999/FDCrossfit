@@ -39,6 +39,7 @@ export default function Navbar() {
     <header
       className="
       relative
+      z-[60]
       flex
       h-20
       w-full
@@ -52,18 +53,65 @@ export default function Navbar() {
     >
 
 
-      {/* Mobile Hamburger — left side on small screens */}
+      {/* Mobile Menu Toggle — animated hamburger that morphs into an X.
+          z-[60] keeps it clickable above the drawer overlay (z-50) so
+          the same button opens AND closes the menu. */}
 
       <button
-        onClick={()=>setOpen(true)}
-        aria-label="Open menu"
+        onClick={()=>setOpen((o)=>!o)}
+        aria-label={open ? "Close menu" : "Open menu"}
+        aria-expanded={open}
         className="
-        text-3xl
-        text-white
+        flex
+        h-8
+        w-8
+        flex-col
+        items-center
+        justify-center
+        gap-1.5
         lg:hidden
         "
       >
-        ☰
+
+        <span
+          className={`
+          h-0.5
+          w-6
+          rounded-full
+          bg-white
+          transition-all
+          duration-300
+          ease-in-out
+          ${open ? "translate-y-2 rotate-45" : ""}
+          `}
+        />
+
+        <span
+          className={`
+          h-0.5
+          w-6
+          rounded-full
+          bg-white
+          transition-all
+          duration-300
+          ease-in-out
+          ${open ? "opacity-0" : "opacity-100"}
+          `}
+        />
+
+        <span
+          className={`
+          h-0.5
+          w-6
+          rounded-full
+          bg-white
+          transition-all
+          duration-300
+          ease-in-out
+          ${open ? "-translate-y-2 -rotate-45" : ""}
+          `}
+        />
+
       </button>
 
 
@@ -93,9 +141,9 @@ export default function Navbar() {
         <Image
           src="/images/fdLogo.png"
           alt="FD Logo"
-          width={120}
-          height={120}
-          className="lg:h-[120px] lg:w-[120px]"
+          width={100}
+          height={100}
+          className="lg:h-[110px] lg:w-[110px]"
         />
 
         <h1 className="-ml-5 hidden text-2xl font-bold text-[#B4E3BD] lg:block">
@@ -118,7 +166,6 @@ export default function Navbar() {
         gap-1
         lg:flex
         "
-        dir={locale === "fa" ? "rtl" : "ltr"}
       >
 
         {navItems.map(item=>(
@@ -203,8 +250,7 @@ export default function Navbar() {
       fixed
       inset-0
       z-50
-      transition
-      ${open ? "visible" : "invisible"}
+      ${open ? "pointer-events-auto" : "pointer-events-none"}
       `}
     >
 
@@ -218,6 +264,7 @@ export default function Navbar() {
         inset-0
         bg-black/70
         transition-opacity
+        duration-300
         ${open ? "opacity-100" : "opacity-0"}
         `}
       />
@@ -229,7 +276,7 @@ export default function Navbar() {
       <aside
         className={`
         absolute
-        right-0
+        left-0
         top-0
         h-full
         w-72
@@ -237,25 +284,12 @@ export default function Navbar() {
         p-8
         transition-transform
         duration-300
-        ${open ? "translate-x-0" : "translate-x-full"}
+        ${open ? "translate-x-0" : "-translate-x-full"}
         `}
       >
 
 
-        <button
-          onClick={()=>setOpen(false)}
-          className="
-          mb-10
-          text-3xl
-          text-white
-          "
-        >
-          ×
-        </button>
-
-
-
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 pt-20">
 
 
           {navItems.map(item=>(
