@@ -1,5 +1,5 @@
 import { useTranslations } from "next-intl";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 
 const PLANS = [
   { key: "basic", name: "Basic", price: "990,000", features: ["8 sessions / month", "Access to open gym", "Community events"] },
@@ -46,7 +46,7 @@ export default function PricingPage() {
                 ))}
               </ul>
               <Link
-                href="/auth/register"
+                href="register"
                 className={`block rounded-full px-6 py-3 text-sm font-semibold transition ${
                   plan.popular
                     ? "bg-[#B4E3BD] text-black hover:bg-white"

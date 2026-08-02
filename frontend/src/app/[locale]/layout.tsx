@@ -5,6 +5,7 @@ import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/lib/routing";
 import "../globals.css";
+import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
 
 type Props = {
@@ -28,7 +29,7 @@ if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
   const messages = await getMessages();
 
   return (
-    <html lang={locale} dir={locale === "fa" ? "rtl" : "ltr"}>
+    <html lang={locale} dir={locale === "fa" ? "rtl" : "ltr"} suppressHydrationWarning>
       <body>
         <NextIntlClientProvider messages={messages}>
 
@@ -36,7 +37,8 @@ if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
 
           {children}
 
-
+          
+            <Footer />
 
         </NextIntlClientProvider>
       </body>

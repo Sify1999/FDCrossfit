@@ -66,13 +66,13 @@ export default function GymGallery() {
       if (distance > 50)
         previous();
       
-      if (distance < 50)
+      if (distance < -50)
         next();
     }else{ 
       if (distance > 50)
         next();
       
-      if (distance < 50)
+      if (distance < -50)
         previous();
     }
 

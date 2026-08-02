@@ -1,8 +1,7 @@
 import { useTranslations } from "next-intl";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/lib/navigation";
 import CoachSpotlight from "./components/CoachSpotlight";
-import Footer from "./components/Footer";
 import GymGallery from "./components/GymGallery";
 
 
@@ -48,7 +47,7 @@ export default function HomePage() {
                 start from the same edge as the text above them. */}
             <div className="flex flex-wrap justify-start gap-4">
               <Link
-                href="/auth/register"
+                href="/register"
                 className="text-black rounded-full bg-[#B4E3BD] px-8 py-3 text-lg font-semibold transition hover:bg-white"
               >
                 {t("hero.bookCta")}
@@ -96,7 +95,6 @@ export default function HomePage() {
       </section>
         <CoachSpotlight />
         <GymGallery />
-        <Footer />
       
 
 

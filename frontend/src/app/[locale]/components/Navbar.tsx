@@ -1,10 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useState } from "react";
+import { Link, usePathname } from "@/lib/navigation";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
@@ -17,16 +16,16 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
 
   const navItems = [
-    { href: `/${locale}`, label: tNav("home") },
-    { href: `/${locale}/about`, label: tNav("about") },
-    { href: `/${locale}/coaches`, label: tNav("coaches") },
-    { href: `/${locale}/pricing`, label: tNav("plans") },
-    { href: `/${locale}/contact`, label: tNav("contact") },
+    { href: `/`, label: tNav("home") },
+    { href: `/about`, label: tNav("about") },
+    { href: `/coaches`, label: tNav("coaches") },
+    { href: `/pricing`, label: tNav("plans") },
+    { href: `/contact`, label: tNav("contact") },
   ];
 
 
   const isActive = (href:string)=>{
-    if(href === `/${locale}`)
+    if(href === `/`)
       return pathname === href;
 
     return pathname === href || pathname?.startsWith(`${href}/`);
@@ -197,7 +196,7 @@ export default function Navbar() {
 
 
         <Link
-          href={`/${locale}/auth/login`}
+          href={`/login`}
           className="
           text-sm
           font-medium
@@ -211,7 +210,7 @@ export default function Navbar() {
 
 
         <Link
-          href={`/${locale}/dashboard`}
+          href={`/dashboard`}
           className="
           rounded-full
           bg-[#B4E3BD]
@@ -319,7 +318,7 @@ export default function Navbar() {
 
 
           <Link
-            href={`/${locale}/auth/login`}
+            href={`/login`}
             className="
             text-white
             "
@@ -330,7 +329,7 @@ export default function Navbar() {
 
 
           <Link
-            href={`/${locale}/dashboard`}
+            href={`/dashboard`}
             className="
             rounded-full
             bg-[#B4E3BD]
@@ -418,6 +417,33 @@ active
 >
 {name}
 </span>
+
+
+{/* Hover underline — a mint line that grows in from the center.
+    Hidden while active, since the pill fill already communicates
+    the active state; only fires on hover for inactive items. */}
+<span
+className={`
+absolute
+bottom-3
+left-1/2
+h-0.5
+w-0
+-translate-x-1/2
+rounded-full
+bg-[#B4E3BD]
+transition-all
+duration-300
+ease-out
+${
+active
+?
+"w-0"
+:
+"group-hover:w-2/3"
+}
+`}
+/>
 
 
 </Link>
