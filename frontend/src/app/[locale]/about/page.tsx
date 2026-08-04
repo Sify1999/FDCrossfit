@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/lib/navigation";
-import GymGallery from "../components/GymGallery";
+import ContactMapSection from "../components/ContactMapSection";
 
 export default function AboutPage() {
   const t = useTranslations("aboutPage");
@@ -143,8 +143,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-      {/* ─── Gym Gallery (reused component) ──────────────────────── */}
-      <GymGallery />
+        {/* ─── Contact + Map ─────────────────────────────────────────── */}
+        <ContactMapSection />
 
       {/* ─── Closing CTA ──────────────────────────────────────────── */}
       <section className="px-6 py-24 text-center sm:px-12">

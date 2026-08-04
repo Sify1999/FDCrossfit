@@ -109,7 +109,10 @@
     "step3Title": "Consistency",
     "step3Text": "Progress isn't a single workout — it's showing up. We build habits and routines that stick long term.",
     "step4Title": "Results",
-    "step4Text": "Strength, endurance, and confidence that compound over weeks and months, not overnight promises."
+    "step4Text": "Strength, endurance, and confidence that compound over weeks and months, not overnight promises.",
+    "contactEyebrow": "Get In Touch",
+    "contactTitle": "Find Us",
+    "contactSubtitle": "Have a question, or just want to stop by? Here's everything you need to reach us."
   },
   "coachesPage": {
     "title": "Meet Our Coaches",
@@ -132,7 +135,7 @@
     "send": "Send Message",
     "successMessage": "Thanks! We'll get back to you soon.",
     "infoTitle": "Visit Us",
-    "address": "Alborz Province, Karaj, Azimieh, Kaj Blvd",
+    "address": "FD CrossFit, No. 261, Diara Building, Between Neda and Pamchal Streets, Kaj Boulevard, Azimiyeh, Karaj, Iran",
     "hoursTitle": "Hours",
     "hours": "Sat - Thu: 6:00 - 22:00"
   },
@@ -152,10 +155,10 @@
     "join": "Join Now",
     "navigation": "Navigation",
     "contact": "Contact",
-    "address": "Karaj, Azimieh, Kaj Blvd",
+    "address": "Karaj, Azimieh, Kaj Blvd, FD Crossfit",
     "phone": "+989102901448",
     "email": "info@gym.com",
-    "ig": "@crossfit.fd",
+    "instagram": "@crossfit.fd",
     "rights": " All rights reserved.",
     "links": {
       "home": "Home",
