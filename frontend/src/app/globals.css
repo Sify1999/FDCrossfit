@@ -2,23 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import Vazirmatn font (Farsi / Persian) from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
-
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply font-sans;
+    @apply font-sans bg-background text-white antialiased;
   }
 }
+
 @layer utilities {
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
 
 @layer utilities {
-
   .coach-scroll::-webkit-scrollbar {
     width: 7px;
   }
@@ -30,6 +37,5 @@
   .coach-scroll::-webkit-scrollbar-thumb {
     background: rgba(180, 227, 189, 0.475);
     border-radius: 9999px;
-
   }
 }

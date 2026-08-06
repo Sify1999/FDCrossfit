@@ -5,6 +5,7 @@ import { getMessages } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/lib/routing";
 import "../globals.css";
+import { archivoBlack, inter, vazirmatn } from "@/app/fonts";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
 
@@ -20,26 +21,32 @@ export const metadata: Metadata = {
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
-  const t = await getTranslations();
+
   // Validate that the incoming `locale` parameter is valid
-if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
+  if (!routing.locales.includes(locale as (typeof routing.locales)[number])) {
     notFound();
   }
 
+  const t = await getTranslations();
   const messages = await getMessages();
+  const isRTL = locale === "fa";
 
   return (
-    <html lang={locale} dir={locale === "fa" ? "rtl" : "ltr"} suppressHydrationWarning>
-      <body>
+    <html
+      lang={locale}
+      dir={isRTL ? "rtl" : "ltr"}
+      suppressHydrationWarning
+      className={`${archivoBlack.variable} ${inter.variable} ${vazirmatn.variable}`}
+    >
+      <body
+        className={`bg-background text-white antialiased ${
+          isRTL ? "font-body-fa" : "font-body"
+        }`}
+      >
         <NextIntlClientProvider messages={messages}>
-
           <Navbar />
-
           {children}
-
-          
-            <Footer />
-
+          <Footer />
         </NextIntlClientProvider>
       </body>
     </html>
