@@ -46,6 +46,8 @@ export default function Footer() {
       pt-20
       text-white
       sm:px-12
+      text-center md:text-left
+      justify-center md:justify-start
       "
     >
 
@@ -67,7 +69,7 @@ export default function Footer() {
 
         {/* Brand */}
 
-        <div>
+        <div className="flex flex-col items-center md:items-start">
 
 
           <Link
@@ -81,8 +83,8 @@ export default function Footer() {
             <Image
               src="/images/fdLogo.png"
               alt="FD Crossfit Logo"
-              width={70}
-              height={70}
+              width={100}
+              height={100}
             />
 
 
@@ -221,6 +223,12 @@ export default function Footer() {
 
           <div
             className="
+            space-y-5
+            text-gray-400
+            flex
+            flex-col
+            items-center
+            md:items-start
             space-y-5
             text-gray-400
             "
