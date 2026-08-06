@@ -145,7 +145,7 @@ export default function Navbar() {
           className="lg:h-[110px] lg:w-[110px]"
         />
 
-        <h1 className="-ml-5 hidden text-2xl font-bold text-[#B4E3BD] lg:block">
+        <h1 className="-ml-5 hidden text-2xl font-black tracking-tight text-[#B4E3BD] lg:block font-heading">
           FDCrossfit
         </h1>
 
@@ -198,20 +198,6 @@ export default function Navbar() {
         <Link
           href={`/login`}
           className="
-          text-sm
-          font-medium
-          text-white
-          transition
-          hover:text-[#B4E3BD]
-          "
-        >
-          {tAuth("login")}
-        </Link>
-
-
-        <Link
-          href={`/dashboard`}
-          className="
           rounded-full
           bg-[#B4E3BD]
           px-5
@@ -224,9 +210,8 @@ export default function Navbar() {
           hover:bg-white
           "
         >
-          {tAuth("dashboard")}
+          {tAuth("login")}
         </Link>
-
 
       </div>
 
