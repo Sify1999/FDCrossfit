@@ -37,10 +37,13 @@ export default function HomePage() {
             <h1 className="mb-6 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl text-[#B4E3BD]">
               {t("hero.name")}
             </h1>
-            <h1 className="mb-6 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+            <h1 className="mb-12 whitespace-pre-line text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
               {t("hero.welcome")}
             </h1>
-            <p className="mb-10 whitespace-pre-line text-lg text-gray-300 sm:text-2xl">
+            <p className="mb-10 whitespace-pre-line text-xl text-gray-300 sm:text-2xl">
+              {t("hero.sign")}
+            </p>
+            <p className="mb-10 whitespace-pre-line text-lg text-gray-400 sm:text-xl">
               {t("hero.subtitle")}
             </p>
             {/* justify-start here too, not justify-end — buttons should
@@ -64,21 +67,24 @@ export default function HomePage() {
       </section>
 
       {/* ─── About Preview Section (unchanged) ───────────────────── */}
-      <section className="bg-white px-6 py-40 text-gray-900 sm:px-12">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
+      <section className="bg-white px-6 py-20 text-gray-900 sm:px-12">
+        <div className="mx-auto grid items-center gap-12 md:grid-cols-2">
           <div>
             <span className="mb-3 block text-sm font-semibold uppercase tracking-widest text-[#91C78C]">
               {t("aboutPreview.eyebrow")}
             </span>
-            <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl">
+            <h2 className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl">
               {t("aboutPreview.title")}
             </h2>
             <p className="mb-8 text-lg leading-relaxed text-gray-600">
               {t("aboutPreview.description")}
             </p>
+            <p className="mb-8 text-lg leading-relaxed text-gray-600">
+              {t("aboutPreview.description2")}
+            </p>
             <Link
               href="/about"
-              className="inline-block rounded-full bg-gray-900 px-8 py-3 text-lg font-semibold text-white transition hover:bg-[#91C78C]"
+              className="inline-block rounded-lg bg-gray-900 px-8 py-3 text-lg font-semibold text-white transition hover:bg-[#91C78C]"
             >
               {t("aboutPreview.cta")}
             </Link>
