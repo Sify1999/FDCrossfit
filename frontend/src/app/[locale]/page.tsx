@@ -3,7 +3,7 @@ import Image from "next/image";
 import { Link } from "@/lib/navigation";
 import CoachSpotlight from "./components/CoachSpotlight";
 import GymGallery from "./components/GymGallery";
-
+import SuccessStories from "./components/SuccessStories";
 
 export default function HomePage() {
   const t = useTranslations("home");
@@ -100,8 +100,8 @@ export default function HomePage() {
         </div>
       </section>
         <CoachSpotlight />
+        <SuccessStories />
         <GymGallery />
-      
 
 
 

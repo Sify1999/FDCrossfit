@@ -177,5 +177,58 @@
       "pricing": "Pricing",
       "contact": "Contact"
     }
+  },
+  "successStories": {
+    "eyebrow": "SUCCESS STORIES",
+    "title": "Real People. Real Results.",
+    "description": "At CrossFit FD, every rep, every drop of sweat, and every class brings our members closer to their goals. Here are just a few of their stories.",
+    "beforeLabel": "Before",
+    "afterLabel": "After",
+    "stories": {
+      "person1": {
+        "name": "Sara M.",
+        "duration": "16 Weeks",
+        "quote": "I didn't just lose weight — I found a version of myself I actually like. The coaches never let me settle for less than my best.",
+        "stat1Label": "Body Fat",
+        "stat2Label": "Endurance"
+      },
+      "person2": {
+        "name": "Reza K.",
+        "duration": "20 Weeks",
+        "quote": "I came in barely able to finish a warm-up. Now I'm hitting PRs I never thought possible.",
+        "stat1Label": "Weight Lost",
+        "stat2Label": "Strength"
+      },
+      "person3": {
+        "name": "Neda F.",
+        "duration": "24 Weeks",
+        "quote": "The community kept me accountable when motivation alone wasn't enough. This place changed how I see fitness.",
+        "stat1Label": "Body Fat",
+        "stat2Label": "Mobility"
+      }
+    },
+    "testimonials": {
+      "eyebrow": "WHAT OUR MEMBERS SAY",
+      "title": "Stronger Together.",
+      "memberLabel": "Member",
+      "items": {
+        "member1": {
+          "name": "Amir H.",
+          "quote": "Best coaching I've had in any gym. They actually watch your form and correct it — every single time."
+        },
+        "member2": {
+          "name": "Mina T.",
+          "quote": "The community here pushes you without ever making you feel behind. It's the reason I still show up."
+        },
+        "member3": {
+          "name": "Kian B.",
+          "quote": "Structured programming, real progress tracking, and coaches who genuinely care. Worth every session."
+        },
+        "member4": {
+          "name": "Elham R.",
+          "quote": "I've tried other gyms before. Nothing compares to the energy and support of FD Crossfit."
+        }
+      }
+    }
   }
 }
