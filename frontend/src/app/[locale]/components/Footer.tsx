@@ -33,6 +33,10 @@
         href: `/${locale}/contact`,
         label: t("links.contact"),
       },
+      {
+        href: `/${locale}/book`,
+        label: t("links.book"),
+      }
     ];
 
 

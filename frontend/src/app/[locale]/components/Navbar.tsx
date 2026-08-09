@@ -20,6 +20,7 @@ export default function Navbar() {
     { href: `/about`, label: tNav("about") },
     { href: `/coaches`, label: tNav("coaches") },
     { href: `/pricing`, label: tNav("plans") },
+    { href: '/book' , label: tNav("book" )},
     { href: `/contact`, label: tNav("contact") },
   ];
 
