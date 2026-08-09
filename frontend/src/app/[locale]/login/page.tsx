@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useLocale, useTranslations } from "next-intl";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/lib/navigation";
 import { api, ApiError } from "@/lib/api-client";
+
+const inputClasses =
+  "w-full rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white outline-none " +
+  "placeholder:text-gray-600 transition-all duration-200 " +
+  "focus:border-[#B4E3BD]/60 focus:bg-gray-950 focus:ring-2 focus:ring-[#B4E3BD]/20 " +
+  "[color-scheme:dark] autofill:shadow-[inset_0_0_0_1000px_theme(colors.gray.950)]";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
-  const locale = useLocale();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -25,51 +29,59 @@ export default function LoginPage() {
         "/auth/login",
         { email, password },
       );
-      // TODO: move token storage into a proper auth context / secure cookie
       localStorage.setItem("access_token", res.access_token);
       localStorage.setItem("refresh_token", res.refresh_token);
-      router.push(`/${locale}/dashboard`);
+      router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong");
+      setError(err instanceof ApiError ? err.message : t("genericError"));
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gray-950 px-4 text-white">
-      <div className="w-full max-w-md">
-        <h1 className="mb-2 text-3xl font-bold">{t("loginTitle")}</h1>
-        <p className="mb-8 text-gray-400">{t("loginSubtitle")}</p>
+    <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-gray-950 px-4 py-16 text-white">
+      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900/60 p-8 shadow-2xl shadow-black/40 backdrop-blur-sm">
+        <div className="mb-8">
+          <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.2em] text-[#B4E3BD]">
+            FD CrossFit
+          </span>
+          <h1 className="mb-2 text-3xl font-bold tracking-tight">{t("loginTitle")}</h1>
+          <p className="text-gray-400">{t("loginSubtitle")}</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm text-gray-400">{t("email")}</label>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("email")}</label>
             <input
               required
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 outline-none focus:border-[#B4E3BD]"
+              className={inputClasses}
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm text-gray-400">{t("password")}</label>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("password")}</label>
             <input
               required
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 outline-none focus:border-[#B4E3BD]"
+              className={inputClasses}
             />
           </div>
 
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-400">
+              {error}
+            </p>
+          )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-[#B4E3BD] px-6 py-3 font-semibold text-black transition hover:bg-white disabled:opacity-50"
+            className="w-full rounded-full bg-[#B4E3BD] px-6 py-3 font-semibold text-black shadow-[0_8px_24px_rgba(180,227,189,0.15)] transition-all duration-200 hover:bg-white hover:shadow-[0_8px_24px_rgba(255,255,255,0.1)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {loading ? "..." : t("submit")}
           </button>
@@ -77,7 +89,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-gray-400">
           {t("noAccount")}{" "}
-          <Link href={`/${locale}/auth/register`} className="text-[#B4E3BD] hover:underline">
+          <Link href="/register" className="font-medium text-[#B4E3BD] hover:text-white hover:underline">
             {t("signUp")}
           </Link>
         </p>

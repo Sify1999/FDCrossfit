@@ -1,89 +1,147 @@
-import { useTranslations, useLocale } from "next-intl";
-import Image from "next/image";
-import Link from "next/link";
+"use client";
 
-export default function HomePage() {
-  const t = useTranslations("home");
-  const locale = useLocale();
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/lib/navigation";
+import { api, ApiError } from "@/lib/api-client";
 
-  // Farsi is RTL, so the dark side of the gradient needs to sit on the
-  // right (behind the text) instead of the left.
-  const gradientDirection = locale === "fa" ? "bg-gradient-to-l" : "bg-gradient-to-r";
+const inputClasses =
+  "w-full rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white outline-none " +
+  "placeholder:text-gray-600 transition-all duration-200 " +
+  "focus:border-[#B4E3BD]/60 focus:bg-gray-950 focus:ring-2 focus:ring-[#B4E3BD]/20 " +
+  "[color-scheme:dark] autofill:shadow-[inset_0_0_0_1000px_theme(colors.gray.950)]";
+
+export default function RegisterPage() {
+  const t = useTranslations("auth");
+  const router = useRouter();
+
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 8) {
+      setError(t("passwordTooShort"));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t("passwordMismatch"));
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post("/auth/register", {
+        email,
+        password,
+        full_name: fullName || undefined,
+        phone: phone || undefined,
+      });
+
+      const tokens = await api.post<{ access_token: string; refresh_token: string }>(
+        "/auth/login",
+        { email, password },
+      );
+      localStorage.setItem("access_token", tokens.access_token);
+      localStorage.setItem("refresh_token", tokens.refresh_token);
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t("genericError"));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-white">
-      {/* ─── Hero Section ─────────────────────────────────────────── */}
-      <section className="relative flex min-h-[90vh] w-full items-center overflow-hidden">
-        <Image
-          src="/images/hero-bg.jpg"
-          alt="FD Crossfit training"
-          fill
-          priority
-          className="object-cover"
-        />
-        <div className={`absolute inset-0 ${gradientDirection} from-black/90 via-black/50 to-black/20`} />
-
-        {/* justify-start is a logical property: it resolves to "left" in LTR
-            and "right" in RTL automatically, based on the <html dir="..."> 
-            set in layout.tsx. No conditional needed here. */}
-        <div className="relative z-10 flex w-full justify-start px-6 sm:px-12">
-          {/* No text-align class here on purpose — see explanation above.
-              The browser's default (text-align: start) already follows dir. */}
-          <div className="max-w-xl">
-            <h1 className="mb-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
-              {t("hero.title")}
-            </h1>
-            <p className="mb-10 text-lg text-gray-300 sm:text-xl">
-              {t("hero.subtitle")}
-            </p>
-            <div className="flex flex-wrap justify-start gap-4">
-              <Link
-                href="/auth/register"
-                className="rounded-full bg-red-600 px-8 py-3 text-lg font-semibold transition hover:bg-red-700"
-              >
-                {t("hero.bookCta")}
-              </Link>
-              <Link
-                href="/contact"
-                className="rounded-full border-2 border-[#B4E3BD] px-8 py-3 text-lg font-semibold text-[#B4E3BD] transition hover:bg-[#B4E3BD] hover:text-black"
-              >
-                {t("hero.contactCta")}
-              </Link>
-            </div>
-          </div>
+    <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-gray-950 px-4 py-16 text-white">
+      <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900/60 p-8 shadow-2xl shadow-black/40 backdrop-blur-sm">
+        <div className="mb-8">
+          <span className="mb-3 block text-xs font-semibold uppercase tracking-[0.2em] text-[#B4E3BD]">
+            FD CrossFit
+          </span>
+          <h1 className="mb-2 text-3xl font-bold tracking-tight">{t("registerTitle")}</h1>
+          <p className="text-gray-400">{t("registerSubtitle")}</p>
         </div>
-      </section>
 
-      {/* ─── About Preview Section (unchanged from before) ──────────── */}
-      <section className="bg-white px-6 py-24 text-gray-900 sm:px-12">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 md:grid-cols-2">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <span className="mb-3 block text-sm font-semibold uppercase tracking-widest text-red-600">
-              {t("aboutPreview.eyebrow")}
-            </span>
-            <h2 className="mb-6 text-3xl font-bold tracking-tight sm:text-4xl">
-              {t("aboutPreview.title")}
-            </h2>
-            <p className="mb-8 text-lg leading-relaxed text-gray-600">
-              {t("aboutPreview.description")}
-            </p>
-            <Link
-              href="/about"
-              className="inline-block rounded-full bg-gray-900 px-8 py-3 text-lg font-semibold text-white transition hover:bg-black"
-            >
-              {t("aboutPreview.cta")}
-            </Link>
-          </div>
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl shadow-xl">
-            <Image
-              src="/images/about-preview.jpg"
-              alt="Inside FD Crossfit gym"
-              fill
-              className="object-cover"
+            <label className="mb-1.5 block text-sm text-gray-400">{t("fullName")}</label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className={inputClasses}
             />
           </div>
-        </div>
-      </section>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("phone")}</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("email")}</label>
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("password")}</label>
+            <input
+              required
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("confirmPassword")}</label>
+            <input
+              required
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className={inputClasses}
+            />
+          </div>
+
+          {error && (
+            <p className="rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-400">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-full bg-[#B4E3BD] px-6 py-3 font-semibold text-black shadow-[0_8px_24px_rgba(180,227,189,0.15)] transition-all duration-200 hover:bg-white hover:shadow-[0_8px_24px_rgba(255,255,255,0.1)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {loading ? "..." : t("submit")}
+          </button>
+        </form>
+
+        <p className="mt-6 text-center text-sm text-gray-400">
+          {t("haveAccount")}{" "}
+          <Link href="/login" className="font-medium text-[#B4E3BD] hover:text-white hover:underline">
+            {t("signIn")}
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }
