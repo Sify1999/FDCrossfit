@@ -113,18 +113,20 @@ export default function BookPage() {
   // Auth
   // ─────────────────────────────────────────────
 
-  const [checkingAuth, setCheckingAuth] = useState(true);
+//   const [checkingAuth, setCheckingAuth] = useState(true);
 
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
+//   useEffect(() => {
+//     const token = localStorage.getItem("access_token");
 
-    if (!token) {
-      router.replace("/login");
-      return;
-    }
+//     if (!token) {
+//       router.replace("/login");
+//       return;
+//     }
 
-    setCheckingAuth(false);
-  }, [router]);
+//     setCheckingAuth(false);
+//   }, [router]);
+// line 468 check 
+
 
   // ─────────────────────────────────────────────
   // Booking state
@@ -465,15 +467,15 @@ export default function BookPage() {
   // Auth loading
   // ─────────────────────────────────────────────
 
-  if (checkingAuth) {
-    return (
-      <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-gray-950 px-4 text-white">
-        <p className="text-sm text-gray-400">
-          {t("checkingAuth")}
-        </p>
-      </main>
-    );
-  }
+//   if (checkingAuth) {
+//     return (
+//       <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-gray-950 px-4 text-white">
+//         <p className="text-sm text-gray-400">
+//           {t("checkingAuth")}
+//         </p>
+//       </main>
+//     );
+//   }
 
   // ─────────────────────────────────────────────
   // Booking confirmed
