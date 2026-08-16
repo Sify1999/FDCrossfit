@@ -46,7 +46,7 @@ class Settings(BaseSettings):
 
     # Algorithm for JWT
     ALGORITHM: str = "HS256"
-
+    ENVIRONMENT: str = "development"
 
 @lru_cache
 def get_settings() -> Settings:

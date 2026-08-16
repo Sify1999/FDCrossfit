@@ -1,20 +1,14 @@
-/**
- * Typed API client for the FD Crossfit backend.
- *
- * Usage:
- *   import { api } from "@/lib/api-client";
- *   const health = await api.get<HealthResponse>("/health");
- *
- * TODO: Add interceptors for auth token injection and refresh logic.
- *       The current setup is a bare fetch wrapper.
- */
-
 type RequestOptions = {
   headers?: Record<string, string>;
   cache?: RequestCache;
 };
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("access_token");
+}
 
 class ApiClient {
   private baseUrl: string;
@@ -36,9 +30,10 @@ class ApiClient {
       ...options?.headers,
     };
 
-    // TODO: Inject Authorization header from auth context
-    // const token = getAccessToken();
-    // if (token) { headers["Authorization"] = `Bearer ${token}`; }
+    const token = getAccessToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
 
     const response = await fetch(url, {
       method,
@@ -46,6 +41,10 @@ class ApiClient {
       body: body ? JSON.stringify(body) : undefined,
       cache: options?.cache,
     });
+
+    if (response.status === 204) {
+      return undefined as T;
+    }
 
     if (!response.ok) {
       const errorBody = await response.json().catch(() => ({}));

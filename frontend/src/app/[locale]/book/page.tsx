@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
+import { api, ApiError } from "@/lib/api-client";
+import { fetchCurrentUser, type CurrentUser } from "@/lib/auth";
 
 // ─────────────────────────────────────────────
 // Types
@@ -19,6 +21,14 @@ type Workout = {
   sections: WorkoutSection[];
 };
 
+type ApiWorkout = {
+  id: number;
+  date: string;
+  title: string;
+  coach_name: string | null;
+  sections: WorkoutSection[];
+};
+
 type CalendarDay = {
   date: Date;
   dateKey: string; // yyyy-mm-dd, used as the lookup key for workouts
@@ -27,7 +37,19 @@ type CalendarDay = {
   month: string;
 };
 
-const DAYS_TO_SHOW = 30;
+type RangeKey = "week" | "month" | "sixMonths";
+
+const RANGE_DAYS: Record<RangeKey, number> = {
+  week: 7,
+  month: 30,
+  sixMonths: 182,
+};
+
+const RANGE_LABELS: Record<RangeKey, string> = {
+  week: "1 Week",
+  month: "1 Month",
+  sixMonths: "6 Months",
+};
 
 function toDateKey(date: Date) {
   const y = date.getFullYear();
@@ -36,7 +58,7 @@ function toDateKey(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-function buildUpcomingDays(locale: string): CalendarDay[] {
+function buildUpcomingDays(locale: string, count: number): CalendarDay[] {
   const days: CalendarDay[] = [];
 
   const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
@@ -46,7 +68,7 @@ function buildUpcomingDays(locale: string): CalendarDay[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  for (let i = 0; i < DAYS_TO_SHOW; i++) {
+  for (let i = 0; i < count; i++) {
     const date = new Date(
       today.getFullYear(),
       today.getMonth(),
@@ -70,118 +92,121 @@ function newSectionId() {
 }
 
 // ─────────────────────────────────────────────
-// STATIC DEMO DATA
-//
-// TODO(backend): this whole block goes away once you're connected.
-// Replace `buildDemoWorkouts` with something like:
-//
-//   async function loadWorkouts(fromKey: string, toKey: string) {
-//     const res = await fetch(`/api/workouts?from=${fromKey}&to=${toKey}`);
-//     return (await res.json()) as Record<string, Workout>;
-//   }
-//
-// and call it from a useEffect keyed on `days`.
+// Backend calls
 // ─────────────────────────────────────────────
 
-const DEMO_TEMPLATES: Workout[] = [
-  {
-    title: "Strength + Metcon",
-    coachName: "Ali Ghasemi",
-    sections: [
-      { id: "warmup", label: "Warm-up", content: "3 rounds:\n10 air squats\n10 PVC pass-throughs\n200m run" },
-      { id: "strength", label: "Strength", content: "Back Squat\n5-5-5-5-5, building to a heavy 5" },
-      { id: "wod", label: "WOD", content: "For time:\n21-15-9\nThrusters (42.5/30kg)\nPull-ups" },
-      { id: "cooldown", label: "Cool-down", content: "5 min easy row + hip stretch" },
-    ],
-  },
-  {
-    title: "Engine Day",
-    coachName: "Ahmad",
-    sections: [
-      { id: "warmup", label: "Warm-up", content: "500m row easy\nDynamic mobility" },
-      { id: "wod", label: "WOD", content: "AMRAP 20:\n15 cal bike\n12 burpees\n9 box jumps" },
-      { id: "cooldown", label: "Cool-down", content: "Walk it out, static stretch" },
-    ],
-  },
-  {
-    title: "Gymnastics Skill",
-    coachName: "Arsalan",
-    sections: [
-      { id: "warmup", label: "Warm-up", content: "Shoulder activation + wrist prep" },
-      { id: "skill", label: "Skill", content: "10 min: handstand hold practice" },
-      { id: "wod", label: "WOD", content: "5 rounds:\n8 strict pull-ups\n12 push-ups\n16 sit-ups" },
-    ],
-  },
-  {
-    title: "Rest / Recovery",
-    coachName: "Arvin",
-    sections: [
-      { id: "notes", label: "Notes", content: "Optional: light mobility session or a 20 min walk." },
-    ],
-  },
-];
+async function fetchWorkoutsInRange(
+  from: string,
+  to: string
+): Promise<Record<string, Workout>> {
+  const result = await api.get<ApiWorkout[]>(
+    `/workouts?date_from=${from}&date_to=${to}`
+  );
 
-function buildDemoWorkouts(days: CalendarDay[]): Record<string, Workout> {
   const map: Record<string, Workout> = {};
-
-  days.forEach((day, i) => {
-    // Deep-clone so editing one day never mutates the shared template.
-    map[day.dateKey] = JSON.parse(
-      JSON.stringify(DEMO_TEMPLATES[i % DEMO_TEMPLATES.length])
-    );
-  });
-
+  for (const w of result) {
+    map[w.date] = {
+      title: w.title,
+      coachName: w.coach_name ?? undefined,
+      sections: w.sections,
+    };
+  }
   return map;
 }
 
-// ─────────────────────────────────────────────
-// Backend stubs
-//
-// TODO(backend): point these at your real endpoints. Keeping them as
-// isolated functions means the rest of the component doesn't change
-// when you wire up the API — only these two functions do.
-// ─────────────────────────────────────────────
-
 async function persistWorkout(dateKey: string, workout: Workout): Promise<void> {
-  // await fetch("/api/workouts", {
-  //   method: "PUT",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify({ dateKey, workout }),
-  // });
-  return Promise.resolve();
+  await api.put<ApiWorkout>(`/workouts/${dateKey}`, {
+    title: workout.title,
+    coach_name: workout.coachName || null,
+    sections: workout.sections,
+  });
 }
 
 async function deleteWorkoutRemote(dateKey: string): Promise<void> {
-  // await fetch(`/api/workouts/${dateKey}`, { method: "DELETE" });
-  return Promise.resolve();
+  await api.delete(`/workouts/${dateKey}`);
 }
 
 export default function WorkoutPage() {
   const locale = useLocale();
 
   // ─────────────────────────────────────────────
-  // Coach mode
-  //
-  // TODO(backend/auth): replace this with your real "is this user a
-  // coach" check (session role, JWT claim, etc). Left as a toggle for
-  // now so you can demo both views.
+  // Auth — is the visitor a coach? Determines whether edit controls show.
   // ─────────────────────────────────────────────
 
-  const [isCoach, setIsCoach] = useState(true);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCurrentUser().then((user) => {
+      if (cancelled) return;
+      setCurrentUser(user);
+      setAuthChecked(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isCoach = currentUser?.role === "coach" || currentUser?.role === "admin";
 
   // ─────────────────────────────────────────────
-  // Calendar + workout state
+  // Range + calendar
   // ─────────────────────────────────────────────
 
-  const days = useMemo(() => buildUpcomingDays(locale), [locale]);
+  const [range, setRange] = useState<RangeKey>("month");
 
-  const [workouts, setWorkouts] = useState<Record<string, Workout>>(() =>
-    buildDemoWorkouts(days)
+  const days = useMemo(
+    () => buildUpcomingDays(locale, RANGE_DAYS[range]),
+    [locale, range]
   );
 
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
 
-  const selectedDay = days[selectedDayIndex];
+  // Switching from a wide range to a narrow one can leave the previous
+  // index out of bounds — snap back to today instead of crashing.
+  useEffect(() => {
+    if (selectedDayIndex >= days.length) {
+      setSelectedDayIndex(0);
+    }
+  }, [days, selectedDayIndex]);
+
+  const selectedDay = days[Math.min(selectedDayIndex, days.length - 1)];
+
+  // ─────────────────────────────────────────────
+  // Workout data — fetched from the backend for the visible range
+  // ─────────────────────────────────────────────
+
+  const [workouts, setWorkouts] = useState<Record<string, Workout>>({});
+  const [loadingWorkouts, setLoadingWorkouts] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoadingWorkouts(true);
+      setLoadError(null);
+      try {
+        const from = days[0].dateKey;
+        const to = days[days.length - 1].dateKey;
+        const map = await fetchWorkoutsInRange(from, to);
+        if (!cancelled) setWorkouts(map);
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(err instanceof ApiError ? err.message : "Failed to load workouts");
+        }
+      } finally {
+        if (!cancelled) setLoadingWorkouts(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [days]);
+
   const selectedWorkout = workouts[selectedDay.dateKey];
 
   // ─────────────────────────────────────────────
@@ -191,8 +216,10 @@ export default function WorkoutPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<Workout | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   function startEditing() {
+    setSaveError(null);
     setDraft(
       selectedWorkout
         ? JSON.parse(JSON.stringify(selectedWorkout))
@@ -204,6 +231,7 @@ export default function WorkoutPage() {
   function cancelEditing() {
     setIsEditing(false);
     setDraft(null);
+    setSaveError(null);
   }
 
   function updateDraftField<K extends keyof Workout>(key: K, value: Workout[K]) {
@@ -258,36 +286,49 @@ export default function WorkoutPage() {
     };
 
     setSaving(true);
-
-    // Optimistic update so the UI feels instant.
-    setWorkouts((prev) => ({ ...prev, [dateKey]: cleaned }));
+    setSaveError(null);
 
     try {
+      // Call the API first — only reflect it locally once it's actually
+      // persisted, so a failed save never shows a stale "success" state.
       await persistWorkout(dateKey, cleaned);
-    } finally {
-      setSaving(false);
+      setWorkouts((prev) => ({ ...prev, [dateKey]: cleaned }));
       setIsEditing(false);
       setDraft(null);
+    } catch (err) {
+      setSaveError(
+        err instanceof ApiError ? err.message : "Failed to save workout. Please try again."
+      );
+    } finally {
+      setSaving(false);
     }
   }
 
   async function deleteWorkout() {
     const dateKey = selectedDay.dateKey;
+    setSaving(true);
+    setSaveError(null);
 
-    setWorkouts((prev) => {
-      const next = { ...prev };
-      delete next[dateKey];
-      return next;
-    });
-
-    setIsEditing(false);
-    setDraft(null);
-
-    await deleteWorkoutRemote(dateKey);
+    try {
+      await deleteWorkoutRemote(dateKey);
+      setWorkouts((prev) => {
+        const next = { ...prev };
+        delete next[dateKey];
+        return next;
+      });
+      setIsEditing(false);
+      setDraft(null);
+    } catch (err) {
+      setSaveError(
+        err instanceof ApiError ? err.message : "Failed to delete workout. Please try again."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   // ─────────────────────────────────────────────
-  // Date drag / momentum state (unchanged from the booking page)
+  // Date drag / momentum state (unchanged)
   // ─────────────────────────────────────────────
 
   const isDraggingRef = useRef(false);
@@ -439,7 +480,7 @@ export default function WorkoutPage() {
     <main className="min-h-[calc(100vh-5rem)] bg-gray-950 px-4 py-10 text-white sm:px-6 sm:py-12">
       <div className="mx-auto max-w-5xl">
         {/* Header */}
-        <header className="mb-10 flex items-start justify-between gap-4">
+        <header className="mb-8 flex items-start justify-between gap-4">
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#B4E3BD]">
               FD CrossFit
@@ -453,26 +494,35 @@ export default function WorkoutPage() {
               Pick a day to see what&apos;s programmed.
             </p>
           </div>
-
-          {/* Demo-only coach toggle — remove once real auth decides this */}
-          <button
-            type="button"
-            onClick={() => setIsCoach((v) => !v)}
-            className="shrink-0 rounded-full border border-gray-800 bg-gray-900/80 px-4 py-2 text-xs font-semibold text-gray-300 transition-colors hover:border-[#B4E3BD]/50"
-          >
-            {isCoach ? "Coach view" : "Member view"}
-          </button>
         </header>
 
         {/* ─────────────────────────────────────────
-            Day picker
+            Range + day picker
         ───────────────────────────────────────── */}
 
         <section className="mb-8">
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[#B4E3BD]">
               Choose a day
             </h2>
+
+            {/* Range selector */}
+            <div className="inline-flex rounded-full border border-gray-800 bg-gray-900/60 p-1 text-xs font-semibold">
+              {(Object.keys(RANGE_DAYS) as RangeKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setRange(key)}
+                  className={`rounded-full px-4 py-1.5 transition-colors ${
+                    range === key
+                      ? "bg-[#B4E3BD] text-black"
+                      : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {RANGE_LABELS[key]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div
@@ -538,7 +588,6 @@ export default function WorkoutPage() {
                     {day.month}
                   </span>
 
-                  {/* Small dot to show at a glance which days have a workout set */}
                   <span
                     className={`mt-1.5 h-1.5 w-1.5 rounded-full ${
                       hasWorkout
@@ -564,7 +613,7 @@ export default function WorkoutPage() {
               {selectedDay.weekday}, {selectedDay.dayNum} {selectedDay.month}
             </h2>
 
-            {isCoach && !isEditing && (
+            {authChecked && isCoach && !isEditing && !loadingWorkouts && (
               <button
                 type="button"
                 onClick={startEditing}
@@ -575,7 +624,19 @@ export default function WorkoutPage() {
             )}
           </div>
 
-          {!isEditing && selectedWorkout && (
+          {loadingWorkouts && (
+            <div className="rounded-3xl border border-gray-800 bg-gray-900/60 px-6 py-14 text-center text-sm text-gray-400">
+              Loading workouts...
+            </div>
+          )}
+
+          {!loadingWorkouts && loadError && (
+            <div className="rounded-3xl border border-red-900/50 bg-red-950/30 px-6 py-8 text-center text-sm text-red-400">
+              {loadError}
+            </div>
+          )}
+
+          {!loadingWorkouts && !loadError && !isEditing && selectedWorkout && (
             <div className="rounded-3xl border border-gray-800 bg-gray-900/80 p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <h3 className="text-xl font-bold tracking-tight">
@@ -611,12 +672,12 @@ export default function WorkoutPage() {
             </div>
           )}
 
-          {!isEditing && !selectedWorkout && (
+          {!loadingWorkouts && !loadError && !isEditing && !selectedWorkout && (
             <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-800 bg-gray-900/40 px-6 py-14 text-center">
               <p className="text-sm text-gray-400">
                 No workout has been programmed for this day yet.
               </p>
-              {isCoach && (
+              {authChecked && isCoach && (
                 <button
                   type="button"
                   onClick={startEditing}
@@ -707,6 +768,12 @@ export default function WorkoutPage() {
                 </button>
               </div>
 
+              {saveError && (
+                <p className="mt-4 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-400">
+                  {saveError}
+                </p>
+              )}
+
               <div className="mt-6 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
@@ -720,6 +787,7 @@ export default function WorkoutPage() {
                 <button
                   type="button"
                   onClick={cancelEditing}
+                  disabled={saving}
                   className="rounded-full border border-gray-800 px-6 py-2.5 text-sm font-semibold text-gray-300 transition-colors hover:border-gray-600"
                 >
                   Cancel
@@ -729,6 +797,7 @@ export default function WorkoutPage() {
                   <button
                     type="button"
                     onClick={deleteWorkout}
+                    disabled={saving}
                     className="ml-auto rounded-full px-4 py-2.5 text-sm font-semibold text-red-400/80 transition-colors hover:text-red-400"
                   >
                     Delete workout

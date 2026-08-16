@@ -5,18 +5,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import auth, health
+from app.routers import auth, health, users, workouts
 
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Application lifespan: startup / shutdown logic."""
-    # TODO: Initialize DB connection pool, check DB connectivity.
-    # TODO: Run any startup health checks.
     yield
-    # TODO: Cleanup resources if needed.
 
 
 app = FastAPI(
@@ -26,9 +22,13 @@ app = FastAPI(
 )
 
 # ─── CORS ─────────────────────────────────────────────────────────────
+allowed_origins = [settings.FRONTEND_URL]
+if settings.ENVIRONMENT != "production":
+    allowed_origins.append("http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:3000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -37,11 +37,5 @@ app.add_middleware(
 # ─── Routers ──────────────────────────────────────────────────────────
 app.include_router(health.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
-
-
-# TODO: Add gym-specific routers:
-#   - /api/leads — visitor lead capture
-#   - /api/bookings — free trial session booking
-#   - /api/members — member management
-#   - /api/plans — subscription plans & pricing
-#   - /api/payments — payment gateway integration
+app.include_router(users.router, prefix="/api")
+app.include_router(workouts.router, prefix="/api")
