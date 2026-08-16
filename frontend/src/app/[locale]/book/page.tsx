@@ -1,85 +1,47 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
-import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/lib/navigation";
+import { useLocale } from "next-intl";
 
-type Coach = {
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+
+type WorkoutSection = {
   id: string;
-  name: string;
-  image: string;
+  label: string;
+  content: string;
 };
 
-const COACHES: Coach[] = [
-  {
-    id: "ali",
-    name: "Ali Ghasemi",
-    image: "/images/coaches/ali.jpg",
-  },
-  {
-    id: "ahmad",
-    name: "Ahmad",
-    image: "/images/coaches/ahmad.jpg",
-  },
-  {
-    id: "arsalan",
-    name: "Arsalan",
-    image: "/images/coaches/arsalan.jpg",
-  },
-  {
-    id: "arvin",
-    name: "Arvin",
-    image: "/images/coaches/arvin.jpg",
-  },
-];
-
-const START_HOUR = 8;
-const END_HOUR = 20;
-const DAYS_TO_SHOW = 30;
-
-type TimeSlot = {
-  hour: number;
-  coach: Coach;
+type Workout = {
+  title: string;
+  coachName?: string;
+  sections: WorkoutSection[];
 };
 
 type CalendarDay = {
   date: Date;
+  dateKey: string; // yyyy-mm-dd, used as the lookup key for workouts
   weekday: string;
   dayNum: string;
   month: string;
 };
 
-function buildDaySlots(): TimeSlot[] {
-  const slots: TimeSlot[] = [];
+const DAYS_TO_SHOW = 30;
 
-  for (let hour = START_HOUR; hour <= END_HOUR; hour++) {
-    // Placeholder until real backend availability exists.
-    const coach = COACHES[hour % COACHES.length];
-
-    slots.push({
-      hour,
-      coach,
-    });
-  }
-
-  return slots;
+function toDateKey(date: Date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function buildUpcomingDays(locale: string): CalendarDay[] {
   const days: CalendarDay[] = [];
 
-  const weekdayFmt = new Intl.DateTimeFormat(locale, {
-    weekday: "short",
-  });
-
-  const monthFmt = new Intl.DateTimeFormat(locale, {
-    month: "short",
-  });
-
-  const dayFmt = new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-  });
+  const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
+  const monthFmt = new Intl.DateTimeFormat(locale, { month: "short" });
+  const dayFmt = new Intl.DateTimeFormat(locale, { day: "numeric" });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -93,6 +55,7 @@ function buildUpcomingDays(locale: string): CalendarDay[] {
 
     days.push({
       date,
+      dateKey: toDateKey(date),
       weekday: weekdayFmt.format(date),
       dayNum: dayFmt.format(date),
       month: monthFmt.format(date),
@@ -102,109 +65,253 @@ function buildUpcomingDays(locale: string): CalendarDay[] {
   return days;
 }
 
-export default function BookPage() {
-  const t = useTranslations("bookPage");
+function newSectionId() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+// ─────────────────────────────────────────────
+// STATIC DEMO DATA
+//
+// TODO(backend): this whole block goes away once you're connected.
+// Replace `buildDemoWorkouts` with something like:
+//
+//   async function loadWorkouts(fromKey: string, toKey: string) {
+//     const res = await fetch(`/api/workouts?from=${fromKey}&to=${toKey}`);
+//     return (await res.json()) as Record<string, Workout>;
+//   }
+//
+// and call it from a useEffect keyed on `days`.
+// ─────────────────────────────────────────────
+
+const DEMO_TEMPLATES: Workout[] = [
+  {
+    title: "Strength + Metcon",
+    coachName: "Ali Ghasemi",
+    sections: [
+      { id: "warmup", label: "Warm-up", content: "3 rounds:\n10 air squats\n10 PVC pass-throughs\n200m run" },
+      { id: "strength", label: "Strength", content: "Back Squat\n5-5-5-5-5, building to a heavy 5" },
+      { id: "wod", label: "WOD", content: "For time:\n21-15-9\nThrusters (42.5/30kg)\nPull-ups" },
+      { id: "cooldown", label: "Cool-down", content: "5 min easy row + hip stretch" },
+    ],
+  },
+  {
+    title: "Engine Day",
+    coachName: "Ahmad",
+    sections: [
+      { id: "warmup", label: "Warm-up", content: "500m row easy\nDynamic mobility" },
+      { id: "wod", label: "WOD", content: "AMRAP 20:\n15 cal bike\n12 burpees\n9 box jumps" },
+      { id: "cooldown", label: "Cool-down", content: "Walk it out, static stretch" },
+    ],
+  },
+  {
+    title: "Gymnastics Skill",
+    coachName: "Arsalan",
+    sections: [
+      { id: "warmup", label: "Warm-up", content: "Shoulder activation + wrist prep" },
+      { id: "skill", label: "Skill", content: "10 min: handstand hold practice" },
+      { id: "wod", label: "WOD", content: "5 rounds:\n8 strict pull-ups\n12 push-ups\n16 sit-ups" },
+    ],
+  },
+  {
+    title: "Rest / Recovery",
+    coachName: "Arvin",
+    sections: [
+      { id: "notes", label: "Notes", content: "Optional: light mobility session or a 20 min walk." },
+    ],
+  },
+];
+
+function buildDemoWorkouts(days: CalendarDay[]): Record<string, Workout> {
+  const map: Record<string, Workout> = {};
+
+  days.forEach((day, i) => {
+    // Deep-clone so editing one day never mutates the shared template.
+    map[day.dateKey] = JSON.parse(
+      JSON.stringify(DEMO_TEMPLATES[i % DEMO_TEMPLATES.length])
+    );
+  });
+
+  return map;
+}
+
+// ─────────────────────────────────────────────
+// Backend stubs
+//
+// TODO(backend): point these at your real endpoints. Keeping them as
+// isolated functions means the rest of the component doesn't change
+// when you wire up the API — only these two functions do.
+// ─────────────────────────────────────────────
+
+async function persistWorkout(dateKey: string, workout: Workout): Promise<void> {
+  // await fetch("/api/workouts", {
+  //   method: "PUT",
+  //   headers: { "Content-Type": "application/json" },
+  //   body: JSON.stringify({ dateKey, workout }),
+  // });
+  return Promise.resolve();
+}
+
+async function deleteWorkoutRemote(dateKey: string): Promise<void> {
+  // await fetch(`/api/workouts/${dateKey}`, { method: "DELETE" });
+  return Promise.resolve();
+}
+
+export default function WorkoutPage() {
   const locale = useLocale();
-  const router = useRouter();
-
-  const isFA = locale === "fa";
 
   // ─────────────────────────────────────────────
-  // Auth
+  // Coach mode
+  //
+  // TODO(backend/auth): replace this with your real "is this user a
+  // coach" check (session role, JWT claim, etc). Left as a toggle for
+  // now so you can demo both views.
   // ─────────────────────────────────────────────
 
-//   const [checkingAuth, setCheckingAuth] = useState(true);
-
-//   useEffect(() => {
-//     const token = localStorage.getItem("access_token");
-
-//     if (!token) {
-//       router.replace("/login");
-//       return;
-//     }
-
-//     setCheckingAuth(false);
-//   }, [router]);
-// line 468 check 
-
+  const [isCoach, setIsCoach] = useState(true);
 
   // ─────────────────────────────────────────────
-  // Booking state
+  // Calendar + workout state
   // ─────────────────────────────────────────────
 
-  const days = useMemo(
-    () => buildUpcomingDays(locale),
-    [locale]
-  );
+  const days = useMemo(() => buildUpcomingDays(locale), [locale]);
 
-  const slots = useMemo(
-    () => buildDaySlots(),
-    []
+  const [workouts, setWorkouts] = useState<Record<string, Workout>>(() =>
+    buildDemoWorkouts(days)
   );
 
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
-  const [selectedSlot, setSelectedSlot] =
-    useState<TimeSlot | null>(null);
 
-  const [submitting, setSubmitting] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
+  const selectedDay = days[selectedDayIndex];
+  const selectedWorkout = workouts[selectedDay.dateKey];
 
   // ─────────────────────────────────────────────
-  // Date drag / momentum state
+  // Edit state (draft lives separately so Cancel is free)
+  // ─────────────────────────────────────────────
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<Workout | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  function startEditing() {
+    setDraft(
+      selectedWorkout
+        ? JSON.parse(JSON.stringify(selectedWorkout))
+        : { title: "", coachName: "", sections: [] }
+    );
+    setIsEditing(true);
+  }
+
+  function cancelEditing() {
+    setIsEditing(false);
+    setDraft(null);
+  }
+
+  function updateDraftField<K extends keyof Workout>(key: K, value: Workout[K]) {
+    setDraft((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
+
+  function updateSection(id: string, field: "label" | "content", value: string) {
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            sections: prev.sections.map((s) =>
+              s.id === id ? { ...s, [field]: value } : s
+            ),
+          }
+        : prev
+    );
+  }
+
+  function addSection() {
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            sections: [
+              ...prev.sections,
+              { id: newSectionId(), label: "New section", content: "" },
+            ],
+          }
+        : prev
+    );
+  }
+
+  function removeSection(id: string) {
+    setDraft((prev) =>
+      prev
+        ? { ...prev, sections: prev.sections.filter((s) => s.id !== id) }
+        : prev
+    );
+  }
+
+  async function saveDraft() {
+    if (!draft) return;
+
+    const dateKey = selectedDay.dateKey;
+    const cleaned: Workout = {
+      ...draft,
+      title: draft.title.trim() || "Untitled workout",
+      sections: draft.sections.filter(
+        (s) => s.label.trim() || s.content.trim()
+      ),
+    };
+
+    setSaving(true);
+
+    // Optimistic update so the UI feels instant.
+    setWorkouts((prev) => ({ ...prev, [dateKey]: cleaned }));
+
+    try {
+      await persistWorkout(dateKey, cleaned);
+    } finally {
+      setSaving(false);
+      setIsEditing(false);
+      setDraft(null);
+    }
+  }
+
+  async function deleteWorkout() {
+    const dateKey = selectedDay.dateKey;
+
+    setWorkouts((prev) => {
+      const next = { ...prev };
+      delete next[dateKey];
+      return next;
+    });
+
+    setIsEditing(false);
+    setDraft(null);
+
+    await deleteWorkoutRemote(dateKey);
+  }
+
+  // ─────────────────────────────────────────────
+  // Date drag / momentum state (unchanged from the booking page)
   // ─────────────────────────────────────────────
 
   const isDraggingRef = useRef(false);
-
   const dragStartXRef = useRef(0);
   const dragStartScrollRef = useRef(0);
-
   const velocityRef = useRef(0);
-
-  const pointerSamplesRef = useRef<
-    { x: number; t: number }[]
-  >([]);
-
-  const momentumFrameRef =
-    useRef<number | null>(null);
-
-  // ─────────────────────────────────────────────
-  // Cleanup
-  // ─────────────────────────────────────────────
+  const pointerSamplesRef = useRef<{ x: number; t: number }[]>([]);
+  const momentumFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (momentumFrameRef.current !== null) {
-        cancelAnimationFrame(
-          momentumFrameRef.current
-        );
+        cancelAnimationFrame(momentumFrameRef.current);
       }
     };
   }, []);
 
-  // ─────────────────────────────────────────────
-  // Stop momentum
-  // ─────────────────────────────────────────────
-
   function stopMomentum() {
     if (momentumFrameRef.current !== null) {
-      cancelAnimationFrame(
-        momentumFrameRef.current
-      );
-
+      cancelAnimationFrame(momentumFrameRef.current);
       momentumFrameRef.current = null;
     }
-
     velocityRef.current = 0;
   }
-
-  // ─────────────────────────────────────────────
-  // Start momentum
-  //
-  // IMPORTANT:
-  // The scroll container is ALWAYS LTR.
-  // This completely avoids browser-specific
-  // RTL scrollLeft behavior.
-  // ─────────────────────────────────────────────
 
   function startMomentum(el: HTMLDivElement) {
     const FRICTION = 0.95;
@@ -213,21 +320,15 @@ export default function BookPage() {
     function step() {
       velocityRef.current *= FRICTION;
 
-      if (
-        Math.abs(velocityRef.current) <
-        MIN_VELOCITY
-      ) {
+      if (Math.abs(velocityRef.current) < MIN_VELOCITY) {
         momentumFrameRef.current = null;
         return;
       }
 
-      el.scrollLeft +=
-        velocityRef.current * 16;
+      el.scrollLeft += velocityRef.current * 16;
 
-      const maxScroll =
-        el.scrollWidth - el.clientWidth;
+      const maxScroll = el.scrollWidth - el.clientWidth;
 
-      // Clamp at both ends.
       if (el.scrollLeft <= 0) {
         el.scrollLeft = 0;
         velocityRef.current = 0;
@@ -242,180 +343,79 @@ export default function BookPage() {
         return;
       }
 
-      momentumFrameRef.current =
-        requestAnimationFrame(step);
+      momentumFrameRef.current = requestAnimationFrame(step);
     }
 
-    momentumFrameRef.current =
-      requestAnimationFrame(step);
+    momentumFrameRef.current = requestAnimationFrame(step);
   }
 
-  // ─────────────────────────────────────────────
-  // Pointer down
-  // ─────────────────────────────────────────────
-
-  function handleDatePointerDown(
-    e: React.PointerEvent<HTMLDivElement>
-  ) {
+  function handleDatePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     stopMomentum();
 
     const el = e.currentTarget;
 
     isDraggingRef.current = true;
-
     dragStartXRef.current = e.clientX;
-    dragStartScrollRef.current =
-      el.scrollLeft;
-
-    pointerSamplesRef.current = [
-      {
-        x: e.clientX,
-        t: performance.now(),
-      },
-    ];
+    dragStartScrollRef.current = el.scrollLeft;
+    pointerSamplesRef.current = [{ x: e.clientX, t: performance.now() }];
 
     el.setPointerCapture(e.pointerId);
   }
 
-  // ─────────────────────────────────────────────
-  // Pointer move
-  //
-  // SAME logic for EN and FA.
-  //
-  // Drag right → scroll left
-  // Drag left  → scroll right
-  // ─────────────────────────────────────────────
-
-  function handleDatePointerMove(
-    e: React.PointerEvent<HTMLDivElement>
-  ) {
-    if (!isDraggingRef.current) {
-      return;
-    }
+  function handleDatePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!isDraggingRef.current) return;
 
     const el = e.currentTarget;
+    const distance = e.clientX - dragStartXRef.current;
 
-    const distance =
-      e.clientX - dragStartXRef.current;
-
-    /*
-     * The container is intentionally LTR,
-     * even when the page itself is RTL.
-     *
-     * Therefore we ALWAYS use:
-     *
-     * scrollLeft = startScroll - distance
-     *
-     * This gives identical physical dragging
-     * behavior in English and Persian.
-     */
-
-    el.scrollLeft =
-      dragStartScrollRef.current - distance;
-
-    // ─────────────────────────────────────────
-    // Save pointer samples for velocity
-    // ─────────────────────────────────────────
+    el.scrollLeft = dragStartScrollRef.current - distance;
 
     const now = performance.now();
-
-    pointerSamplesRef.current.push({
-      x: e.clientX,
-      t: now,
-    });
-
-    // Keep only the last ~100ms.
-    pointerSamplesRef.current =
-      pointerSamplesRef.current.filter(
-        (sample) =>
-          now - sample.t < 100
-      );
+    pointerSamplesRef.current.push({ x: e.clientX, t: now });
+    pointerSamplesRef.current = pointerSamplesRef.current.filter(
+      (sample) => now - sample.t < 100
+    );
   }
 
-  // ─────────────────────────────────────────────
-  // Pointer up
-  // ─────────────────────────────────────────────
-
-  function handleDatePointerUp(
-    e: React.PointerEvent<HTMLDivElement>
-  ) {
-    if (!isDraggingRef.current) {
-      return;
-    }
+  function handleDatePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!isDraggingRef.current) return;
 
     isDraggingRef.current = false;
 
     const el = e.currentTarget;
 
-    // Release pointer capture.
     if (el.hasPointerCapture(e.pointerId)) {
       el.releasePointerCapture(e.pointerId);
     }
 
-    // ─────────────────────────────────────────
-    // Detect tap vs drag
-    // ─────────────────────────────────────────
-
-    const totalDistance = Math.abs(
-      e.clientX - dragStartXRef.current
-    );
-
+    const totalDistance = Math.abs(e.clientX - dragStartXRef.current);
     const TAP_THRESHOLD = 6;
 
     if (totalDistance < TAP_THRESHOLD) {
-      const realTarget =
-        document.elementFromPoint(
-          e.clientX,
-          e.clientY
-        );
-
-      const dayButton =
-        realTarget?.closest<HTMLElement>(
-          "[data-day-index]"
-        );
+      const realTarget = document.elementFromPoint(e.clientX, e.clientY);
+      const dayButton = realTarget?.closest<HTMLElement>("[data-day-index]");
 
       if (dayButton) {
-        const index = Number(
-          dayButton.dataset.dayIndex
-        );
+        const index = Number(dayButton.dataset.dayIndex);
 
         if (!Number.isNaN(index)) {
           setSelectedDayIndex(index);
-          setSelectedSlot(null);
+          setIsEditing(false);
+          setDraft(null);
         }
       }
     }
 
-    // ─────────────────────────────────────────
-    // Calculate velocity
-    //
-    // Because the scroll container is always LTR,
-    // this calculation is also always identical.
-    // ─────────────────────────────────────────
-
-    const samples =
-      pointerSamplesRef.current;
+    const samples = pointerSamplesRef.current;
 
     if (samples.length >= 2) {
       const first = samples[0];
-      const last =
-        samples[samples.length - 1];
-
+      const last = samples[samples.length - 1];
       const dt = last.t - first.t;
 
       if (dt > 0) {
         const dx = last.x - first.x;
-
-        /*
-         * Drag right (+dx)
-         * → scroll left (-velocity)
-         *
-         * Drag left (-dx)
-         * → scroll right (+velocity)
-         */
-
-        velocityRef.current =
-          -dx / dt;
+        velocityRef.current = -dx / dt;
       } else {
         velocityRef.current = 0;
       }
@@ -423,184 +423,58 @@ export default function BookPage() {
       velocityRef.current = 0;
     }
 
-    // ─────────────────────────────────────────
-    // Start momentum
-    // ─────────────────────────────────────────
-
-    if (
-      Math.abs(velocityRef.current) > 0
-    ) {
+    if (Math.abs(velocityRef.current) > 0) {
       startMomentum(el);
     }
   }
 
   // ─────────────────────────────────────────────
-  // Confirm booking
+  // Render
   // ─────────────────────────────────────────────
 
-  function handleConfirm() {
-    if (!selectedSlot) {
-      return;
-    }
+  const inputClasses =
+    "w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-600 outline-none focus:border-[#B4E3BD] transition-colors";
 
-    // TODO:
-    // Replace this with your real booking API call.
-    //
-    // POST /api/bookings
-    //
-    // {
-    //   day,
-    //   hour,
-    //   coach_id,
-    //   token
-    // }
-
-    setSubmitting(true);
-
-    setTimeout(() => {
-      setSubmitting(false);
-      setConfirmed(true);
-    }, 400);
-  }
-
-  // ─────────────────────────────────────────────
-  // Auth loading
-  // ─────────────────────────────────────────────
-
-//   if (checkingAuth) {
-//     return (
-//       <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-gray-950 px-4 text-white">
-//         <p className="text-sm text-gray-400">
-//           {t("checkingAuth")}
-//         </p>
-//       </main>
-//     );
-//   }
-
-  // ─────────────────────────────────────────────
-  // Booking confirmed
-  // ─────────────────────────────────────────────
-
-  if (confirmed && selectedSlot) {
-    const day = days[selectedDayIndex];
-
-    return (
-      <main
-        className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-gray-950 px-4 py-12 text-white"
-      >
-        <div className="w-full max-w-md rounded-3xl border border-gray-800 bg-gray-900 p-6 shadow-2xl sm:p-8">
-          {/* Success icon */}
-          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full border border-[#B4E3BD]/30 bg-[#B4E3BD]/10">
-            <span className="text-2xl font-semibold text-[#B4E3BD]">
-              ✓
-            </span>
-          </div>
-
-          <div className="text-center">
+  return (
+    <main className="min-h-[calc(100vh-5rem)] bg-gray-950 px-4 py-10 text-white sm:px-6 sm:py-12">
+      <div className="mx-auto max-w-5xl">
+        {/* Header */}
+        <header className="mb-10 flex items-start justify-between gap-4">
+          <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#B4E3BD]">
               FD CrossFit
             </p>
 
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              {t("successTitle")}
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Workout of the Day
             </h1>
 
-            <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-gray-400">
-              {t("successMessage")}
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
+              Pick a day to see what&apos;s programmed.
             </p>
           </div>
 
-          {/* Booking summary */}
-          <div className="mt-8 rounded-2xl border border-gray-800 bg-gray-950 p-5">
-            <div className="mb-5">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500">
-                {t("summaryDate")}
-              </p>
-
-              <p className="font-semibold">
-                {day.weekday}, {day.dayNum}{" "}
-                {day.month}
-              </p>
-
-              <p className="mt-1 text-sm text-gray-400">
-                {selectedSlot.hour}:00
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 border-t border-gray-800 pt-5">
-              <div className="relative h-11 w-11 overflow-hidden rounded-full ring-1 ring-gray-700">
-                <Image
-                  src={selectedSlot.coach.image}
-                  alt={selectedSlot.coach.name}
-                  fill
-                  sizes="44px"
-                  className="object-cover"
-                />
-              </div>
-
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-gray-500">
-                  {t("summaryCoach")}
-                </p>
-
-                <p className="mt-0.5 font-semibold">
-                  {selectedSlot.coach.name}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // ─────────────────────────────────────────────
-  // Main booking page
-  // ─────────────────────────────────────────────
-
-  return (
-    <main
-      className="min-h-[calc(100vh-5rem)] bg-gray-950 px-4 py-10 text-white sm:px-6 sm:py-12"
-    >
-      <div className="mx-auto max-w-5xl">
-
-        {/* Header */}
-        <header className="mb-10">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#B4E3BD]">
-            FD CrossFit
-          </p>
-
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {t("title")}
-          </h1>
-
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-400">
-            {t("subtitle")}
-          </p>
+          {/* Demo-only coach toggle — remove once real auth decides this */}
+          <button
+            type="button"
+            onClick={() => setIsCoach((v) => !v)}
+            className="shrink-0 rounded-full border border-gray-800 bg-gray-900/80 px-4 py-2 text-xs font-semibold text-gray-300 transition-colors hover:border-[#B4E3BD]/50"
+          >
+            {isCoach ? "Coach view" : "Member view"}
+          </button>
         </header>
 
         {/* ─────────────────────────────────────────
             Day picker
         ───────────────────────────────────────── */}
 
-        <section className="mb-10">
+        <section className="mb-8">
           <div className="mb-4">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-[#B4E3BD]">
-              {t("chooseDay")}
+              Choose a day
             </h2>
           </div>
 
-          {/*
-            IMPORTANT:
-
-            This container is ALWAYS LTR.
-
-            We don't allow the browser to use its
-            RTL scrollLeft implementation.
-
-            The visual order is reversed separately
-            for Persian.
-          */}
           <div
             dir="ltr"
             className="date-scroll flex gap-3 overflow-x-auto pb-1"
@@ -615,18 +489,15 @@ export default function BookPage() {
             onPointerCancel={handleDatePointerUp}
           >
             {days.map((day, i) => {
-              const isActive =
-                i === selectedDayIndex;
-
+              const isActive = i === selectedDayIndex;
               const today = new Date();
 
               const isToday =
-                day.date.getDate() ===
-                  today.getDate() &&
-                day.date.getMonth() ===
-                  today.getMonth() &&
-                day.date.getFullYear() ===
-                  today.getFullYear();
+                day.date.getDate() === today.getDate() &&
+                day.date.getMonth() === today.getMonth() &&
+                day.date.getFullYear() === today.getFullYear();
+
+              const hasWorkout = Boolean(workouts[day.dateKey]);
 
               return (
                 <button
@@ -636,7 +507,8 @@ export default function BookPage() {
                   data-day-index={i}
                   onClick={() => {
                     setSelectedDayIndex(i);
-                    setSelectedSlot(null);
+                    setIsEditing(false);
+                    setDraft(null);
                   }}
                   className={`date-card relative flex min-w-[76px] shrink-0 select-none flex-col items-center rounded-2xl border px-4 py-3.5 text-center transition-all duration-200 ${
                     isActive
@@ -650,7 +522,7 @@ export default function BookPage() {
                         isActive ? "text-black/60" : "text-[#B4E3BD]"
                       }`}
                     >
-                      {t("today")}
+                      Today
                     </span>
                   )}
 
@@ -665,6 +537,17 @@ export default function BookPage() {
                   <span className="mt-1 text-[11px] opacity-70">
                     {day.month}
                   </span>
+
+                  {/* Small dot to show at a glance which days have a workout set */}
+                  <span
+                    className={`mt-1.5 h-1.5 w-1.5 rounded-full ${
+                      hasWorkout
+                        ? isActive
+                          ? "bg-black/50"
+                          : "bg-[#B4E3BD]"
+                        : "bg-transparent"
+                    }`}
+                  />
                 </button>
               );
             })}
@@ -672,141 +555,189 @@ export default function BookPage() {
         </section>
 
         {/* ─────────────────────────────────────────
-            Time slots
+            Workout for the selected day
         ───────────────────────────────────────── */}
 
         <section>
           <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-[#B4E3BD]">
-                {t("chooseTime")}
-              </h2>
-            </div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-[#B4E3BD]">
+              {selectedDay.weekday}, {selectedDay.dayNum} {selectedDay.month}
+            </h2>
 
-            <span
-              dir="ltr"
-              className="shrink-0 text-xs text-gray-500"
-            >
-              {slots.length} sessions
-            </span>
+            {isCoach && !isEditing && (
+              <button
+                type="button"
+                onClick={startEditing}
+                className="shrink-0 rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-4 py-1.5 text-xs font-semibold text-[#B4E3BD] transition-colors hover:bg-[#B4E3BD]/20"
+              >
+                {selectedWorkout ? "Edit workout" : "+ Add workout"}
+              </button>
+            )}
           </div>
 
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {slots.map((slot) => {
-              const isActive =
-                selectedSlot?.hour === slot.hour;
+          {!isEditing && selectedWorkout && (
+            <div className="rounded-3xl border border-gray-800 bg-gray-900/80 p-5 sm:p-6">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-xl font-bold tracking-tight">
+                  {selectedWorkout.title}
+                </h3>
+              </div>
 
-              return (
-                <button
-                  key={slot.hour}
-                  type="button"
-                  onClick={() =>
-                    setSelectedSlot(slot)
-                  }
-                  className={`booking-card group relative flex items-center gap-3 overflow-hidden rounded-2xl border p-3 text-start ${
-                    isActive
-                      ? "border-[#B4E3BD] bg-[#B4E3BD]/10 shadow-[0_8px_25px_rgba(180,227,189,0.08)]"
-                      : "border-gray-800 bg-gray-900/80 hover:border-[#B4E3BD]/40 hover:bg-gray-800"
-                  }`}
-                >
+              {selectedWorkout.coachName && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Programmed by {selectedWorkout.coachName}
+                </p>
+              )}
+
+              <div className="mt-5 space-y-5">
+                {selectedWorkout.sections.map((section, i) => (
                   <div
-                    className={`relative h-11 w-11 shrink-0 overflow-hidden rounded-full ${
-                      isActive
-                        ? "ring-2 ring-[#B4E3BD]"
-                        : "ring-1 ring-gray-700"
-                    }`}
+                    key={section.id}
+                    className={i > 0 ? "border-t border-gray-800 pt-5" : ""}
                   >
-                    <Image
-                      src={slot.coach.image}
-                      alt={slot.coach.name}
-                      fill
-                      sizes="44px"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p
-                        dir="ltr"
-                        className="font-semibold"
-                      >
-                        {slot.hour}:00
-                      </p>
-
-                      {isActive && (
-                        <span className="h-2 w-2 shrink-0 rounded-full bg-[#B4E3BD]" />
-                      )}
-                    </div>
-
-                    <p className="mt-0.5 truncate text-xs text-gray-400">
-                      {slot.coach.name}
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#B4E3BD]">
+                      {section.label}
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-gray-300">
+                      {section.content}
                     </p>
                   </div>
+                ))}
+
+                {selectedWorkout.sections.length === 0 && (
+                  <p className="text-sm text-gray-500">No details added yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isEditing && !selectedWorkout && (
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-gray-800 bg-gray-900/40 px-6 py-14 text-center">
+              <p className="text-sm text-gray-400">
+                No workout has been programmed for this day yet.
+              </p>
+              {isCoach && (
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  className="mt-4 rounded-full bg-[#B4E3BD] px-6 py-2.5 text-sm font-semibold text-black transition-all hover:bg-white active:scale-[0.98]"
+                >
+                  + Add workout
                 </button>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
+
+          {/* ─────────────────────────────────────────
+              Edit form (coach only)
+          ───────────────────────────────────────── */}
+
+          {isEditing && draft && (
+            <div className="rounded-3xl border border-[#B4E3BD]/30 bg-gray-900/80 p-5 sm:p-6">
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Title
+                  </label>
+                  <input
+                    className={inputClasses}
+                    value={draft.title}
+                    onChange={(e) => updateDraftField("title", e.target.value)}
+                    placeholder="e.g. Strength + Metcon"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Coach
+                  </label>
+                  <input
+                    className={inputClasses}
+                    value={draft.coachName ?? ""}
+                    onChange={(e) =>
+                      updateDraftField("coachName", e.target.value)
+                    }
+                    placeholder="e.g. Ali Ghasemi"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {draft.sections.map((section) => (
+                  <div
+                    key={section.id}
+                    className="rounded-2xl border border-gray-800 bg-gray-950 p-4"
+                  >
+                    <div className="mb-2 flex items-center gap-2">
+                      <input
+                        className={`${inputClasses} font-semibold`}
+                        value={section.label}
+                        onChange={(e) =>
+                          updateSection(section.id, "label", e.target.value)
+                        }
+                        placeholder="Section name, e.g. WOD"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeSection(section.id)}
+                        aria-label="Remove section"
+                        className="shrink-0 rounded-full border border-gray-800 px-3 py-2 text-xs text-gray-400 transition-colors hover:border-red-400/50 hover:text-red-400"
+                      >
+                        Remove
+                      </button>
+                    </div>
+
+                    <textarea
+                      className={`${inputClasses} min-h-[96px] resize-y`}
+                      value={section.content}
+                      onChange={(e) =>
+                        updateSection(section.id, "content", e.target.value)
+                      }
+                      placeholder="e.g. 21-15-9&#10;Thrusters&#10;Pull-ups"
+                    />
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addSection}
+                  className="w-full rounded-2xl border border-dashed border-gray-800 py-3 text-sm font-semibold text-gray-400 transition-colors hover:border-[#B4E3BD]/50 hover:text-[#B4E3BD]"
+                >
+                  + Add section
+                </button>
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={saveDraft}
+                  disabled={saving}
+                  className="rounded-full bg-[#B4E3BD] px-6 py-2.5 text-sm font-semibold text-black transition-all hover:bg-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  className="rounded-full border border-gray-800 px-6 py-2.5 text-sm font-semibold text-gray-300 transition-colors hover:border-gray-600"
+                >
+                  Cancel
+                </button>
+
+                {selectedWorkout && (
+                  <button
+                    type="button"
+                    onClick={deleteWorkout}
+                    className="ml-auto rounded-full px-4 py-2.5 text-sm font-semibold text-red-400/80 transition-colors hover:text-red-400"
+                  >
+                    Delete workout
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </section>
-
-        {/* ─────────────────────────────────────────
-            Selected session
-        ───────────────────────────────────────── */}
-
-        {selectedSlot && (
-          <div className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-[#B4E3BD]/20 bg-[#B4E3BD]/5 p-4">
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#B4E3BD]">
-                {t("selectedSession")}
-              </p>
-
-              <p className="mt-1 truncate font-semibold">
-                {
-                  days[selectedDayIndex]
-                    .weekday
-                }
-                ,{" "}
-                {
-                  days[selectedDayIndex]
-                    .dayNum
-                }{" "}
-                {
-                  days[selectedDayIndex]
-                    .month
-                }
-              </p>
-
-              <p
-                dir="ltr"
-                className="mt-0.5 text-sm text-gray-400"
-              >
-                {selectedSlot.hour}:00 ·{" "}
-                {selectedSlot.coach.name}
-              </p>
-            </div>
-
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD] text-black">
-              ✓
-            </div>
-          </div>
-        )}
-
-        {/* ─────────────────────────────────────────
-            Confirm button
-        ───────────────────────────────────────── */}
-
-        <button
-          type="button"
-          onClick={handleConfirm}
-          disabled={
-            !selectedSlot || submitting
-          }
-          className="w-full rounded-full bg-[#B4E3BD] px-6 py-3.5 font-semibold text-black shadow-[0_8px_30px_rgba(180,227,189,0.12)] transition-all duration-200 hover:bg-white hover:shadow-[0_8px_30px_rgba(255,255,255,0.08)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-30 sm:w-auto sm:px-10"
-        >
-          {submitting
-            ? "..."
-            : t("confirm")}
-        </button>
       </div>
     </main>
   );
