@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/lib/navigation";
-import { api, ApiError } from "@/lib/api-client";
+import { api, getErrorMessage } from "@/lib/api-client";
+import PasswordInput from "../components/PasswordInput";
 
 const inputClasses =
   "w-full rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white outline-none " +
@@ -11,11 +12,13 @@ const inputClasses =
   "focus:border-[#B4E3BD]/60 focus:bg-gray-950 focus:ring-2 focus:ring-[#B4E3BD]/20 " +
   "[color-scheme:dark] autofill:shadow-[inset_0_0_0_1000px_theme(colors.gray.950)]";
 
+const USERNAME_PATTERN = /^[A-Za-z0-9_]+$/;
+
 export default function RegisterPage() {
   const t = useTranslations("auth");
   const router = useRouter();
 
-  const [fullName, setFullName] = useState("");
+  const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,16 +26,37 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  /** Mirrors the backend's Pydantic validators so the common cases never
+   * even reach the API — the person sees the exact rule they broke
+   * immediately, in their own language. */
+  function validate(): string | null {
+    const trimmedUsername = username.trim();
+
+    if (trimmedUsername.length < 3 || trimmedUsername.length > 50) {
+      return t("usernameLength");
+    }
+    if (!USERNAME_PATTERN.test(trimmedUsername)) {
+      return t("usernameInvalidChars");
+    }
+    if (password.length < 8) {
+      return t("passwordTooShort");
+    }
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      return t("passwordRequirements");
+    }
+    if (password !== confirmPassword) {
+      return t("passwordMismatch");
+    }
+    return null;
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
 
-    if (password.length < 8) {
-      setError(t("passwordTooShort"));
-      return;
-    }
-    if (password !== confirmPassword) {
-      setError(t("passwordMismatch"));
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -40,20 +64,20 @@ export default function RegisterPage() {
     try {
       await api.post("/auth/register", {
         email,
+        username: username.trim(),
         password,
-        full_name: fullName || undefined,
         phone: phone || undefined,
       });
 
       const tokens = await api.post<{ access_token: string; refresh_token: string }>(
         "/auth/login",
-        { email, password },
+        { identifier: email, password },
       );
       localStorage.setItem("access_token", tokens.access_token);
       localStorage.setItem("refresh_token", tokens.refresh_token);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("genericError"));
+      setError(getErrorMessage(err, t("genericError")));
     } finally {
       setLoading(false);
     }
@@ -72,11 +96,13 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm text-gray-400">{t("fullName")}</label>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("username")}</label>
             <input
+              required
               type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
               className={inputClasses}
             />
           </div>
@@ -86,6 +112,7 @@ export default function RegisterPage() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              autoComplete="tel"
               className={inputClasses}
             />
           </div>
@@ -96,27 +123,32 @@ export default function RegisterPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
               className={inputClasses}
             />
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">{t("password")}</label>
-            <input
+            <PasswordInput
               required
-              type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={setPassword}
+              autoComplete="new-password"
               className={inputClasses}
+              showLabel={t("showPassword")}
+              hideLabel={t("hidePassword")}
             />
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">{t("confirmPassword")}</label>
-            <input
+            <PasswordInput
               required
-              type="password"
               value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              onChange={setConfirmPassword}
+              autoComplete="new-password"
               className={inputClasses}
+              showLabel={t("showPassword")}
+              hideLabel={t("hidePassword")}
             />
           </div>
 

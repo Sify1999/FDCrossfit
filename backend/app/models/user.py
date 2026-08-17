@@ -20,6 +20,11 @@ class User(Base, TimestampMixin):
     email: Mapped[str] = mapped_column(
         String(255), unique=True, nullable=False, index=True
     )
+    # Dedicated login handle, separate from email. Lets people log in with
+    # either field (see get_user_by_identifier in services/user.py).
+    username: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False, index=True
+    )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -35,4 +40,4 @@ class User(Base, TimestampMixin):
     )
 
     def __repr__(self) -> str:
-        return f"<User id={self.id} email={self.email} role={self.role}>"
+        return f"<User id={self.id} username={self.username} role={self.role}>"

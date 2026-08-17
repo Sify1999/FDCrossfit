@@ -3,6 +3,7 @@ import { api } from "./api-client";
 export type CurrentUser = {
   id: number;
   email: string;
+  username: string;
   full_name: string | null;
   phone: string | null;
   is_active: boolean;

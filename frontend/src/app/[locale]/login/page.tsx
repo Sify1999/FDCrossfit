@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/lib/navigation";
-import { api, ApiError } from "@/lib/api-client";
+import { api, getErrorMessage } from "@/lib/api-client";
+import PasswordInput from "../components/PasswordInput";
 
 const inputClasses =
   "w-full rounded-lg border border-gray-800 bg-gray-950/60 px-4 py-3 text-white outline-none " +
@@ -15,7 +16,7 @@ export default function LoginPage() {
   const t = useTranslations("auth");
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,13 +28,13 @@ export default function LoginPage() {
     try {
       const res = await api.post<{ access_token: string; refresh_token: string }>(
         "/auth/login",
-        { email, password },
+        { identifier, password },
       );
       localStorage.setItem("access_token", res.access_token);
       localStorage.setItem("refresh_token", res.refresh_token);
       router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("genericError"));
+      setError(getErrorMessage(err, t("genericError")));
     } finally {
       setLoading(false);
     }
@@ -52,23 +53,26 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm text-gray-400">{t("email")}</label>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("identifier")}</label>
             <input
               required
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              autoComplete="username"
               className={inputClasses}
             />
           </div>
           <div>
             <label className="mb-1.5 block text-sm text-gray-400">{t("password")}</label>
-            <input
+            <PasswordInput
               required
-              type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={setPassword}
+              autoComplete="current-password"
               className={inputClasses}
+              showLabel={t("showPassword")}
+              hideLabel={t("hidePassword")}
             />
           </div>
 

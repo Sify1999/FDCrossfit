@@ -20,6 +20,7 @@ async def create_user(db: AsyncSession, data: UserCreate) -> User:
     """Create a new user with hashed password."""
     user = User(
         email=data.email,
+        username=data.username,
         hashed_password=hash_password(data.password),
         full_name=data.full_name,
         phone=data.phone,
@@ -34,6 +35,22 @@ async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
     """Look up a user by email."""
     result = await db.execute(select(User).where(User.email == email))
     return result.scalar_one_or_none()
+
+
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
+    """Look up a user by username."""
+    result = await db.execute(select(User).where(User.username == username))
+    return result.scalar_one_or_none()
+
+
+async def get_user_by_identifier(db: AsyncSession, identifier: str) -> User | None:
+    """Look up a user by either email or username — used at login, where
+    the person can type either into the same field. We treat anything
+    containing "@" as an email attempt; everything else as a username."""
+    identifier = identifier.strip()
+    if "@" in identifier:
+        return await get_user_by_email(db, identifier)
+    return await get_user_by_username(db, identifier)
 
 
 async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:

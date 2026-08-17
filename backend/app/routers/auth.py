@@ -17,23 +17,38 @@ from app.schemas.user import (
     UserCreate,
     UserCreateResponse,
 )
-from app.services.user import create_user, get_user_by_email, get_user_by_id
+from app.services.user import (
+    create_user,
+    get_user_by_email,
+    get_user_by_id,
+    get_user_by_identifier,
+    get_user_by_username,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
 async def register(data: UserCreate, db: AsyncSession = Depends(get_db)) -> UserCreateResponse:
-    existing = await get_user_by_email(db, data.email)
-    if existing:
+    existing_email = await get_user_by_email(db, data.email)
+    if existing_email:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="A user with this email already exists",
         )
+
+    existing_username = await get_user_by_username(db, data.username)
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This username is already taken",
+        )
+
     user = await create_user(db, data)
     return UserCreateResponse(
         id=user.id,
         email=user.email,
+        username=user.username,
         full_name=user.full_name,
         phone=user.phone,
         created_at=user.created_at,
@@ -42,13 +57,14 @@ async def register(data: UserCreate, db: AsyncSession = Depends(get_db)) -> User
 
 @router.post("/login", response_model=TokenResponse)
 async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)) -> TokenResponse:
-    user = await get_user_by_email(db, data.email)
-    # Same generic message whether the email doesn't exist, the password is
-    # wrong, or the account is deactivated — don't leak which case it was.
+    user = await get_user_by_identifier(db, data.identifier)
+    # Same generic message whether the identifier doesn't exist, the
+    # password is wrong, or the account is deactivated — don't leak which
+    # case it was.
     if not user or not verify_password(data.password, user.hashed_password) or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Invalid email/username or password",
         )
     access_token = create_access_token(subject=str(user.id))
     refresh_token = create_refresh_token(subject=str(user.id))

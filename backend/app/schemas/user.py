@@ -6,13 +6,23 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 
 RoleLiteral = Literal["member", "coach", "admin"]
 
+USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_]+$")
+
 
 # ─── Create ───────────────────────────────────────────────────────────
 class UserCreate(BaseModel):
     email: EmailStr
+    username: str = Field(min_length=3, max_length=50)
     password: str = Field(min_length=8, max_length=128)
     full_name: str | None = Field(default=None, max_length=255)
     phone: str | None = Field(default=None, max_length=20)
+
+    @field_validator("username")
+    @classmethod
+    def username_format(cls, v: str) -> str:
+        if not USERNAME_PATTERN.match(v):
+            raise ValueError("Username can only contain letters, numbers, and underscores")
+        return v
 
     @field_validator("password")
     @classmethod
@@ -27,6 +37,7 @@ class UserCreate(BaseModel):
 class UserCreateResponse(BaseModel):
     id: int
     email: str
+    username: str
     full_name: str | None
     phone: str | None
     created_at: datetime
@@ -36,6 +47,7 @@ class UserCreateResponse(BaseModel):
 class UserRead(BaseModel):
     id: int
     email: str
+    username: str
     full_name: str | None
     phone: str | None
     is_active: bool
@@ -58,5 +70,7 @@ class TokenRefreshRequest(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    # Accepts either an email address or a username — the router decides
+    # which lookup to run based on whether it contains "@".
+    identifier: str = Field(min_length=1, max_length=255)
     password: str

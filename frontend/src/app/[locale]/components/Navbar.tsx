@@ -2,18 +2,47 @@
 
 import Image from "next/image";
 import { useLocale, useTranslations } from "next-intl";
-import { useState } from "react";
-import { Link, usePathname } from "@/lib/navigation";
+import { useEffect, useState } from "react";
+import { Link, usePathname, useRouter } from "@/lib/navigation";
+import { clearTokens, fetchCurrentUser, type CurrentUser } from "@/lib/auth";
 import LanguageSwitcher from "./LanguageSwitcher";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const locale = useLocale();
 
   const tNav = useTranslations("nav");
   const tAuth = useTranslations("auth");
 
   const [open, setOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Re-check on every navigation, not just on mount — this is what makes
+  // the navbar flip to the username right after login/register redirect
+  // to /dashboard, since Navbar itself never remounts (it lives in the
+  // locale layout, outside the page content that's swapping).
+  useEffect(() => {
+    let cancelled = false;
+    fetchCurrentUser().then((u) => {
+      if (cancelled) return;
+      setUser(u);
+      setAuthChecked(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  function handleLogout() {
+    clearTokens();
+    setUser(null);
+    setUserMenuOpen(false);
+    setOpen(false);
+    router.push("/");
+  }
 
   const navItems = [
     { href: `/`, label: tNav("home") },
@@ -195,32 +224,107 @@ export default function Navbar() {
 
         <LanguageSwitcher />
 
+        {authChecked && user ? (
+          <div className="relative">
+            <button
+              onClick={() => setUserMenuOpen((o) => !o)}
+              aria-expanded={userMenuOpen}
+              className="
+              flex
+              items-center
+              gap-2
+              rounded-full
+              border
+              border-[#B4E3BD]/30
+              bg-[#B4E3BD]/10
+              px-5
+              py-2
+              text-sm
+              font-semibold
+              text-[#B4E3BD]
+              transition
+              hover:border-[#B4E3BD]
+              "
+            >
+              {user.username}
+            </button>
 
-        <Link
-          href={`/login`}
-          className="
-          rounded-full
-          bg-[#B4E3BD]
-          px-5
-          py-2
-          text-sm
-          font-semibold
-          text-black
-          transition
-          hover:scale-105
-          hover:bg-white
-          "
-        >
-          {tAuth("login")}
-        </Link>
+            {userMenuOpen && (
+              <>
+                {/* Click-away catcher */}
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setUserMenuOpen(false)}
+                />
+                <div
+                  className="
+                  absolute
+                  end-0
+                  z-20
+                  mt-2
+                  w-44
+                  overflow-hidden
+                  rounded-xl
+                  border
+                  border-white/10
+                  bg-[#141414]
+                  py-1
+                  shadow-2xl
+                  shadow-black/50
+                  "
+                >
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setUserMenuOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-gray-300 transition hover:bg-white/5 hover:text-[#B4E3BD]"
+                  >
+                    {tAuth("dashboard")}
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full px-4 py-2.5 text-start text-sm text-gray-300 transition hover:bg-white/5 hover:text-red-400"
+                  >
+                    {tNav("logout")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          <Link
+            href={`/login`}
+            className="
+            rounded-full
+            bg-[#B4E3BD]
+            px-5
+            py-2
+            text-sm
+            font-semibold
+            text-black
+            transition
+            hover:scale-105
+            hover:bg-white
+            "
+          >
+            {tAuth("login")}
+          </Link>
+        )}
 
       </div>
 
 
 
-      {/* Mobile Language Switcher — right side on small screens */}
+      {/* Mobile Right — username (if logged in) + language switcher */}
 
-      <div className="lg:hidden">
+      <div className="flex items-center gap-3 lg:hidden">
+        {authChecked && user && (
+          <Link
+            href="/dashboard"
+            className="max-w-[6rem] truncate text-sm font-semibold text-[#B4E3BD]"
+          >
+            {user.username}
+          </Link>
+        )}
         <LanguageSwitcher />
       </div>
 
@@ -302,32 +406,50 @@ export default function Navbar() {
           </div>
 
 
+          {authChecked && user ? (
+            <>
+              <p className="text-sm text-gray-500">{user.username}</p>
 
-          <Link
-            href={`/login`}
-            className="
-            text-white
-            "
-          >
-            {tAuth("login")}
-          </Link>
+              <Link
+                href={`/dashboard`}
+                onClick={()=>setOpen(false)}
+                className="
+                rounded-full
+                bg-[#B4E3BD]
+                px-5
+                py-3
+                text-center
+                font-semibold
+                text-black
+                "
+              >
+                {tAuth("dashboard")}
+              </Link>
 
-
-
-          <Link
-            href={`/dashboard`}
-            className="
-            rounded-full
-            bg-[#B4E3BD]
-            px-5
-            py-3
-            text-center
-            font-semibold
-            text-black
-            "
-          >
-            {tAuth("dashboard")}
-          </Link>
+              <button
+                onClick={handleLogout}
+                className="text-start text-lg text-gray-400"
+              >
+                {tNav("logout")}
+              </button>
+            </>
+          ) : (
+            <Link
+              href={`/login`}
+              onClick={()=>setOpen(false)}
+              className="
+              rounded-full
+              bg-[#B4E3BD]
+              px-5
+              py-3
+              text-center
+              font-semibold
+              text-black
+              "
+            >
+              {tAuth("login")}
+            </Link>
+          )}
 
 
         </div>
