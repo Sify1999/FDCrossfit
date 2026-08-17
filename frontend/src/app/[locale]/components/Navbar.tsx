@@ -149,7 +149,7 @@ export default function Navbar() {
           left-aligned with full wordmark on desktop */}
 
       <Link
-        href={`/${locale}`}
+        href={`/`}
         className="
         absolute
         left-1/2

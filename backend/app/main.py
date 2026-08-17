@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
-from app.routers import auth, health, users, workouts
+from app.routers import athlete_records, auth, health, users, workouts
 
 settings = get_settings()
 
@@ -39,3 +39,4 @@ app.include_router(health.router, prefix="/api")
 app.include_router(auth.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(workouts.router, prefix="/api")
+app.include_router(athlete_records.router, prefix="/api")

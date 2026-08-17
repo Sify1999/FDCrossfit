@@ -44,6 +44,10 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+
+    environment:
+      WATCHPACK_POLLING: "true"
+
     ports:
       - "3000:3000"
     volumes:
