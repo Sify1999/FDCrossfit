@@ -6,6 +6,7 @@ import { useRouter } from "@/lib/navigation";
 import { api, ApiError } from "@/lib/api-client";
 import { fetchCurrentUser, type CurrentUser } from "@/lib/auth";
 import MyRecordsModal from "../components/MyRecordsModal";
+import AthleteRosterModal from "../components/AthleteRosterModal";
 
 // ─────────────────────────────────────────────
 // Types
@@ -131,6 +132,7 @@ export default function DashboardPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [recordsModalOpen, setRecordsModalOpen] = useState(false);
+  const [athleteRosterOpen, setAthleteRosterOpen] = useState(false);
   
   useEffect(() => {
     let cancelled = false;
@@ -512,14 +514,24 @@ export default function DashboardPage() {
               Pick a day to see what&apos;s programmed.
             </p>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setRecordsModalOpen(true)}
-            className="shrink-0 rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-4 py-2 text-xs font-semibold text-[#B4E3BD] transition-colors hover:bg-[#B4E3BD]/20"
-          >
-            + Add Note
-          </button>
+          <div className="flex shrink-0 gap-2">
+            {isCoach && (
+              <button
+                type="button"
+                onClick={() => setAthleteRosterOpen(true)}
+                className="rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-4 py-2 text-xs font-semibold text-[#B4E3BD] transition-colors hover:bg-[#B4E3BD]/20"
+              >
+                Athletes
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setRecordsModalOpen(true)}
+              className="rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-4 py-2 text-xs font-semibold text-[#B4E3BD] transition-colors hover:bg-[#B4E3BD]/20"
+            >
+              + Add Note
+            </button>
+          </div>
         </header>
 
         {/* ─────────────────────────────────────────
@@ -845,6 +857,12 @@ export default function DashboardPage() {
         open={recordsModalOpen}
         onClose={() => setRecordsModalOpen(false)}
       />
+      {isCoach && (
+        <AthleteRosterModal
+          open={athleteRosterOpen}
+          onClose={() => setAthleteRosterOpen(false)}
+        />
+      )}
     </main>
   );
 }

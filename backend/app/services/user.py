@@ -8,11 +8,11 @@ TODO: Add gym-specific service methods:
       - purchase_subscription: handle subscription/payment flow
 """
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.user import UserCreate
 
 
@@ -57,3 +57,24 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
     """Look up a user by ID."""
     result = await db.execute(select(User).where(User.id == user_id))
     return result.scalar_one_or_none()
+
+
+async def list_members(db: AsyncSession, search: str | None = None) -> list[User]:
+    """List member-role users, optionally filtered by a substring match on
+    username, email, or full name. Backs the coach-facing athlete roster —
+    coaches and admins aren't listed here since they aren't "athletes" to
+    browse records for."""
+    stmt = select(User).where(User.role == UserRole.member).order_by(User.username)
+
+    if search and search.strip():
+        pattern = f"%{search.strip()}%"
+        stmt = stmt.where(
+            or_(
+                User.username.ilike(pattern),
+                User.email.ilike(pattern),
+                User.full_name.ilike(pattern),
+            )
+        )
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
