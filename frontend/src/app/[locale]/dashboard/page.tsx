@@ -40,9 +40,12 @@ type CalendarDay = {
   month: string;
 };
 
-const INITIAL_DAY_COUNT = 30;
+const INITIAL_DAY_COUNT = 30; // forward from today, inclusive of today
 const LOAD_MORE_COUNT = 30;
-const MAX_DAY_COUNT = 180; // safety cap so the fetched range can't grow forever
+const MAX_DAY_COUNT = 180; // forward cap
+
+const LOAD_PREV_COUNT = 7; // one week per click, backward
+const MAX_DAYS_BEFORE = 90; // backward cap
 
 function toDateKey(date: Date) {
   const y = date.getFullYear();
@@ -51,7 +54,15 @@ function toDateKey(date: Date) {
   return `${y}-${m}-${d}`;
 }
 
-function buildUpcomingDays(locale: string, count: number): CalendarDay[] {
+/** Builds `count` consecutive days starting `startOffsetDays` away from
+ * today (negative = into the past, 0 = starts today, positive = starts
+ * in the future). Used for both the forward ("+30 Days") and backward
+ * ("-7 Days") windows — same function, different offset/count. */
+function buildDaysWindow(
+  locale: string,
+  startOffsetDays: number,
+  count: number
+): CalendarDay[] {
   const days: CalendarDay[] = [];
 
   const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: "short" });
@@ -61,11 +72,17 @@ function buildUpcomingDays(locale: string, count: number): CalendarDay[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const start = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate() + startOffsetDays
+  );
+
   for (let i = 0; i < count; i++) {
     const date = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate() + i
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate() + i
     );
 
     days.push({
@@ -133,7 +150,7 @@ export default function DashboardPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [recordsModalOpen, setRecordsModalOpen] = useState(false);
   const [athleteRosterOpen, setAthleteRosterOpen] = useState(false);
-  
+
   useEffect(() => {
     let cancelled = false;
     fetchCurrentUser().then((user) => {
@@ -153,14 +170,17 @@ export default function DashboardPage() {
   const isCoach = currentUser?.role === "coach" || currentUser?.role === "admin";
 
   // ─────────────────────────────────────────────
-  // Rolling day window — starts at 30, grows via the "+30 Days" card
+  // Rolling day window — starts at today, grows forward via "+30 Days"
+  // and backward via "-7 Days". Both only ever grow, so a day that was
+  // once shown never disappears from the array.
   // ─────────────────────────────────────────────
 
   const [dayCount, setDayCount] = useState(INITIAL_DAY_COUNT);
+  const [daysBefore, setDaysBefore] = useState(0);
 
   const days = useMemo(
-    () => buildUpcomingDays(locale, dayCount),
-    [locale, dayCount]
+    () => buildDaysWindow(locale, -daysBefore, daysBefore + dayCount),
+    [locale, dayCount, daysBefore]
   );
 
   function loadMoreDays() {
@@ -168,16 +188,23 @@ export default function DashboardPage() {
   }
 
   const canLoadMore = dayCount < MAX_DAY_COUNT;
+  const canLoadPrevious = daysBefore < MAX_DAYS_BEFORE;
 
-  const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  // Selection is tracked by date key, not array index — indices shift
+  // every time days get prepended, which would otherwise silently swap
+  // out the selected day underneath the user.
+  const [selectedDateKey, setSelectedDateKey] = useState<string>(() =>
+    toDateKey(new Date())
+  );
 
   useEffect(() => {
-    if (selectedDayIndex >= days.length) {
-      setSelectedDayIndex(0);
+    if (!days.some((d) => d.dateKey === selectedDateKey)) {
+      setSelectedDateKey(days[0]?.dateKey ?? selectedDateKey);
     }
-  }, [days, selectedDayIndex]);
+  }, [days, selectedDateKey]);
 
-  const selectedDay = days[Math.min(selectedDayIndex, days.length - 1)];
+  const selectedDay =
+    days.find((d) => d.dateKey === selectedDateKey) ?? days[0];
 
   // ─────────────────────────────────────────────
   // Workout data — fetched from the backend for the visible range
@@ -215,7 +242,7 @@ export default function DashboardPage() {
     };
   }, [days, currentUser]);
 
-  const selectedWorkout = workouts[selectedDay.dateKey];
+  const selectedWorkout = selectedDay ? workouts[selectedDay.dateKey] : undefined;
 
   // ─────────────────────────────────────────────
   // Edit state (draft lives separately so Cancel is free)
@@ -282,7 +309,7 @@ export default function DashboardPage() {
   }
 
   async function saveDraft() {
-    if (!draft) return;
+    if (!draft || !selectedDay) return;
 
     const dateKey = selectedDay.dateKey;
     const cleaned: Workout = {
@@ -311,6 +338,7 @@ export default function DashboardPage() {
   }
 
   async function deleteWorkout() {
+    if (!selectedDay) return;
     const dateKey = selectedDay.dateKey;
     setSaving(true);
     setSaveError(null);
@@ -336,6 +364,32 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────
   // Date drag / momentum
   // ─────────────────────────────────────────────
+
+  const dateScrollRef = useRef<HTMLDivElement | null>(null);
+  // Holds the scroll container's scrollWidth captured right before we
+  // prepend days for "-7 Days", so the effect below can shift scrollLeft
+  // by exactly the added width — otherwise prepending content shoves the
+  // currently-visible days to the right and the view visibly jumps.
+  const prevScrollWidthRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const el = dateScrollRef.current;
+    if (el && prevScrollWidthRef.current !== null) {
+      const delta = el.scrollWidth - prevScrollWidthRef.current;
+      if (delta > 0) {
+        el.scrollLeft += delta;
+      }
+      prevScrollWidthRef.current = null;
+    }
+  }, [daysBefore]);
+
+  function loadPreviousWeek() {
+    const el = dateScrollRef.current;
+    if (el) {
+      prevScrollWidthRef.current = el.scrollWidth;
+    }
+    setDaysBefore((b) => Math.min(b + LOAD_PREV_COUNT, MAX_DAYS_BEFORE));
+  }
 
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
@@ -441,15 +495,18 @@ export default function DashboardPage() {
     if (totalDistance < TAP_THRESHOLD) {
       const realTarget = document.elementFromPoint(e.clientX, e.clientY);
       const loadMoreEl = realTarget?.closest<HTMLElement>("[data-load-more]");
-      const dayButton = realTarget?.closest<HTMLElement>("[data-day-index]");
+      const loadPrevEl = realTarget?.closest<HTMLElement>("[data-load-prev]");
+      const dayButton = realTarget?.closest<HTMLElement>("[data-day-key]");
 
       if (loadMoreEl && canLoadMore) {
         loadMoreDays();
+      } else if (loadPrevEl && canLoadPrevious) {
+        loadPreviousWeek();
       } else if (dayButton) {
-        const index = Number(dayButton.dataset.dayIndex);
+        const key = dayButton.dataset.dayKey;
 
-        if (!Number.isNaN(index)) {
-          setSelectedDayIndex(index);
+        if (key) {
+          setSelectedDateKey(key);
           setIsEditing(false);
           setDraft(null);
         }
@@ -486,7 +543,7 @@ export default function DashboardPage() {
     "w-full rounded-xl border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-600 outline-none focus:border-[#B4E3BD] transition-colors";
 
   // Still checking the session, or we're mid-redirect to /login.
-  if (!authChecked || !currentUser) {
+  if (!authChecked || !currentUser || !selectedDay) {
     return (
       <main className="flex min-h-[calc(100vh-5rem)] items-center justify-center bg-gray-950 text-white">
         <p className="text-sm text-gray-400">
@@ -544,6 +601,7 @@ export default function DashboardPage() {
           </h2>
 
           <div
+            ref={dateScrollRef}
             dir="ltr"
             className="date-scroll flex gap-3 overflow-x-auto pb-1"
             style={{
@@ -556,8 +614,36 @@ export default function DashboardPage() {
             onPointerUp={handleDatePointerUp}
             onPointerCancel={handleDatePointerUp}
           >
+            {/* Load-previous trigger — sits at the start of the row, so
+                scrolling to the earliest day surfaces it naturally. */}
+            {canLoadPrevious && (
+              <button
+                type="button"
+                draggable={false}
+                data-load-prev="true"
+                onClick={loadPreviousWeek}
+                className="date-card relative flex min-w-[76px] shrink-0 select-none flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-gray-700 bg-gray-900/40 px-4 py-3.5 text-center text-gray-400 transition-all duration-200 hover:border-[#B4E3BD]/60 hover:text-[#B4E3BD]"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+                </svg>
+                <span className="text-[10px] font-semibold uppercase tracking-wide">
+                  -{LOAD_PREV_COUNT} Days
+                </span>
+              </button>
+            )}
+
             {days.map((day, i) => {
-              const isActive = i === selectedDayIndex;
+              const isSelected = day.dateKey === selectedDateKey;
               const today = new Date();
 
               const isToday =
@@ -572,14 +658,14 @@ export default function DashboardPage() {
                   key={day.date.toISOString()}
                   type="button"
                   draggable={false}
-                  data-day-index={i}
+                  data-day-key={day.dateKey}
                   onClick={() => {
-                    setSelectedDayIndex(i);
+                    setSelectedDateKey(day.dateKey);
                     setIsEditing(false);
                     setDraft(null);
                   }}
                   className={`date-card relative flex min-w-[76px] shrink-0 select-none flex-col items-center rounded-2xl border px-4 py-3.5 text-center transition-all duration-200 ${
-                    isActive
+                    isSelected
                       ? "border-[#B4E3BD] bg-[#B4E3BD] text-black shadow-[0_8px_25px_rgba(180,227,189,0.12)]"
                       : "border-gray-800 bg-gray-900/80 text-gray-300 hover:border-[#B4E3BD]/50 hover:bg-gray-800"
                   }`}
@@ -587,7 +673,7 @@ export default function DashboardPage() {
                   {isToday && (
                     <span
                       className={`mb-1 text-[9px] font-bold uppercase tracking-[0.15em] ${
-                        isActive ? "text-black/60" : "text-[#B4E3BD]"
+                        isSelected ? "text-black/60" : "text-[#B4E3BD]"
                       }`}
                     >
                       Today
@@ -609,7 +695,7 @@ export default function DashboardPage() {
                   <span
                     className={`mt-1.5 h-1.5 w-1.5 rounded-full ${
                       hasWorkout
-                        ? isActive
+                        ? isSelected
                           ? "bg-black/50"
                           : "bg-[#B4E3BD]"
                         : "bg-transparent"

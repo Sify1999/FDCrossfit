@@ -259,7 +259,7 @@ export default function RecordsEditor({
       <div className="border-t border-gray-800 px-5 py-4">
         {saveError && <p className="mb-3 text-sm text-red-400">{saveError}</p>}
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 ">
           <button
             onClick={save}
             disabled={saving || loading}

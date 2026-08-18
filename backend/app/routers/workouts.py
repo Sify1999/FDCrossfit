@@ -16,9 +16,11 @@ from app.services.workout import (
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
 
-# A little past 6 months — keeps someone from requesting date_from=1900
-# and having Postgres scan/serialize the whole table in one response.
-MAX_RANGE_DAYS = 186
+# Dashboard now supports a rolling window up to 180 days forward and 90
+# days backward (via "+30 Days" / "-7 Days"), so the widest possible
+# single request is ~270 days. 300 gives headroom without letting someone
+# request an unbounded range.
+MAX_RANGE_DAYS = 300
 
 
 @router.get("", response_model=list[WorkoutRead])
