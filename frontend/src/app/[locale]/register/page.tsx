@@ -19,13 +19,13 @@ export default function RegisterPage() {
   const router = useRouter();
 
   const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
   /** Mirrors the backend's Pydantic validators so the common cases never
    * even reach the API — the person sees the exact rule they broke
    * immediately, in their own language. */
@@ -66,6 +66,7 @@ export default function RegisterPage() {
         email,
         username: username.trim(),
         password,
+        full_name: fullName.trim() || undefined,
         phone: phone || undefined,
       });
 
@@ -103,6 +104,16 @@ export default function RegisterPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
+              className={inputClasses}
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm text-gray-400">{t("fullName")}</label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              autoComplete="name"
               className={inputClasses}
             />
           </div>

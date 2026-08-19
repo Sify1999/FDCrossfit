@@ -90,3 +90,17 @@
     transform: scale(0.98);
   }
 }
+
+@layer utilities {
+  /* iOS Safari auto-zooms any input/textarea/select with font-size < 16px
+     on focus, and doesn't reliably zoom back out on blur. Force 16px on
+     mobile only so the zoom never triggers, without touching desktop
+     sizing (text-sm etc still apply there). */
+  @media (max-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}

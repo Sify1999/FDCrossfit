@@ -107,13 +107,27 @@ export default function AthleteRosterModal({ open, onClose }: Props) {
 
           {/* Search — sticky so it stays reachable while the list scrolls */}
           <div className="border-b border-gray-800 px-5 py-4">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, username, or email"
-              className="w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-2.5 text-sm text-white outline-none placeholder:text-gray-600 transition focus:border-[#B4E3BD]"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name, username, or email"
+                className="w-full rounded-xl border border-gray-800 bg-gray-950 px-4 py-2.5 pe-9 text-sm text-white outline-none placeholder:text-gray-600 transition focus:border-[#B4E3BD]"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  className="absolute inset-y-0 end-3 flex items-center text-gray-500/50 transition hover:text-gray-300"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
