@@ -1,5 +1,9 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+import logging
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -47,6 +51,14 @@ class Settings(BaseSettings):
     # Algorithm for JWT
     ALGORITHM: str = "HS256"
     ENVIRONMENT: str = "development"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.SECRET_KEY == "change-this-to-a-long-random-string" and self.ENVIRONMENT == "production":
+            logger.warning(
+                "⚠️  SECURITY: SECRET_KEY is still the default value! "
+                "Generate a strong random key and set it in .env for production."
+            )
 
 @lru_cache
 def get_settings() -> Settings:

@@ -258,5 +258,26 @@
         }
       }
     }
+  },
+  "comments": {
+    "title": "Comments",
+    "placeholder": "Ask a question or leave a comment...",
+    "replyPlaceholder": "Reply to @{username}...",
+    "send": "Send",
+    "reply": "Reply",
+    "sending": "Sending...",
+    "loginPrompt": "Log in to ask a question or leave a comment.",
+    "empty": "No comments yet. Be the first to ask a question!",
+    "loading": "Loading comments...",
+    "retry": "Retry",
+    "delete": "Delete comment",
+    "you": "you",
+    "coach": "coach",
+    "replies": "replies",
+    "replyTo": "Replying to",
+    "enterHint": "Enter to send · Shift+Enter for new line",
+    "chars": "chars",
+    "justNow": "just now",
+    "error": "Failed to load comments"
   }
 }

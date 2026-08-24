@@ -1,7 +1,7 @@
 from enum import Enum as PyEnum
 
 from sqlalchemy import Enum, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.base_mixin import TimestampMixin
@@ -41,3 +41,8 @@ class User(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<User id={self.id} username={self.username} role={self.role}>"
+
+    # Relationships
+    comments: Mapped[list["Comment"]] = relationship(
+        back_populates="user", lazy="selectin"
+    )

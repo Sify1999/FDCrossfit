@@ -7,6 +7,7 @@ import { api, ApiError } from "@/lib/api-client";
 import { fetchCurrentUser, type CurrentUser } from "@/lib/auth";
 import MyRecordsModal from "../components/MyRecordsModal";
 import AthleteRosterModal from "../components/AthleteRosterModal";
+import WorkoutComments from "../components/WorkoutComments";
 
 // ─────────────────────────────────────────────
 // Types
@@ -768,6 +769,7 @@ export default function DashboardPage() {
           )}
 
           {!loadingWorkouts && !loadError && !isEditing && selectedWorkout && (
+          <>
             <div className="rounded-3xl border border-gray-800 bg-gray-900/80 p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <h3 className="text-xl font-bold tracking-tight">
@@ -801,6 +803,12 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+
+            <WorkoutComments
+              workoutDate={selectedDateKey}
+              isCoach={isCoach}
+            />
+          </>
           )}
 
           {!loadingWorkouts && !loadError && !isEditing && !selectedWorkout && (
