@@ -8,6 +8,9 @@ import { fetchCurrentUser, type CurrentUser } from "@/lib/auth";
 import MyRecordsModal from "../components/MyRecordsModal";
 import AthleteRosterModal from "../components/AthleteRosterModal";
 import WorkoutComments from "../components/WorkoutComments";
+import WorkoutSectionModal from "../components/workout-builder/WorkoutSectionModal";
+import type { WorkoutSection as StructuredSection } from "../components/workout-builder/types";
+import { formatSection } from "../components/workout-builder/section-formatter";
 
 // ─────────────────────────────────────────────
 // Types
@@ -253,6 +256,7 @@ export default function DashboardPage() {
   const [draft, setDraft] = useState<Workout | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [sectionBuilderOpen, setSectionBuilderOpen] = useState(false);
 
   function startEditing() {
     setSaveError(null);
@@ -296,6 +300,17 @@ export default function DashboardPage() {
               ...prev.sections,
               { id: newSectionId(), label: "New section", content: "" },
             ],
+          }
+        : prev
+    );
+  }
+
+  function addStructuredSections(sections: StructuredSection[]) {
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            sections: [...prev.sections, ...sections],
           }
         : prev
     );
@@ -784,19 +799,41 @@ export default function DashboardPage() {
               )}
 
               <div className="mt-5 space-y-5">
-                {selectedWorkout.sections.map((section, i) => (
-                  <div
-                    key={section.id}
-                    className={i > 0 ? "border-t border-gray-800 pt-5" : ""}
-                  >
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#B4E3BD]">
-                      {section.label}
-                    </p>
-                    <p className="whitespace-pre-wrap text-sm leading-6 text-gray-300">
-                      {section.content}
-                    </p>
-                  </div>
-                ))}
+                {selectedWorkout.sections.map((section, i) => {
+                  const sectionType = (section as any).type;
+                  const isStructured = sectionType && sectionType !== "text";
+                  let displayLines: string[] = [];
+                  if (isStructured) {
+                    try {
+                      displayLines = formatSection(section as any);
+                    } catch { displayLines = section.content ? section.content.split("\n") : []; }
+                  } else {
+                    displayLines = section.content ? section.content.split("\n") : [];
+                  }
+                  return (
+                    <div
+                      key={section.id}
+                      className={i > 0 ? "border-t border-gray-800 pt-5" : ""}
+                    >
+                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#B4E3BD]">
+                        {section.label}
+                      </p>
+                      {displayLines.length > 0 ? (
+                        <div className="whitespace-pre-wrap text-sm leading-6 text-gray-300">
+                          {displayLines.map((line, li) => (
+                            <p key={li} className={li === 0 && isStructured ? "font-semibold text-white" : ""}>
+                              {line || "\u00A0"}
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="whitespace-pre-wrap text-sm leading-6 text-gray-300">
+                          {section.content}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {selectedWorkout.sections.length === 0 && (
                   <p className="text-sm text-gray-500">No details added yet.</p>
@@ -900,7 +937,7 @@ export default function DashboardPage() {
 
                 <button
                   type="button"
-                  onClick={addSection}
+                  onClick={() => setSectionBuilderOpen(true)}
                   className="w-full rounded-2xl border border-dashed border-gray-800 py-3 text-sm font-semibold text-gray-400 transition-colors hover:border-[#B4E3BD]/50 hover:text-[#B4E3BD]"
                 >
                   + Add section
@@ -957,6 +994,11 @@ export default function DashboardPage() {
           onClose={() => setAthleteRosterOpen(false)}
         />
       )}
+      <WorkoutSectionModal
+        open={sectionBuilderOpen}
+        onClose={() => setSectionBuilderOpen(false)}
+        onAdd={addStructuredSections}
+      />
     </main>
   );
 }

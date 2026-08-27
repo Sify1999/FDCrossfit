@@ -5,8 +5,40 @@ from pydantic import BaseModel, Field
 
 class WorkoutSection(BaseModel):
     id: str
-    label: str
-    content: str
+    label: str = ""
+    content: str = ""
+
+    # ── Structured fields (all optional — backward compat) ────────────
+    # Section type discriminator: "single", "complex", "conditioning",
+    # "text", or None (treat as "text" for backward compat).
+    type: str | None = None
+
+    # Single-movement fields
+    movement_id: int | None = None
+    movement_name: str | None = None
+    sets: int | None = None
+    reps: str | None = None
+    weight: str | None = None
+    rest_seconds: int | None = None
+    tempo: str | None = None
+
+    # Complex fields
+    complex_id: int | None = None
+    complex_name: str | None = None
+    # Each entry: {"movement_id": int, "movement_name": str, "reps": str}
+    movements: list[dict] | None = None
+
+    # Conditioning fields
+    format: str | None = None  # "AMRAP", "EMOM", "FOR_TIME", "RFT", "TABATA", "CHIPPER"
+    duration_minutes: int | None = None
+    interval_minutes: int | None = None
+    time_cap_minutes: int | None = None
+    rounds: int | None = None
+    work_seconds: int | None = None
+    rest_seconds_interval: int | None = None
+
+    # Generic notes (used by all types)
+    notes: str | None = None
 
 
 class WorkoutBase(BaseModel):
