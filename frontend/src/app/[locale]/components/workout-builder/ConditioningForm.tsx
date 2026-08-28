@@ -4,7 +4,7 @@ import { Field, FormatSelector, ConfirmDialog } from "./UiHelpers";
 import CondMovementRow from "./CondMovementRow";
 import { newRowId } from "./section-formatter";
 import type { MovementRowData, ConditioningFormat } from "./types";
-import { useState } from "react";
+import { useState, type DragEvent } from "react";
 
 type ConditioningFormState = {
   format: ConditioningFormat | null;
@@ -49,11 +49,32 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
     set("movements", state.movements.filter((_, i) => i !== index));
   }
 
-  function usedMovementIds(excludeIndex: number): number[] {
-    return state.movements
-      .filter((_, i) => i !== excludeIndex)
-      .map((r) => r.movement_id)
-      .filter((id): id is number => id !== null);
+  // ── Move row (reorder) ──────────────────────────────────────────────
+  function moveRow(fromIndex: number, toIndex: number) {
+    const updated = [...state.movements];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+    set("movements", updated);
+  }
+
+  // ── Drag-and-drop state ──────────────────────────────────────────────
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  function handleDragStart(e: DragEvent<HTMLDivElement>, i: number) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(i));
+    setDragIdx(i);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>, i: number) {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === i) return;
+    moveRow(dragIdx, i);
+    setDragIdx(i);
+  }
+
+  function handleDragEnd() {
+    setDragIdx(null);
   }
 
   const [confirmRemoveIdx, setConfirmRemoveIdx] = useState<number | null>(null);
@@ -103,13 +124,42 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
         ) : (
           <div className="space-y-2">
             {state.movements.map((row, i) => (
-              <CondMovementRow
+              <div
                 key={row.rowId}
-                data={row}
-                onChange={(f, v) => updateRow(i, f, v)}
-                onRemove={() => setConfirmRemoveIdx(i)}
-                excludeIds={usedMovementIds(i)}
-              />
+                draggable
+                onDragStart={(e) => handleDragStart(e, i)}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDragEnd={handleDragEnd}
+                className={`group relative rounded-xl border transition-all ${
+                  dragIdx === i
+                    ? "border-[#B4E3BD] bg-[#B4E3BD]/10 opacity-70"
+                    : "border-gray-800 bg-gray-950/60 hover:border-gray-700"
+                }`}
+              >
+                <div className="flex items-center gap-1 px-3 pt-3 pb-0">
+                  <span
+                    className="cursor-grab rounded p-0.5 text-gray-600 transition hover:text-gray-300 active:cursor-grabbing"
+                    aria-label="Drag to reorder"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-gray-600">
+                      <circle cx="8" cy="6" r="1.5" />
+                      <circle cx="16" cy="6" r="1.5" />
+                      <circle cx="8" cy="12" r="1.5" />
+                      <circle cx="16" cy="12" r="1.5" />
+                      <circle cx="8" cy="18" r="1.5" />
+                      <circle cx="16" cy="18" r="1.5" />
+                    </svg>
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase text-gray-600">Movement {i + 1}</span>
+                </div>
+                <div className="px-3 pb-3">
+                  <CondMovementRow
+                    data={row}
+                    onChange={(f, v) => updateRow(i, f, v)}
+                    onRemove={() => setConfirmRemoveIdx(i)}
+                  />
+                </div>
+              </div>
             ))}
           </div>
         )}

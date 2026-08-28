@@ -7,11 +7,9 @@ type Props = {
   data: MovementRowData;
   onChange: (fieldOrUpdates: keyof MovementRowData | Partial<MovementRowData>, value?: any) => void;
   onRemove: () => void;
-  /** Movement IDs already used by sibling rows in the same section — excludes this row's own ID. */
-  excludeIds?: number[];
 };
 
-export default function CondMovementRow({ data, onChange, onRemove, excludeIds }: Props) {
+export default function CondMovementRow({ data, onChange, onRemove }: Props) {
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-gray-800 bg-gray-950/60 p-3 sm:flex-row sm:items-center">
       <div className="flex-1">
@@ -19,7 +17,6 @@ export default function CondMovementRow({ data, onChange, onRemove, excludeIds }
           value={data.movement_id ? { id: data.movement_id, name: data.movement_name, default_unit: data.unit } as Movement : null}
           onChange={(m) => { onChange({ movement_id: m.id, movement_name: m.name, unit: m.default_unit }); }}
           placeholder="Select movement"
-          excludeIds={excludeIds}
         />
       </div>
       <div className="flex items-center gap-2">

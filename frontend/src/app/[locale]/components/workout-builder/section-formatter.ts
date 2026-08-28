@@ -35,7 +35,7 @@ export function formatMovementRow(
   includeWeight: boolean = true
 ): string {
   let text = "";
-  if (row.reps && row.reps !== "1") {
+  if (row.reps) {
     text += `${row.reps} `;
   }
   text += row.movement_name;
@@ -87,7 +87,7 @@ export function formatComplexSection(section: ComplexSection): string[] {
 
   // List movements
   for (const mov of section.movements) {
-    const reps = mov.reps && mov.reps !== "1" ? `${mov.reps} ` : "";
+    const reps = mov.reps ? `${mov.reps} ` : "";
     lines.push(`  ${reps}${mov.movement_name}`);
   }
 

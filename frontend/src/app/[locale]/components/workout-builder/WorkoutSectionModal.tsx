@@ -20,6 +20,8 @@ import type { ComplexFormState } from "./ComplexForm";
 import type { ConditioningFormState } from "./ConditioningForm";
 import type { TextFormState } from "./TextForm";
 import { formatSection, newSectionId } from "./section-formatter";
+import { fetchSectionTemplates, createSectionTemplate, generateTemplateName } from "@/lib/section-templates";
+import type { SectionTemplateRead } from "@/lib/section-templates";
 
 type Props = {
   open: boolean;
@@ -30,7 +32,7 @@ type Props = {
 };
 
 type SectionType = "single" | "complex" | "conditioning" | "text";
-type Step = "select-type" | "configure-single" | "configure-complex" | "configure-conditioning" | "configure-text";
+type Step = "select-type" | "configure-single" | "configure-complex" | "configure-conditioning" | "configure-text" | "browse-templates";
 
 function defaultSingleState(): SingleFormState {
   return { movement: null, sets: "", reps: "", weight: "", restSeconds: "", tempo: "", notes: "", label: "" };
@@ -57,6 +59,13 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
   const [condState, setCondState] = useState<ConditioningFormState>(defaultCondState());
   const [textState, setTextState] = useState<TextFormState>(defaultTextState());
 
+  const [saveAsTemplate, setSaveAsTemplate] = useState(false);
+
+  // ── Templates state ──────────────────────────────────────────────────
+  const [templates, setTemplates] = useState<SectionTemplateRead[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState("");
+
   const resetAll = useCallback(() => {
     setStep("select-type");
     setSelectedType(null);
@@ -66,7 +75,20 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
     setComplexState(defaultComplexState());
     setCondState(defaultCondState());
     setTextState(defaultTextState());
+    setTemplateSearch("");
+    setSaveAsTemplate(false);
   }, []);
+
+  // ── Fetch templates when modal opens ─────────────────────────────────
+  useEffect(() => {
+    if (open && !editSection) {
+      setTemplatesLoading(true);
+      fetchSectionTemplates()
+        .then(setTemplates)
+        .catch(() => { /* silently fail */ })
+        .finally(() => setTemplatesLoading(false));
+    }
+  }, [open, editSection]);
 
   // ── Reset or pre-fill on open ──────────────────────────────────────
   useEffect(() => {
@@ -128,6 +150,63 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
     else if (type === "text") setStep("configure-text");
   }
 
+  function chooseTemplates() {
+    setStep("browse-templates");
+    // Fetch templates if not already loaded
+    if (templates.length === 0 && !templatesLoading) {
+      setTemplatesLoading(true);
+      fetchSectionTemplates()
+        .then(setTemplates)
+        .catch(() => {})
+        .finally(() => setTemplatesLoading(false));
+    }
+  }
+
+  // ── Load a template into the form ──────────────────────────────────
+  function loadTemplate(template: SectionTemplateRead) {
+    const data = template.section_data;
+    const type = template.section_type as SectionType;
+    setSelectedType(type);
+    setErr(null);
+
+    switch (type) {
+      case "single": {
+        setSingleState({
+          movement: data.movement_id ? { id: data.movement_id, name: data.movement_name, default_unit: "reps" } : null,
+          sets: data.sets?.toString() ?? "", reps: data.reps ?? "",
+          weight: data.weight ?? "", restSeconds: data.rest_seconds?.toString() ?? "",
+          tempo: data.tempo ?? "", notes: data.notes ?? "", label: data.label ?? "",
+        });
+        setStep("configure-single"); break;
+      }
+      case "complex": {
+        setComplexState({
+          selectedComplexId: data.complex_id ?? null, complexName: data.complex_name ?? template.name,
+          movements: data.movements || [], sets: data.sets?.toString() ?? "",
+          weight: data.weight ?? "", restSeconds: data.rest_seconds?.toString() ?? "",
+          notes: data.notes ?? "", label: data.label ?? template.name,
+        });
+        setStep("configure-complex"); break;
+      }
+      case "conditioning": {
+        setCondState({
+          format: data.format ?? null, durationMinutes: data.duration_minutes?.toString() ?? "",
+          intervalMinutes: data.interval_minutes?.toString() ?? "",
+          timeCapMinutes: data.time_cap_minutes?.toString() ?? "",
+          rounds: data.rounds?.toString() ?? "",
+          workSeconds: data.work_seconds?.toString() ?? "",
+          restSecondsInterval: data.rest_seconds_interval?.toString() ?? "",
+          movements: data.movements || [], notes: data.notes ?? "", label: data.label ?? template.name,
+        });
+        setStep("configure-conditioning"); break;
+      }
+      case "text": {
+        setTextState({ label: data.label ?? template.name, content: data.content ?? "" });
+        setStep("configure-text"); break;
+      }
+    }
+  }
+
   // ── Build section from current state (pure, no side effects) ────────
   function buildSection(): WorkoutSection | null {
     const id = editSection ? editSection.id : newSectionId();
@@ -180,7 +259,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
     return null;
   }
 
-  // ── Handle Add/Save (with explicit validation) ──────────────────────
+  // ── Handle Add/Save ──────────────────────────────────
   async function handleSave() {
     setErr(null);
 
@@ -210,6 +289,21 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         setBusy(false);
       }
     } else {
+      // Optionally save as template (when checkbox is checked)
+      if (saveAsTemplate) {
+        try {
+          await createSectionTemplate({
+            name: generateTemplateName(section),
+            section_type: section.type || "text",
+            section_data: section as unknown as Record<string, any>,
+          });
+          // Refresh templates for next time
+          fetchSectionTemplates().then(setTemplates).catch(() => {});
+        } catch {
+          // Silently fail — saving as template is a nice-to-have
+        }
+      }
+
       onAdd([section]);
       onClose();
     }
@@ -223,6 +317,12 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
 
   const isEditing = Boolean(editSection);
 
+  let filteredTemplates = templateSearch.trim()
+    ? templates.filter((t) =>
+        t.name.toLowerCase().includes(templateSearch.toLowerCase())
+      )
+    : templates;
+
   if (!open) return null;
 
   return (
@@ -231,19 +331,25 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4 sm:px-6">
-          <button type="button" onClick={() => { if (step !== "select-type") { setStep("select-type"); setSelectedType(null); } else onClose(); }}
+          <button type="button" onClick={() => { if (step !== "select-type" && step !== "browse-templates") { setStep("select-type"); setSelectedType(null); } else onClose(); }}
             className="rounded-full border border-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-400 transition hover:border-gray-600"
           >
-            {step === "select-type" ? "✕ Close" : "← Back"}
+            {step === "select-type" || step === "browse-templates" ? "✕ Close" : "← Back"}
           </button>
           <div className="flex items-center gap-2 text-xs text-gray-600">
-            <span className={step === "select-type" ? "text-[#B4E3BD] font-semibold" : ""}>Type</span>
-            {step !== "select-type" && (
+            {step === "browse-templates" ? (
+              <span className="text-[#B4E3BD] font-semibold">Templates</span>
+            ) : (
               <>
-                <span className="text-gray-700">→</span>
-                <span className="text-[#B4E3BD] font-semibold">
-                  {selectedType === "single" ? "Single" : selectedType === "complex" ? "Complex" : selectedType === "conditioning" ? "Conditioning" : "Free Text"}
-                </span>
+                <span className={step === "select-type" ? "text-[#B4E3BD] font-semibold" : ""}>Type</span>
+                {step !== "select-type" && (
+                  <>
+                    <span className="text-gray-700">→</span>
+                    <span className="text-[#B4E3BD] font-semibold">
+                      {selectedType === "single" ? "Single" : selectedType === "complex" ? "Complex" : selectedType === "conditioning" ? "Conditioning" : "Free Text"}
+                    </span>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -258,10 +364,72 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
               <p className="mb-4 text-sm font-semibold text-gray-300">{t("selectType")}</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <TypeCard title={t("singleMovement")} desc="One lift or skill" icon="🏋️" onClick={() => chooseType("single")} active={false} />
-                <TypeCard title={t("complex")} desc="Sequence of movements" icon="🔄" onClick={() => chooseType("complex")} active={false} />
+                <TypeCard title="Template" desc="Reusable section" icon="📁" onClick={chooseTemplates} active={false} />
                 <TypeCard title={t("conditioning")} desc="AMRAP, EMOM, RFT …" icon="⏱️" onClick={() => chooseType("conditioning")} active={false} />
                 <TypeCard title={t("freeText")} desc="Warm-up, notes …" icon="📝" onClick={() => chooseType("text")} active={false} />
               </div>
+            </div>
+          )}
+          {step === "browse-templates" && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-3">
+                <p className="text-sm font-semibold text-gray-300">Saved Templates</p>
+                <input
+                  type="text"
+                  value={templateSearch}
+                  onChange={(e) => setTemplateSearch(e.target.value)}
+                  placeholder="Search templates..."
+                  className="ml-auto w-44 rounded-lg border border-gray-800 bg-gray-950 px-2.5 py-1.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-[#B4E3BD]"
+                />
+              </div>
+
+              {templatesLoading ? (
+                <div className="flex items-center gap-2 rounded-2xl border border-gray-800 bg-gray-950/30 px-4 py-8">
+                  <div className="h-3 w-3 animate-pulse rounded-full bg-gray-700" />
+                  <span className="text-xs text-gray-500">Loading templates...</span>
+                </div>
+              ) : filteredTemplates.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-800 bg-gray-950/30 px-4 py-8 text-center">
+                  <p className="text-xs text-gray-500">
+                    {templates.length === 0
+                      ? "No saved templates yet. Create one by ticking \"Save as template\" when adding a section."
+                      : "No templates match your search."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {filteredTemplates.map((tmpl) => {
+                    const typeIcon =
+                      tmpl.section_type === "single" ? "🏋️" :
+                      tmpl.section_type === "complex" ? "🔄" :
+                      tmpl.section_type === "conditioning" ? "⏱️" : "📝";
+                    const typeLabel =
+                      tmpl.section_type === "single" ? "Single" :
+                      tmpl.section_type === "complex" ? "Complex" :
+                      tmpl.section_type === "conditioning" ? "Conditioning" : "Text";
+                    return (
+                      <button
+                        key={tmpl.id}
+                        type="button"
+                        onClick={() => loadTemplate(tmpl)}
+                        className="flex items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950/60 px-4 py-4 text-left transition hover:border-[#B4E3BD]/60 hover:bg-gray-900 active:scale-[0.99]"
+                      >
+                        <span className="text-2xl">{typeIcon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{tmpl.name}</p>
+                          <p className="text-[10px] uppercase tracking-wider text-gray-600">{typeLabel}</p>
+                          <p className="mt-0.5 truncate text-xs text-gray-600">
+                            {tmpl.section_data?.content || tmpl.section_data?.movement_name || tmpl.section_data?.format || ""}
+                          </p>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-[#B4E3BD]">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
           {step === "configure-single" && (
@@ -292,19 +460,38 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         </div>
 
         <div className="flex items-center justify-between border-t border-gray-800 px-4 py-4 sm:px-6">
-          <button type="button" onClick={onClose}
-            className="rounded-full border border-gray-800 px-5 py-2 text-sm font-semibold text-gray-300 transition hover:border-gray-600"
-          >{t("cancel")}</button>
-          <button type="button" onClick={handleSave} disabled={busy || step === "select-type"}
-            className="rounded-full bg-[#B4E3BD] px-6 py-2.5 text-sm font-semibold text-black transition-all hover:bg-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          >{busy ? (isEditing ? t("saving") : t("adding")) : isEditing ? "Save Changes" : t("add")}</button>
+          <div className="flex items-center gap-4">
+            {step !== "select-type" && step !== "browse-templates" && !isEditing && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={saveAsTemplate}
+                  onChange={(e) => setSaveAsTemplate(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-700 bg-gray-800 text-[#B4E3BD] focus:ring-[#B4E3BD] focus:ring-offset-0"
+                />
+                <span className="text-xs text-gray-500">Save as template</span>
+              </label>
+            )}
+            {step === "browse-templates" && (
+              <button type="button" onClick={onClose}
+                className="rounded-full border border-gray-800 px-5 py-2 text-sm font-semibold text-gray-300 transition hover:border-gray-600"
+              >Close</button>
+            )}
+          </div>
+          {step !== "browse-templates" && (
+            <div className="flex items-center gap-3 ms-auto">
+              <button type="button" onClick={onClose}
+                className="rounded-full border border-gray-800 px-5 py-2 text-sm font-semibold text-gray-300 transition hover:border-gray-600"
+              >{t("cancel")}</button>
+              {step !== "select-type" && (
+                <button type="button" onClick={handleSave} disabled={busy}
+                  className="rounded-full bg-[#B4E3BD] px-6 py-2.5 text-sm font-semibold text-black transition-all hover:bg-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >{busy ? (isEditing ? t("saving") : t("adding")) : isEditing ? "Save Changes" : t("add")}</button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-                
-
-          
-
-          

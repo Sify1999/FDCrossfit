@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type DragEvent } from "react";
 import { api } from "@/lib/api-client";
 import { Field, ConfirmDialog } from "./UiHelpers";
 import CondMovementRow from "./CondMovementRow";
@@ -87,11 +87,24 @@ export default function ComplexForm({ state, onStateChange }: Props) {
     set("movements", updated);
   }
 
-  function usedMovementIds(excludeIndex: number): number[] {
-    return state.movements
-      .filter((_, i) => i !== excludeIndex)
-      .map((r) => r.movement_id)
-      .filter((id): id is number => id !== null);
+  // ── Drag-and-drop state ──────────────────────────────────────────────
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  function handleDragStart(e: DragEvent<HTMLDivElement>, i: number) {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(i));
+    setDragIdx(i);
+  }
+
+  function handleDragOver(e: DragEvent<HTMLDivElement>, i: number) {
+    e.preventDefault();
+    if (dragIdx === null || dragIdx === i) return;
+    moveRow(dragIdx, i);
+    setDragIdx(i);
+  }
+
+  function handleDragEnd() {
+    setDragIdx(null);
   }
 
 return (
@@ -135,8 +148,32 @@ return (
         ) : (
           <div className="space-y-2">
             {state.movements.map((row, i) => (
-              <div key={row.rowId} className="group relative">
-                <div className="mb-1 flex items-center gap-1 px-1">
+              <div
+                key={row.rowId}
+                draggable
+                onDragStart={(e) => handleDragStart(e, i)}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDragEnd={handleDragEnd}
+                className={`group relative rounded-xl border transition-all ${
+                  dragIdx === i
+                    ? "border-[#B4E3BD] bg-[#B4E3BD]/10 opacity-70"
+                    : "border-gray-800 bg-gray-950/60 hover:border-gray-700"
+                }`}
+              >
+                <div className="mb-1 flex items-center gap-1 px-3 pt-3">
+                  <span
+                    className="cursor-grab rounded p-0.5 text-gray-600 transition hover:text-gray-300 active:cursor-grabbing"
+                    aria-label="Drag to reorder"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="text-gray-600">
+                      <circle cx="8" cy="6" r="1.5" />
+                      <circle cx="16" cy="6" r="1.5" />
+                      <circle cx="8" cy="12" r="1.5" />
+                      <circle cx="16" cy="12" r="1.5" />
+                      <circle cx="8" cy="18" r="1.5" />
+                      <circle cx="16" cy="18" r="1.5" />
+                    </svg>
+                  </span>
                   <button type="button" onClick={() => moveRow(i, i - 1)} disabled={i === 0}
                     className="rounded p-0.5 text-gray-600 transition hover:text-gray-300 disabled:opacity-20"
                     aria-label="Move up"
@@ -155,12 +192,13 @@ return (
                   </button>
                   <span className="text-[10px] font-semibold uppercase text-gray-600">Movement {i + 1}</span>
                 </div>
-                <CondMovementRow
-                  data={row}
-                  onChange={(f, v) => updateRow(i, f, v)}
-                  onRemove={() => setConfirmRemoveIdx(i)}
-                  excludeIds={usedMovementIds(i)}
-                />
+                <div className="px-3 pb-3">
+                  <CondMovementRow
+                    data={row}
+                    onChange={(f, v) => updateRow(i, f, v)}
+                    onRemove={() => setConfirmRemoveIdx(i)}
+                  />
+                </div>
               </div>
             ))}
           </div>

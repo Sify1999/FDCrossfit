@@ -19,10 +19,9 @@ type Props = {
   state: SingleFormState;
   onStateChange: (s: SingleFormState) => void;
   onMovementChange: (m: Movement | null) => void;
-  excludeMovementIds?: number[];
 };
 
-export default function SingleMovementForm({ state, onStateChange, onMovementChange, excludeMovementIds }: Props) {
+export default function SingleMovementForm({ state, onStateChange, onMovementChange }: Props) {
   const set = (key: keyof SingleFormState, value: any) => {
     onStateChange({ ...state, [key]: value });
   };
@@ -34,7 +33,6 @@ export default function SingleMovementForm({ state, onStateChange, onMovementCha
         value={state.movement}
         onChange={(m) => onMovementChange(m)}
         placeholder="Select movement"
-        excludeIds={excludeMovementIds}
       />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Field label="Sets" value={state.sets} onChange={(v) => set("sets", v)} placeholder="5" type="number" />

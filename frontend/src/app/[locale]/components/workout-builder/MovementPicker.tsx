@@ -6,8 +6,6 @@ import type { Movement } from "./types";
 type Props = {
   value: Movement | null;
   onChange: (m: Movement) => void;
-  /** Movement IDs to exclude from results (e.g., already picked in sibling rows). */
-  excludeIds?: number[];
   placeholder?: string;
 };
 
@@ -20,7 +18,7 @@ function SkeletonRow() {
   );
 }
 
-export default function MovementPicker({ value, onChange, excludeIds, placeholder = "Search movements..." }: Props) {
+export default function MovementPicker({ value, onChange, placeholder = "Search movements..." }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Movement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -108,13 +106,8 @@ export default function MovementPicker({ value, onChange, excludeIds, placeholde
   }
 
   // ── Filter helpers ─────────────────────────────────────────────────
-  const filteredResults = excludeIds && excludeIds.length > 0
-    ? results.filter((m) => !excludeIds.includes(m.id))
-    : results;
-
-  const filteredSuggestions = excludeIds && excludeIds.length > 0
-    ? suggestions.filter((m) => !excludeIds.includes(m.id))
-    : suggestions;
+  const filteredResults = results;
+  const filteredSuggestions = suggestions;
 
   const showCreate = query.trim().length > 0 && !loading && !filteredResults.some(
     (m) => m.name.trim().toLowerCase() === query.trim().toLowerCase()
