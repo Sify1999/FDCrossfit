@@ -1,6 +1,6 @@
 "use client";
 
-import { Field, FormatSelector } from "./UiHelpers";
+import { Field, FormatSelector, ConfirmDialog } from "./UiHelpers";
 import CondMovementRow from "./CondMovementRow";
 import { newRowId } from "./section-formatter";
 import type { MovementRowData, ConditioningFormat } from "./types";
@@ -121,6 +121,15 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
 
       <Field label="Notes" value={state.notes} onChange={(v) => set("notes", v)} textarea />
       <Field label="Label" value={state.label} onChange={(v) => set("label", v)} placeholder={state.format || "Metcon"} />
+
+      <ConfirmDialog
+        open={confirmRemoveIdx !== null}
+        title="Remove movement"
+        message="Are you sure you want to remove this movement from the workout?"
+        confirmLabel="Remove"
+        onConfirm={() => { if (confirmRemoveIdx !== null) removeRow(confirmRemoveIdx); setConfirmRemoveIdx(null); }}
+        onCancel={() => setConfirmRemoveIdx(null)}
+      />
     </div>
   );
 }

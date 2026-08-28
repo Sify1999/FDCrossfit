@@ -29,9 +29,20 @@ export default function MovementPicker({ value, onChange, excludeIds, placeholde
   const [creating, setCreating] = useState(false);
   const [suggestions, setSuggestions] = useState<Movement[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  const [hasFetchedSuggestions, setHasFetchedSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Tracks whether the "all movements" list has been successfully loaded.
+  // A ref (not state) so setting it doesn't itself trigger the effect below,
+  // and — critically — it's only flipped to true once the request actually
+  // resolves, never optimistically before that. Flipping it early (as state,
+  // before the fetch settles) is what breaks this under React Strict Mode:
+  // Strict Mode mounts effects twice in dev (run → cleanup → run again). If
+  // "fetched" gets marked true before the first request finishes, the
+  // cleanup from that first run cancels the in-flight request, and the
+  // second effect run then sees "fetched = true" and skips re-fetching —
+  // so the list never actually loads until you type a query.
+  const suggestionsFetchedRef = useRef(false);
 
   // ── Search when query changes ──────────────────────────────────────
   useEffect(() => {
@@ -51,18 +62,24 @@ export default function MovementPicker({ value, onChange, excludeIds, placeholde
     return () => { cancelled = true; clearTimeout(timer); };
   }, [query]);
 
-  // ── Fetch suggestions when input is focused and empty ─────────────
+  // ── Fetch suggestions (all movements) when input is focused and empty ──
   useEffect(() => {
-    if (!showDropdown || query.trim() || hasFetchedSuggestions) return;
+    if (!showDropdown || query.trim() || suggestionsFetchedRef.current) return;
     let cancelled = false;
     setSuggestionsLoading(true);
     api.get<Movement[]>("/movements")
-      .then((data) => { if (!cancelled) setSuggestions(data); })
+      .then((data) => {
+        if (cancelled) return;
+        setSuggestions(data);
+        // Only mark as fetched once we know this request actually landed —
+        // never before, and never for a request that got cancelled.
+        suggestionsFetchedRef.current = true;
+      })
       .catch(() => { /* silently fail — suggestions are a nice-to-have */ })
       .finally(() => { if (!cancelled) setSuggestionsLoading(false); });
-    setHasFetchedSuggestions(true);
     return () => { cancelled = true; };
-  }, [showDropdown, query, hasFetchedSuggestions]);
+  }, [showDropdown, query]);
+
   // ── Close dropdown on outside click ────────────────────────────────
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -114,7 +131,6 @@ export default function MovementPicker({ value, onChange, excludeIds, placeholde
             onChange({} as Movement);
             setQuery("");
             setShowDropdown(true);
-            setHasFetchedSuggestions(false);
             inputRef.current?.focus();
           }}
             className="rounded-full border border-gray-800 px-2.5 py-1 text-[11px] text-gray-400 transition hover:border-red-400 hover:text-red-400"
