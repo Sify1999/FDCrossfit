@@ -11,6 +11,7 @@ import WorkoutComments from "../components/WorkoutComments";
 import WorkoutSectionModal from "../components/workout-builder/WorkoutSectionModal";
 import type { WorkoutSection as StructuredSection } from "../components/workout-builder/types";
 import { formatSection } from "../components/workout-builder/section-formatter";
+import { ConfirmDialog } from "../components/workout-builder/UiHelpers";
 
 // ─────────────────────────────────────────────
 // Types
@@ -257,6 +258,11 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [sectionBuilderOpen, setSectionBuilderOpen] = useState(false);
+  const [editingSection, setEditingSection] = useState<StructuredSection | null>(null);
+
+  // ── Confirmation dialogs ──────────────────────────────────────
+  const [confirmRemoveSection, setConfirmRemoveSection] = useState<string | null>(null);
+  const [confirmDeleteWorkout, setConfirmDeleteWorkout] = useState(false);
 
   function startEditing() {
     setSaveError(null);
@@ -316,6 +322,33 @@ export default function DashboardPage() {
     );
   }
 
+  function editStructuredSection(section: StructuredSection) {
+    setDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            sections: prev.sections.map((s) =>
+              s.id === section.id ? section : s
+            ),
+          }
+        : prev
+    );
+  }
+
+  function confirmThenRemoveSection(id: string) {
+    setConfirmRemoveSection(id);
+  }
+
+  function executeRemoveSection() {
+    if (!confirmRemoveSection) return;
+    setDraft((prev) =>
+      prev
+        ? { ...prev, sections: prev.sections.filter((s) => s.id !== confirmRemoveSection) }
+        : prev
+    );
+    setConfirmRemoveSection(null);
+  }
+
   function removeSection(id: string) {
     setDraft((prev) =>
       prev
@@ -354,6 +387,7 @@ export default function DashboardPage() {
   }
 
   async function deleteWorkout() {
+    setConfirmDeleteWorkout(false);
     if (!selectedDay) return;
     const dateKey = selectedDay.dateKey;
     setSaving(true);
@@ -900,40 +934,66 @@ export default function DashboardPage() {
               </div>
 
               <div className="space-y-4">
-                {draft.sections.map((section) => (
-                  <div
-                    key={section.id}
-                    className="rounded-2xl border border-gray-800 bg-gray-950 p-4"
-                  >
-                    <div className="mb-2 flex items-center gap-2">
-                      <input
-                        className={`${inputClasses} font-semibold`}
-                        value={section.label}
-                        onChange={(e) =>
-                          updateSection(section.id, "label", e.target.value)
-                        }
-                        placeholder="Section name, e.g. WOD"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeSection(section.id)}
-                        aria-label="Remove section"
-                        className="shrink-0 rounded-full border border-gray-800 px-3 py-2 text-xs text-gray-400 transition-colors hover:border-red-400/50 hover:text-red-400"
-                      >
-                        Remove
-                      </button>
-                    </div>
+                {draft.sections.map((section) => {
+                  const isStructured = "type" in section && section.type !== "text";
+                  return (
+                    <div
+                      key={section.id}
+                      className="rounded-2xl border border-gray-800 bg-gray-950 p-4"
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <input
+                          className={`${inputClasses} font-semibold`}
+                          value={section.label}
+                          onChange={(e) =>
+                            updateSection(section.id, "label", e.target.value)
+                          }
+                          placeholder="Section name, e.g. WOD"
+                        />
+                        {isStructured && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingSection(section as StructuredSection);
+                              setSectionBuilderOpen(true);
+                            }}
+                            className="shrink-0 rounded-full border border-[#B4E3BD]/40 px-3 py-2 text-xs font-semibold text-[#B4E3BD] transition-colors hover:bg-[#B4E3BD]/10"
+                          >
+                            Edit in builder
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => confirmThenRemoveSection(section.id)}
+                          aria-label="Remove section"
+                          className="shrink-0 rounded-full border border-gray-800 px-3 py-2 text-xs text-gray-400 transition-colors hover:border-red-400/50 hover:text-red-400"
+                        >
+                          Remove
+                        </button>
+                      </div>
 
-                    <textarea
-                      className={`${inputClasses} min-h-[96px] resize-y`}
-                      value={section.content}
-                      onChange={(e) =>
-                        updateSection(section.id, "content", e.target.value)
-                      }
-                      placeholder="e.g. 21-15-9&#10;Thrusters&#10;Pull-ups"
-                    />
-                  </div>
-                ))}
+                      {isStructured ? (
+                        <div className="rounded-xl border border-gray-800 bg-gray-950/60 px-3 py-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-600 mb-1">
+                            {section.type === "single" ? "Single Movement" : section.type === "complex" ? "Complex" : section.type === "conditioning" ? "Conditioning" : "Section"}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {formatSection(section as StructuredSection).slice(0, 3).join(" • ")}
+                          </p>
+                        </div>
+                      ) : (
+                        <textarea
+                          className={`${inputClasses} min-h-[96px] resize-y`}
+                          value={section.content}
+                          onChange={(e) =>
+                            updateSection(section.id, "content", e.target.value)
+                          }
+                          placeholder="e.g. 21-15-9&#10;Thrusters&#10;Pull-ups"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
 
                 <button
                   type="button"
@@ -972,9 +1032,9 @@ export default function DashboardPage() {
                 {selectedWorkout && (
                   <button
                     type="button"
-                    onClick={deleteWorkout}
+                    onClick={() => setConfirmDeleteWorkout(true)}
                     disabled={saving}
-                    className="ml-auto rounded-full px-4 py-2.5 text-sm font-semibold text-red-400/80 transition-colors hover:text-red-400"
+                    className="ms-auto rounded-full px-4 py-2.5 text-sm font-semibold text-red-400/80 transition-colors hover:text-red-400"
                   >
                     Delete workout
                   </button>
@@ -996,8 +1056,29 @@ export default function DashboardPage() {
       )}
       <WorkoutSectionModal
         open={sectionBuilderOpen}
-        onClose={() => setSectionBuilderOpen(false)}
+        onClose={() => {
+          setSectionBuilderOpen(false);
+          setTimeout(() => setEditingSection(null), 200);
+        }}
         onAdd={addStructuredSections}
+        editSection={editingSection}
+        onEdit={editingSection ? editStructuredSection : undefined}
+      />
+      <ConfirmDialog
+        open={confirmRemoveSection !== null}
+        title="Remove section"
+        message="Are you sure you want to remove this section? This cannot be undone."
+        confirmLabel="Remove"
+        onConfirm={executeRemoveSection}
+        onCancel={() => setConfirmRemoveSection(null)}
+      />
+      <ConfirmDialog
+        open={confirmDeleteWorkout}
+        title="Delete workout"
+        message="Are you sure you want to delete the entire workout for this day? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={deleteWorkout}
+        onCancel={() => setConfirmDeleteWorkout(false)}
       />
     </main>
   );

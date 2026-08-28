@@ -309,6 +309,18 @@
     "preview": "Preview",
     "back": "Back",
     "create": "Create",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "recentlyUsed": "Recently used",
+    "typeToSearch": "Type to search movements",
+    "noMovementsYet": "No movements added yet. Click below to add one.",
+    "removeMovement": "Remove movement",
+    "confirmRemoveMovement": "Are you sure you want to remove this movement from the complex?",
+    "saveChanges": "Save Changes",
+    "editSection": "Edit section",
+    "newSection": "New section",
+    "removeSection": "Remove section",
+    "confirmRemoveSection": "Are you sure you want to remove this section? This cannot be undone.",
+    "deleteWorkout": "Delete workout",
+    "confirmDeleteWorkout": "Are you sure you want to delete the entire workout for this day? This cannot be undone."
   }
 }

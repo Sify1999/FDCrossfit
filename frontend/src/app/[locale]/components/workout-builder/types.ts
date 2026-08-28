@@ -26,7 +26,8 @@ export type MovementRowData = {
   reps: string;
   unit: string;
   weight: string | null;
-  id?: string; // client-side identifier
+  /** Stable client-side identifier. Required for React keys, reorder, and exclude-ids filtering. */
+  rowId: string;
 };
 
 /** Single strength/accessory movement */

@@ -26,6 +26,20 @@ async def list_movements(
     return [MovementRead.model_validate(m) for m in movements]
 
 
+@router.get("/recent", response_model=list[MovementRead])
+async def recent_movements(
+    limit: int = Query(default=10, ge=1, le=50, description="Number of recent movements"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_coach),
+) -> list[MovementRead]:
+    """Coach/admin only — return the most recently created movements for the
+    'suggested/recent' picker in the UI."""
+    from app.services.movement import get_recent_movements
+
+    movements = await get_recent_movements(db, limit=limit)
+    return [MovementRead.model_validate(m) for m in movements]
+
+
 @router.post("", response_model=MovementRead, status_code=status.HTTP_201_CREATED)
 async def create_movement_endpoint(
     data: MovementCreate,

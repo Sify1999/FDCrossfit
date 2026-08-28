@@ -224,3 +224,10 @@ export function sectionSummary(section: WorkoutSection): string {
 export function newSectionId(): string {
   return Math.random().toString(36).slice(2, 9);
 }
+
+/**
+ * Generate a stable client-side row ID for MovementRowData.
+ */
+export function newRowId(): string {
+  return "row_" + Math.random().toString(36).slice(2, 9);
+}
