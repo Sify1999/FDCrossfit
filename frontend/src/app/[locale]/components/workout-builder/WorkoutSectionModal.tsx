@@ -20,8 +20,9 @@ import type { ComplexFormState } from "./ComplexForm";
 import type { ConditioningFormState } from "./ConditioningForm";
 import type { TextFormState } from "./TextForm";
 import { formatSection, newSectionId } from "./section-formatter";
-import { fetchSectionTemplates, createSectionTemplate, generateTemplateName } from "@/lib/section-templates";
+import { fetchSectionTemplates, createSectionTemplate, deleteSectionTemplate, generateTemplateName } from "@/lib/section-templates";
 import type { SectionTemplateRead } from "@/lib/section-templates";
+import { IconDumbbell, IconFolder, IconStopwatch, IconFileText, IconChevronRight, IconTrash, ICON_MAP } from "./icons";
 
 type Props = {
   open: boolean;
@@ -65,6 +66,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
   const [templates, setTemplates] = useState<SectionTemplateRead[]>([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
   const [templateSearch, setTemplateSearch] = useState("");
+  const [deletingTemplateId, setDeletingTemplateId] = useState<number | null>(null);
 
   const resetAll = useCallback(() => {
     setStep("select-type");
@@ -77,6 +79,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
     setTextState(defaultTextState());
     setTemplateSearch("");
     setSaveAsTemplate(false);
+    setDeletingTemplateId(null);
   }, []);
 
   // ── Fetch templates when modal opens ─────────────────────────────────
@@ -152,6 +155,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
 
   function chooseTemplates() {
     setStep("browse-templates");
+    setDeletingTemplateId(null);
     // Fetch templates if not already loaded
     if (templates.length === 0 && !templatesLoading) {
       setTemplatesLoading(true);
@@ -259,6 +263,28 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
     return null;
   }
 
+  // ── Handle template delete (two-click: confirm then delete) ─────────
+  async function handleDeleteTemplate(tmplId: number) {
+    if (deletingTemplateId === tmplId) {
+      // Second click — actually delete
+      try {
+        await deleteSectionTemplate(tmplId);
+        setTemplates((prev) => prev.filter((t) => t.id !== tmplId));
+        setDeletingTemplateId(null);
+      } catch {
+        // Silently fail
+        setDeletingTemplateId(null);
+      }
+    } else {
+      // First click — enter confirm state (button turns red)
+      setDeletingTemplateId(tmplId);
+      // Auto-reset confirm state after 3 seconds
+      setTimeout(() => {
+        setDeletingTemplateId((current) => current === tmplId ? null : current);
+      }, 3000);
+    }
+  }
+
   // ── Handle Add/Save ──────────────────────────────────
   async function handleSave() {
     setErr(null);
@@ -363,10 +389,10 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             <div>
               <p className="mb-4 text-sm font-semibold text-gray-300">{t("selectType")}</p>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <TypeCard title={t("singleMovement")} desc="One lift or skill" icon="🏋️" onClick={() => chooseType("single")} active={false} />
-                <TypeCard title="Template" desc="Reusable section" icon="📁" onClick={chooseTemplates} active={false} />
-                <TypeCard title={t("conditioning")} desc="AMRAP, EMOM, RFT …" icon="⏱️" onClick={() => chooseType("conditioning")} active={false} />
-                <TypeCard title={t("freeText")} desc="Warm-up, notes …" icon="📝" onClick={() => chooseType("text")} active={false} />
+                <TypeCard title={t("singleMovement")} desc="One lift or skill" icon={<IconDumbbell size={24} />} onClick={() => chooseType("single")} active={false} />
+                <TypeCard title="Template" desc="Reusable section" icon={<IconFolder size={24} />} onClick={chooseTemplates} active={false} />
+                <TypeCard title={t("conditioning")} desc="AMRAP, EMOM, RFT …" icon={<IconStopwatch size={24} />} onClick={() => chooseType("conditioning")} active={false} />
+                <TypeCard title={t("freeText")} desc="Warm-up, notes …" icon={<IconFileText size={24} />} onClick={() => chooseType("text")} active={false} />
               </div>
             </div>
           )}
@@ -399,33 +425,41 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {filteredTemplates.map((tmpl) => {
-                    const typeIcon =
-                      tmpl.section_type === "single" ? "🏋️" :
-                      tmpl.section_type === "complex" ? "🔄" :
-                      tmpl.section_type === "conditioning" ? "⏱️" : "📝";
+                    const TypeIcon = ICON_MAP[tmpl.section_type] || IconFileText;
                     const typeLabel =
                       tmpl.section_type === "single" ? "Single" :
                       tmpl.section_type === "complex" ? "Complex" :
                       tmpl.section_type === "conditioning" ? "Conditioning" : "Text";
+                    const isConfirming = deletingTemplateId === tmpl.id;
                     return (
-                      <button
+                      <div
                         key={tmpl.id}
-                        type="button"
-                        onClick={() => loadTemplate(tmpl)}
-                        className="flex items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950/60 px-4 py-4 text-left transition hover:border-[#B4E3BD]/60 hover:bg-gray-900 active:scale-[0.99]"
+                        className="group flex items-center gap-3 rounded-2xl border border-gray-800 bg-gray-950/60 px-4 py-4 text-left transition hover:border-[#B4E3BD]/60 hover:bg-gray-900"
                       >
-                        <span className="text-2xl">{typeIcon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-sm font-semibold text-white">{tmpl.name}</p>
-                          <p className="text-[10px] uppercase tracking-wider text-gray-600">{typeLabel}</p>
-                          <p className="mt-0.5 truncate text-xs text-gray-600">
-                            {tmpl.section_data?.content || tmpl.section_data?.movement_name || tmpl.section_data?.format || ""}
-                          </p>
-                        </div>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-[#B4E3BD]">
-                          <path d="M9 18l6-6-6-6" />
-                        </svg>
-                      </button>
+                        <button type="button" onClick={() => loadTemplate(tmpl)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                          <span className="text-[#B4E3BD] shrink-0"><TypeIcon size={28} /></span>
+                          <div className="flex-1 min-w-0">
+                            <p className="truncate text-sm font-semibold text-white">{tmpl.name}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-gray-600">{typeLabel}</p>
+                            <p className="mt-0.5 truncate text-xs text-gray-600">
+                              {tmpl.section_data?.content || tmpl.section_data?.movement_name || tmpl.section_data?.format || ""}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-[#B4E3BD]"><IconChevronRight size={16} /></span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDeleteTemplate(tmpl.id); }}
+                          className={`shrink-0 rounded-lg p-1.5 transition ${
+                            isConfirming
+                              ? "bg-red-500/90 text-red-400"
+                              : "text-gray-600 opacity-0 group-hover:opacity-100 hover:text-[#B4E3BD]"
+                          }`}
+                          title={isConfirming ? "Click again to delete" : "Delete template"}
+                        >
+                          <IconTrash size={16} />
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
