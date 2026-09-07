@@ -24,8 +24,12 @@ export type MovementRowData = {
   movement_id: number | null;
   movement_name: string;
   reps: string;
+  /** For CHIPPER: multiple sets of reps (e.g. ["21", "15", "9"]) */
+  repsSets: string[];
   unit: string;
   weight: string | null;
+  /** Rest seconds after each set/movement (empty string = no rest) */
+  restSeconds?: string;
   /** Stable client-side identifier. Required for React keys, reorder, and exclude-ids filtering. */
   rowId: string;
 };

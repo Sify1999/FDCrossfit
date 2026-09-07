@@ -42,6 +42,10 @@ export function formatMovementRow(
   if (includeWeight && row.weight) {
     text += ` @ ${row.weight}`;
   }
+  const rest = row.restSeconds?.trim();
+  if (rest) {
+    text += ` / rest ${formatRest(Number(rest))}`;
+  }
   return text.trim();
 }
 
@@ -142,9 +146,8 @@ export function formatConditioningSection(
       lines.push(formatMovementRow(mov));
     }
   } else if (fmt === "RFT") {
-    lines.push(
-      `${section.rounds ?? "?"} ROUNDS FOR TIME`.trim()
-    );
+    const header = `${section.rounds ?? "?"} ROUNDS FOR TIME`.trim();
+    lines.push(section.time_cap_minutes ? `${header} / TC ${section.time_cap_minutes} min` : header);
     for (const mov of section.movements) {
       lines.push(formatMovementRow(mov));
     }
@@ -160,7 +163,22 @@ export function formatConditioningSection(
   } else if (fmt === "CHIPPER") {
     lines.push("CHIPPER");
     for (let i = 0; i < section.movements.length; i++) {
-      lines.push(`${i + 1}. ${formatMovementRow(section.movements[i])}`);
+      const mov = section.movements[i];
+      // Use repsSets if available (chipper multi-set), otherwise fall back to single reps
+      const repsStr = mov.repsSets?.length
+        ? mov.repsSets.filter(r => r.trim() !== "").join(" - ")
+        : mov.reps;
+      // Show unit after reps if not "reps" (e.g. "400 m")
+      const unitSuffix = mov.unit && mov.unit !== "reps" ? ` ${mov.unit}` : "";
+      let text = repsStr ? `${repsStr}${unitSuffix} ${mov.movement_name}` : mov.movement_name;
+      if (mov.weight) {
+        text += ` @ ${mov.weight}`;
+      }
+      const rest = mov.restSeconds?.trim();
+      if (rest) {
+        text += ` / rest ${formatRest(Number(rest))}`;
+      }
+      lines.push(`${i + 1}. ${text}`);
     }
   }
 

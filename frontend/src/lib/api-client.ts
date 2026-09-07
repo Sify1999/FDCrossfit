@@ -5,9 +5,58 @@ type RequestOptions = {
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-function getAccessToken(): string | null {
+export async function getAccessToken(): Promise<string | null> {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("access_token");
+}
+
+function getRefreshToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("refresh_token");
+}
+
+function saveTokens(accessToken: string, refreshToken: string): void {
+  localStorage.setItem("access_token", accessToken);
+  localStorage.setItem("refresh_token", refreshToken);
+}
+
+function clearTokens(): void {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+}
+
+// ─── Refresh-token state machine ─────────────────────────────────────
+// Prevents multiple simultaneous refresh attempts and race conditions
+// when several requests hit 401 at the same time.
+let refreshPromise: Promise<boolean> | null = null;
+
+async function attemptTokenRefresh(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      saveTokens(data.access_token, data.refresh_token);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
 }
 
 /**
@@ -76,6 +125,7 @@ class ApiClient {
     path: string,
     body?: unknown,
     options?: RequestOptions,
+    isRetry = false,
   ): Promise<T> {
     const url = `${this.baseUrl}/api${path}`;
 
@@ -84,7 +134,7 @@ class ApiClient {
       ...options?.headers,
     };
 
-    const token = getAccessToken();
+    const token = await getAccessToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
     }
@@ -98,10 +148,18 @@ class ApiClient {
         cache: options?.cache,
       });
     } catch {
-      // fetch() itself throws for network failures / CORS / backend down —
-      // these never reach the response-handling code below, so they need
-      // their own readable message.
+      // fetch() itself throws for network failures / CORS / backend down
       throw new ApiError(0, "Could not reach the server. Check your connection and try again.");
+    }
+
+    // ── Auto-refresh on 401 ─────────────────────────────────────────
+    if (response.status === 401 && !isRetry && path !== "/auth/refresh") {
+      const refreshed = await attemptTokenRefresh();
+      if (refreshed) {
+        return this.request<T>(method, path, body, options, true);
+      }
+      clearTokens();
+      throw new ApiError(401, "Session expired. Please log in again.");
     }
 
     if (response.status === 204) {

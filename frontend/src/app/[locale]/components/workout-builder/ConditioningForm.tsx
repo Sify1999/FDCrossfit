@@ -30,8 +30,9 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
   };
 
   function addRow() {
+    const isChipper = state.format === "CHIPPER";
     set("movements", [...state.movements, {
-      movement_id: null, movement_name: "", reps: "", unit: "reps", weight: null, rowId: newRowId(),
+      movement_id: null, movement_name: "", reps: "", repsSets: isChipper ? ["", "", ""] : [], unit: "reps", weight: null, restSeconds: "", rowId: newRowId(),
     } as MovementRowData]);
   }
 
@@ -101,7 +102,10 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
         <Field label="Time Cap (min)" value={state.timeCapMinutes} onChange={(v) => set("timeCapMinutes", v)} placeholder="15" type="number" />
       )}
       {state.format === "RFT" && (
-        <Field label="Rounds" value={state.rounds} onChange={(v) => set("rounds", v)} placeholder="5" type="number" />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Rounds" value={state.rounds} onChange={(v) => set("rounds", v)} placeholder="5" type="number" />
+          <Field label="Time Cap (min)" value={state.timeCapMinutes} onChange={(v) => set("timeCapMinutes", v)} placeholder="15" type="number" />
+        </div>
       )}
       {state.format === "TABATA" && (
         <div className="grid grid-cols-3 gap-3">
@@ -157,6 +161,7 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
                     data={row}
                     onChange={(f, v) => updateRow(i, f, v)}
                     onRemove={() => setConfirmRemoveIdx(i)}
+                    chipper={state.format === "CHIPPER"}
                   />
                 </div>
               </div>

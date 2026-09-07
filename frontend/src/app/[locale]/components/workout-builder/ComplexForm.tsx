@@ -54,15 +54,17 @@ export default function ComplexForm({ state, onStateChange }: Props) {
       movement_id: m.movement_id,
       movement_name: m.movement_name,
       reps: m.reps || "",
+      repsSets: [],
       unit: "reps",
       weight: null,
+      restSeconds: m.restSeconds ?? "",
       rowId: newRowId(),
     })));
   }
 
   function addRow() {
     set("movements", [...state.movements, {
-      movement_id: null, movement_name: "", reps: "", unit: "reps", weight: null, rowId: newRowId(),
+      movement_id: null, movement_name: "", reps: "", repsSets: [], unit: "reps", weight: null, restSeconds: "", rowId: newRowId(),
     } as MovementRowData]);
   }
 
