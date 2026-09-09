@@ -77,6 +77,7 @@ export type ConditioningSection = {
   rounds: number | null;
   work_seconds: number | null;
   rest_seconds_interval: number | null;
+  score_type: string | null;
   movements: MovementRowData[];
   notes: string | null;
   content: string;

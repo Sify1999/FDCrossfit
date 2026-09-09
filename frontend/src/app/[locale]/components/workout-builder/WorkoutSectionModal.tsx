@@ -42,7 +42,7 @@ function defaultComplexState(): ComplexFormState {
   return { selectedComplexId: null, complexName: "", movements: [], sets: "", weight: "", restSeconds: "", notes: "", label: "" };
 }
 function defaultCondState(): ConditioningFormState {
-  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", movements: [], notes: "", label: "" };
+  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], notes: "", label: "" };
 }
 function defaultTextState(): TextFormState {
   return { label: "", content: "" };
@@ -128,6 +128,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             rounds: cd.rounds?.toString() ?? "",
             workSeconds: cd.work_seconds?.toString() ?? "",
             restSecondsInterval: cd.rest_seconds_interval?.toString() ?? "",
+            scoreType: cd.score_type ?? "",
             movements: cd.movements || [], notes: cd.notes ?? "", label: cd.label ?? "",
           });
           setStep("configure-conditioning"); break;
@@ -200,6 +201,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
           rounds: data.rounds?.toString() ?? "",
           workSeconds: data.work_seconds?.toString() ?? "",
           restSecondsInterval: data.rest_seconds_interval?.toString() ?? "",
+          scoreType: data.score_type ?? "",
           movements: data.movements || [], notes: data.notes ?? "", label: data.label ?? template.name,
         });
         setStep("configure-conditioning"); break;
@@ -252,6 +254,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         rounds: condState.rounds ? Number(condState.rounds) : null,
         work_seconds: condState.workSeconds ? Number(condState.workSeconds) : null,
         rest_seconds_interval: condState.restSecondsInterval ? Number(condState.restSecondsInterval) : null,
+        score_type: condState.scoreType || null,
         movements: condState.movements, notes: condState.notes || null, content: "",
       } as ConditioningSection;
     }

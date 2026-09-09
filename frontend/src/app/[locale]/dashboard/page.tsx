@@ -12,6 +12,8 @@ import WorkoutSectionModal from "../components/workout-builder/WorkoutSectionMod
 import type { WorkoutSection as StructuredSection } from "../components/workout-builder/types";
 import { formatSection } from "../components/workout-builder/section-formatter";
 import { ConfirmDialog } from "../components/workout-builder/UiHelpers";
+import LogWorkoutModal, { type SectionForLog } from "../components/LogWorkoutModal";
+import WorkoutLogsViewer from "../components/WorkoutLogsViewer";
 
 // ─────────────────────────────────────────────
 // Types
@@ -141,6 +143,27 @@ async function deleteWorkoutRemote(dateKey: string): Promise<void> {
   await api.delete(`/workouts/${dateKey}`);
 }
 
+/** Extract movement names from a workout's structured sections for logging */
+function extractMovementsForLog(sections: WorkoutSection[]): SectionForLog[] {
+  return sections.map((s: any) => {
+    let names: string[] = [];
+    if (s.type === "single" && s.movement_name) {
+      names = [s.movement_name];
+    } else if ((s.type === "complex" || s.type === "conditioning") && s.movements) {
+      names = s.movements.map((m: any) => m.movement_name || "").filter(Boolean);
+    }
+    return {
+      id: s.id,
+      label: s.label,
+      movementNames: names,
+      scoreType: s.score_type || "",
+      format: s.format || "",
+      rounds: s.rounds ?? undefined,
+      timeCapMinutes: s.time_cap_minutes ?? undefined,
+    };
+  });
+}
+
 export default function DashboardPage() {
   const locale = useLocale();
   const router = useRouter();
@@ -259,6 +282,8 @@ export default function DashboardPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [sectionBuilderOpen, setSectionBuilderOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<StructuredSection | null>(null);
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [logsViewerOpen, setLogsViewerOpen] = useState(false);
 
   // ── Confirmation dialogs ──────────────────────────────────────
   const [confirmRemoveSection, setConfirmRemoveSection] = useState<string | null>(null);
@@ -794,13 +819,42 @@ export default function DashboardPage() {
               {selectedDay.weekday}, {selectedDay.dayNum} {selectedDay.month}
             </h2>
 
-            {isCoach && !isEditing && !loadingWorkouts && (
+            {!isEditing && !loadingWorkouts && selectedWorkout && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLogModalOpen(true)}
+                  className="shrink-0 rounded-full border border-gray-700 px-4 py-1.5 text-xs font-semibold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+                >
+                  Log workout
+                </button>
+                {isCoach && (
+                  <button
+                    type="button"
+                    onClick={startEditing}
+                    className="shrink-0 rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-4 py-1.5 text-xs font-semibold text-[#B4E3BD] transition-colors hover:bg-[#B4E3BD]/20"
+                  >
+                    Edit workout
+                  </button>
+                )}
+                {isCoach && (
+                  <button
+                    type="button"
+                    onClick={() => setLogsViewerOpen(true)}
+                    className="shrink-0 rounded-full border border-gray-700 px-4 py-1.5 text-xs font-semibold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+                  >
+                    Show Logs
+                  </button>
+                )}
+              </div>
+            )}
+            {isCoach && !isEditing && !loadingWorkouts && !selectedWorkout && (
               <button
                 type="button"
                 onClick={startEditing}
                 className="shrink-0 rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-4 py-1.5 text-xs font-semibold text-[#B4E3BD] transition-colors hover:bg-[#B4E3BD]/20"
               >
-                {selectedWorkout ? "Edit workout" : "+ Add workout"}
+                + Add workout
               </button>
             )}
           </div>
@@ -1048,6 +1102,19 @@ export default function DashboardPage() {
         open={recordsModalOpen}
         onClose={() => setRecordsModalOpen(false)}
       />
+      <LogWorkoutModal
+        open={logModalOpen}
+        onClose={() => setLogModalOpen(false)}
+        workoutDate={selectedDay?.dateKey ?? ""}
+        sections={selectedWorkout ? extractMovementsForLog(selectedWorkout.sections) : []}
+      />
+      {isCoach && (
+        <WorkoutLogsViewer
+          open={logsViewerOpen}
+          onClose={() => setLogsViewerOpen(false)}
+          workoutDate={selectedDay?.dateKey ?? ""}
+        />
+      )}
       {isCoach && (
         <AthleteRosterModal
           open={athleteRosterOpen}

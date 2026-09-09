@@ -6,6 +6,50 @@ import { newRowId } from "./section-formatter";
 import type { MovementRowData, ConditioningFormat } from "./types";
 import { useState, type DragEvent } from "react";
 
+const SCORE_TYPE_OPTIONS: Record<string, { value: string; label: string }[]> = {
+  AMRAP: [
+    { value: "rounds", label: "Rounds" },
+    { value: "cal", label: "Calories" },
+    { value: "meters", label: "Meters" },
+    { value: "reps", label: "Total reps" },
+  ],
+  FOR_TIME: [
+    { value: "time", label: "Finish time" },
+    { value: "cal", label: "Calories" },
+    { value: "meters", label: "Meters" },
+  ],
+  RFT: [
+    { value: "time", label: "Finish time" },
+  ],
+  CHIPPER: [
+    { value: "time", label: "Finish time" },
+  ],
+  EMOM: [
+    { value: "rounds", label: "Rounds" },
+    { value: "cal", label: "Calories" },
+    { value: "meters", label: "Meters" },
+  ],
+  TABATA: [
+    { value: "rounds", label: "Rounds" },
+  ],
+};
+
+function getScoreTypeOptions(format: ConditioningFormat) {
+  return SCORE_TYPE_OPTIONS[format] ?? [{ value: "rounds", label: "Rounds" }];
+}
+
+/**
+ * Returns the first available score-type value for a given format,
+ * or "" if the current value is already valid for that format.
+ */
+function defaultScoreType(format: ConditioningFormat, current: string): string {
+  const opts = getScoreTypeOptions(format);
+  // Keep current if it's valid for this format
+  if (current && opts.some((o) => o.value === current)) return current;
+  // Otherwise default to the first option
+  return opts[0]?.value ?? "";
+}
+
 type ConditioningFormState = {
   format: ConditioningFormat | null;
   durationMinutes: string;
@@ -14,6 +58,7 @@ type ConditioningFormState = {
   rounds: string;
   workSeconds: string;
   restSecondsInterval: string;
+  scoreType: string;
   movements: MovementRowData[];
   notes: string;
   label: string;
@@ -85,7 +130,14 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
       {/* ── Format picker ─────────────────────────────────────────── */}
       <div>
         <label className="mb-2 block text-xs font-semibold text-gray-400">Format</label>
-        <FormatSelector value={state.format} onChange={(f) => set("format", f)} />
+        <FormatSelector value={state.format} onChange={(f) => {
+          // Single state update to avoid stale-closure overwrite bug
+          onStateChange({
+            ...state,
+            format: f,
+            scoreType: defaultScoreType(f, state.scoreType),
+          });
+        }} />
       </div>
 
       {/* ── Format-specific fields ────────────────────────────────── */}
@@ -116,6 +168,42 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
       )}
       {state.format === "CHIPPER" && (
         <p className="text-xs text-gray-500">Ordered list of movements, performed once through.</p>
+      )}
+
+      {/* ── Score target ────────────────────────────────────────────── */}
+      {state.format && (
+        <div>
+          <label className="mb-2 block text-xs font-semibold text-gray-400">Score target</label>
+          <p className="mb-2 text-[10px] text-gray-600">What is the result based on?</p>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => set("scoreType", "")}
+              className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                state.scoreType === ""
+                  ? "border-gray-600 bg-gray-800 text-gray-300"
+                  : "border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-400"
+              }`}
+            >
+              None
+            </button>
+            <span className="mx-1 self-stretch w-px bg-gray-800" />
+            {getScoreTypeOptions(state.format).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => set("scoreType", opt.value)}
+                className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                  state.scoreType === opt.value
+                    ? "border-[#B4E3BD] bg-[#B4E3BD]/10 text-[#B4E3BD] shadow-sm shadow-[#B4E3BD]/10"
+                    : "border-gray-800 text-gray-400 hover:border-gray-600 hover:text-gray-300"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* ── Movements ────────────────────────────────────────────── */}

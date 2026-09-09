@@ -27,6 +27,22 @@ export function formatWeight(weight: string | null): string {
   return weight;
 }
 
+const SCORE_TYPE_LABELS: Record<string, string> = {
+  rounds: "Rounds",
+  cal: "Calories",
+  meters: "Meters",
+  time: "Finish time",
+  reps: "Total reps",
+  sets: "Sets",
+  weight: "Weight",
+};
+
+function formatScoreType(scoreType: string | null): string {
+  if (!scoreType) return "";
+  const label = SCORE_TYPE_LABELS[scoreType] || scoreType;
+  return `Score: ${label}`;
+}
+
 /**
  * Format a single movement row into display text.
  */
@@ -130,6 +146,8 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(formatMovementRow(mov));
     }
+    const score = formatScoreType(section.score_type);
+    if (score) lines.push(score);
   } else if (fmt === "EMOM") {
     lines.push(
       `EMOM ${section.duration_minutes ?? ""} min`.trim()
@@ -137,6 +155,8 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(`  :${formatMovementRow(mov)}`);
     }
+    const scoreEmom = formatScoreType(section.score_type);
+    if (scoreEmom) lines.push(scoreEmom);
   } else if (fmt === "FOR_TIME") {
     lines.push("FOR TIME");
     if (section.time_cap_minutes) {
@@ -145,12 +165,16 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(formatMovementRow(mov));
     }
+    const scoreFt = formatScoreType(section.score_type);
+    if (scoreFt) lines.push(scoreFt);
   } else if (fmt === "RFT") {
     const header = `${section.rounds ?? "?"} ROUNDS FOR TIME`.trim();
     lines.push(section.time_cap_minutes ? `${header} / TC ${section.time_cap_minutes} min` : header);
     for (const mov of section.movements) {
       lines.push(formatMovementRow(mov));
     }
+    const scoreRft = formatScoreType(section.score_type);
+    if (scoreRft) lines.push(scoreRft);
   } else if (fmt === "TABATA") {
     lines.push("TABATA");
     lines.push(
@@ -160,6 +184,8 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(formatMovementRow(mov));
     }
+    const scoreTabata = formatScoreType(section.score_type);
+    if (scoreTabata) lines.push(scoreTabata);
   } else if (fmt === "CHIPPER") {
     lines.push("CHIPPER");
     for (let i = 0; i < section.movements.length; i++) {
@@ -180,6 +206,8 @@ export function formatConditioningSection(
       }
       lines.push(`${i + 1}. ${text}`);
     }
+    const scoreChi = formatScoreType(section.score_type);
+    if (scoreChi) lines.push(scoreChi);
   }
 
   if (section.notes) {
