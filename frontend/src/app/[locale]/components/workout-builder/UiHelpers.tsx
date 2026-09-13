@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import type { ConditioningFormat } from "./types";
 import { IconStopwatch, IconRepeat, IconPlay, IconClock, IconActivity, IconList, IconCheck, IconZap, IconLoop } from "./icons";
+import { useBodyScrollLock } from "../useScrollLock";
 
 // ─── Card for section-type selection ────────────────────────────────
 
@@ -93,6 +94,7 @@ export function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, o
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  useBodyScrollLock(open);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onCancel}>

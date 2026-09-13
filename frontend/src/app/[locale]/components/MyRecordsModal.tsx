@@ -1,5 +1,6 @@
 "use client";
 
+import { useBodyScrollLock } from "./useScrollLock";
 import RecordsEditor from "./RecordsEditor";
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export default function MyRecordsModal({ open, onClose }: Props) {
+  useBodyScrollLock(open);
   if (!open) return null;
 
   return (

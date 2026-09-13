@@ -44,6 +44,9 @@ class WorkoutSection(BaseModel):
     # "rounds", "cal", "meters", "time", "reps", "sets", "weight"
     score_type: str | None = None
 
+    # Multi-set rows for single-movement sections
+    movement_sets: list[dict] | None = None
+
 
 class WorkoutBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { api, getErrorMessage } from "@/lib/api-client";
 import { fetchCurrentUser, type CurrentUser } from "@/lib/auth";
+import { useBodyScrollLock } from "./useScrollLock";
 
 // ─────────────────────────────────────────────
 // Types
@@ -42,6 +43,7 @@ export type SectionForLog = {
   timeCapMinutes?: number;
 };
 export default function LogWorkoutModal({ open, onClose, workoutDate, sections }: Props) {
+  useBodyScrollLock(open);
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [logData, setLogData] = useState<LogData>([]);
   const [saving, setSaving] = useState(false);

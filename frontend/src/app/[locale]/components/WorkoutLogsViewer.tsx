@@ -1,5 +1,6 @@
 "use client";
 
+import { useBodyScrollLock } from "./useScrollLock";
 import { useState, useEffect } from "react";
 import { api } from "@/lib/api-client";
 
@@ -46,6 +47,7 @@ function formatDate(iso: string): string {
 }
 
 export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props) {
+  useBodyScrollLock(open);
   const [logs, setLogs] = useState<WorkoutLogEntry[]>([]);
   const [athletes, setAthletes] = useState<AthleteInfo[]>([]);
   const [loading, setLoading] = useState(false);

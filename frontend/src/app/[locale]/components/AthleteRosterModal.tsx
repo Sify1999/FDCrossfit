@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiError } from "@/lib/api-client";
 import RecordsEditor from "./RecordsEditor";
+import { useBodyScrollLock } from "./useScrollLock";
 
 type Athlete = {
   id: number;
@@ -25,6 +26,7 @@ function initials(athlete: Athlete) {
 
 export default function AthleteRosterModal({ open, onClose }: Props) {
   const [query, setQuery] = useState("");
+  useBodyScrollLock(open);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -19,10 +19,11 @@ import type { SingleFormState } from "./SingleMovementForm";
 import type { ComplexFormState } from "./ComplexForm";
 import type { ConditioningFormState } from "./ConditioningForm";
 import type { TextFormState } from "./TextForm";
-import { formatSection, newSectionId } from "./section-formatter";
+import { formatSection, newSectionId, newRowId } from "./section-formatter";
 import { fetchSectionTemplates, createSectionTemplate, deleteSectionTemplate, generateTemplateName } from "@/lib/section-templates";
 import type { SectionTemplateRead } from "@/lib/section-templates";
 import { IconDumbbell, IconFolder, IconStopwatch, IconFileText, IconChevronRight, IconTrash, ICON_MAP } from "./icons";
+import { useBodyScrollLock } from "../useScrollLock";
 
 type Props = {
   open: boolean;
@@ -36,7 +37,7 @@ type SectionType = "single" | "complex" | "conditioning" | "text";
 type Step = "select-type" | "configure-single" | "configure-complex" | "configure-conditioning" | "configure-text" | "browse-templates";
 
 function defaultSingleState(): SingleFormState {
-  return { movement: null, sets: "", reps: "", weight: "", restSeconds: "", tempo: "", notes: "", label: "" };
+  return { movement: null, reps: "", weight: "", restSeconds: "", tempo: "", notes: "", label: "", setRows: [{ reps: "", weight: "", id: newRowId() }] };
 }
 function defaultComplexState(): ComplexFormState {
   return { selectedComplexId: null, complexName: "", movements: [], sets: "", weight: "", restSeconds: "", notes: "", label: "" };
@@ -49,6 +50,7 @@ function defaultTextState(): TextFormState {
 }
 
 export default function WorkoutSectionModal({ open, onClose, onAdd, editSection, onEdit }: Props) {
+  useBodyScrollLock(open);
   const t = useTranslations("workoutBuilder");
 
   const [step, setStep] = useState<Step>("select-type");
@@ -101,11 +103,18 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
       switch (editSection.type) {
         case "single": {
           const s = editSection as SingleMovementSection;
+          // Build setRows from movement_sets or from legacy single reps/weight
+          const savedSets = s.movement_sets?.length
+            ? s.movement_sets.map((ms) => ({ reps: ms.reps, weight: ms.weight, id: newRowId() }))
+            : [];
+          const defaultSets = s.reps || s.weight
+            ? [{ reps: s.reps ?? "", weight: s.weight ?? "", id: newRowId() }]
+            : [{ reps: "", weight: "", id: newRowId() }];
           setSingleState({
             movement: s.movement_id ? { id: s.movement_id, name: s.movement_name, default_unit: "reps" } : null,
-            sets: s.sets?.toString() ?? "", reps: s.reps ?? "",
-            weight: s.weight ?? "", restSeconds: s.rest_seconds?.toString() ?? "",
+            reps: s.reps ?? "", weight: s.weight ?? "", restSeconds: s.rest_seconds?.toString() ?? "",
             tempo: s.tempo ?? "", notes: s.notes ?? "", label: s.label ?? "",
+            setRows: savedSets.length ? savedSets : defaultSets,
           });
           setStep("configure-single"); break;
         }
@@ -176,11 +185,17 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
 
     switch (type) {
       case "single": {
+        const savedSets = data.movement_sets?.length
+          ? data.movement_sets.map((ms: any) => ({ reps: ms.reps, weight: ms.weight, id: newRowId() }))
+          : [];
+        const defaultSets = data.reps || data.weight
+          ? [{ reps: data.reps ?? "", weight: data.weight ?? "", id: newRowId() }]
+          : [{ reps: "", weight: "", id: newRowId() }];
         setSingleState({
           movement: data.movement_id ? { id: data.movement_id, name: data.movement_name, default_unit: "reps" } : null,
-          sets: data.sets?.toString() ?? "", reps: data.reps ?? "",
-          weight: data.weight ?? "", restSeconds: data.rest_seconds?.toString() ?? "",
+          reps: data.reps ?? "", weight: data.weight ?? "", restSeconds: data.rest_seconds?.toString() ?? "",
           tempo: data.tempo ?? "", notes: data.notes ?? "", label: data.label ?? "",
+          setRows: savedSets.length ? savedSets : defaultSets,
         });
         setStep("configure-single"); break;
       }
@@ -219,14 +234,19 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
 
     if (selectedType === "single") {
       if (!singleState.movement?.id) return null;
+      // Build movement_sets from setRows (filter out empty entries)
+      const movementSets = singleState.setRows
+        .filter((r) => r.reps.trim() || r.weight.trim())
+        .map((r) => ({ reps: r.reps, weight: r.weight }));
       return {
         id, type: "single", label: singleState.label || singleState.movement.name,
         movement_id: singleState.movement.id, movement_name: singleState.movement.name,
-        sets: singleState.sets ? Number(singleState.sets) : null,
-        reps: singleState.reps || null, weight: singleState.weight || null,
+        sets: movementSets.length > 0 ? movementSets.length : null,
+        reps: movementSets[0]?.reps || null, weight: movementSets[0]?.weight || null,
         rest_seconds: singleState.restSeconds ? Number(singleState.restSeconds) : null,
         tempo: singleState.tempo || null, notes: singleState.notes || null,
         content: "",
+        movement_sets: movementSets.length > 0 ? movementSets : undefined,
       } as SingleMovementSection;
     }
 

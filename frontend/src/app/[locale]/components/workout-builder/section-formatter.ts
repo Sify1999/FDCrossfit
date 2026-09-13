@@ -74,19 +74,31 @@ export function formatSingleMovementSection(
   const lines: string[] = [];
   lines.push(section.movement_name);
 
-  // Build the main line: sets × reps @ weight
-  const parts: string[] = [];
-  if (section.sets) {
-    parts.push(String(section.sets));
-  }
-  if (section.reps) {
-    parts.push(`× ${section.reps}`);
-  }
-  if (section.weight) {
-    parts.push(`@ ${section.weight}`);
-  }
-  if (parts.length > 0) {
-    lines.push(parts.join(" "));
+  // Use movement_sets if available (new multi-set format)
+  const movementSets = section.movement_sets?.filter((ms) => ms.reps || ms.weight);
+  if (movementSets && movementSets.length > 0) {
+    for (let i = 0; i < movementSets.length; i++) {
+      const ms = movementSets[i];
+      let line = `  Set ${i + 1}:`;
+      if (ms.reps) line += ` ${ms.reps} x`;
+      if (ms.weight) line += ` @${ms.weight}`;
+      lines.push(line);
+    }
+  } else {
+    // Legacy format: single reps/weight
+    const parts: string[] = [];
+    if (section.sets) {
+      parts.push(String(section.sets));
+    }
+    if (section.reps) {
+      parts.push(`× ${section.reps}`);
+    }
+    if (section.weight) {
+      parts.push(`@ ${section.weight}`);
+    }
+    if (parts.length > 0) {
+      lines.push(parts.join(" "));
+    }
   }
 
   if (section.rest_seconds) {

@@ -48,6 +48,8 @@ export type SingleMovementSection = {
   tempo: string | null;
   notes: string | null;
   content: string;
+  /** Multi-set rows — each set has its own reps & weight */
+  movement_sets?: { reps: string; weight: string }[];
 };
 
 /** Complex — multiple movements performed as a sequence */

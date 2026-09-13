@@ -24,6 +24,7 @@ type CommentReply = {
   updated_at: string;
   username: string;
   full_name: string | null;
+  role: string | null;
   replies: CommentReply[];
 };
 
@@ -37,6 +38,7 @@ type CommentData = {
   updated_at: string;
   username: string;
   full_name: string | null;
+  role: string | null;
   replies: CommentReply[];
 };
 
@@ -248,7 +250,7 @@ export default function WorkoutComments({ workoutDate, isCoach }: Props) {
 
   function renderComment(comment: CommentData, isReply = false) {
     const isOwn = user?.id === comment.user_id;
-    const isCoachComment = isCoach && comment.user_id !== user?.id;
+    const authorRole = comment.role || "";
 
     return (
       <div
@@ -270,9 +272,13 @@ export default function WorkoutComments({ workoutDate, isCoach }: Props) {
                     you
                   </span>
                 )}
-                {!isOwn && isCoachComment && (
-                  <span className="rounded-full bg-[#B4E3BD]/10 px-2 py-0.5 text-[10px] font-medium text-[#B4E3BD]">
-                    coach
+                {!isOwn && (authorRole === "coach" || authorRole === "admin") && (
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    authorRole === "admin"
+                      ? "bg-purple-500/10 text-purple-400"
+                      : "bg-[#B4E3BD]/10 text-[#B4E3BD]"
+                  }`}>
+                    {authorRole}
                   </span>
                 )}
                 <span className="text-[11px] text-gray-600">
