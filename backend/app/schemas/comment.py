@@ -44,6 +44,7 @@ class CommentRead(BaseModel):
     # Nested fields populated at read time by the service.
     username: str = ""
     full_name: str | None = None
+    role: str | None = None
     replies: list["CommentRead"] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}

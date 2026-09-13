@@ -7,5 +7,6 @@ from app.models.comment import Comment  # noqa: F401, E402
 from app.models.movement import Movement  # noqa: F401, E402
 from app.models.complex import Complex  # noqa: F401, E402
 from app.models.section_template import SectionTemplate  # noqa: F401, E402
+from app.models.workout_log import WorkoutLog  # noqa: F401, E402
 
-__all__ = ["User", "Workout", "AthleteRecord", "Comment", "Movement", "Complex", "SectionTemplate"]
+__all__ = ["User", "Workout", "AthleteRecord", "Comment", "Movement", "Complex", "SectionTemplate", "WorkoutLog"]

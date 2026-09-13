@@ -80,18 +80,22 @@ def _comment_to_read(comment: Comment) -> CommentRead:
     """Convert a Comment ORM object (with .user loaded) to a CommentRead."""
     username = ""
     full_name = None
+    role = None
     if comment.user:
         username = comment.user.username
         full_name = comment.user.full_name
+        role = comment.user.role.value if comment.user.role else None
 
     replies = []
     # The relationship "replies" is loaded via selectinload above.
     for reply in sorted(comment.replies, key=lambda r: r.created_at):
         reply_username = ""
         reply_full_name = None
+        reply_role = None
         if reply.user:
             reply_username = reply.user.username
             reply_full_name = reply.user.full_name
+            reply_role = reply.user.role.value if reply.user.role else None
 
         replies.append(
             CommentRead(
@@ -104,6 +108,7 @@ def _comment_to_read(comment: Comment) -> CommentRead:
                 updated_at=reply.updated_at,
                 username=reply_username,
                 full_name=reply_full_name,
+                role=reply_role,
                 replies=[],
             )
         )
@@ -118,5 +123,6 @@ def _comment_to_read(comment: Comment) -> CommentRead:
         updated_at=comment.updated_at,
         username=username,
         full_name=full_name,
+        role=role,
         replies=replies,
     )

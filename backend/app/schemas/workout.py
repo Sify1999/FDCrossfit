@@ -40,6 +40,10 @@ class WorkoutSection(BaseModel):
     # Generic notes (used by all types)
     notes: str | None = None
 
+    # Score target type — what the athlete's result is based on
+    # "rounds", "cal", "meters", "time", "reps", "sets", "weight"
+    score_type: str | None = None
+
 
 class WorkoutBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)
