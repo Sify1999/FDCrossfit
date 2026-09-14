@@ -79,7 +79,7 @@ export function formatSingleMovementSection(
   if (movementSets && movementSets.length > 0) {
     for (let i = 0; i < movementSets.length; i++) {
       const ms = movementSets[i];
-      let line = `  Set ${i + 1}:`;
+      let line = `  Set ${i + 1}: `;
       if (ms.reps) line += ` ${ms.reps} x`;
       if (ms.weight) line += ` @${ms.weight}`;
       lines.push(line);
@@ -156,29 +156,43 @@ export function formatConditioningSection(
   if (fmt === "AMRAP") {
     lines.push(`AMRAP ${section.duration_minutes ?? ""}`.trim());
     for (const mov of section.movements) {
-      lines.push(formatMovementRow(mov));
+      lines.push(`  ${formatMovementRow(mov)}`);
     }
     const score = formatScoreType(section.score_type);
-    if (score) lines.push(score);
+    if (score) lines.push(`  ${score}`);
   } else if (fmt === "EMOM") {
-    lines.push(
-      `EMOM ${section.duration_minutes ?? ""} min`.trim()
-    );
-    for (const mov of section.movements) {
-      lines.push(`  :${formatMovementRow(mov)}`);
+    const interval = section.interval_minutes ?? 2;
+    const rounds = section.rounds ?? 5;
+    const intervalCount = (section.interval_groups?.length ?? 1);
+    const perRound = interval * intervalCount;
+    const totalDuration = perRound * rounds;
+    lines.push(`A.Every ${interval} minutes for ${totalDuration} minutes (${rounds} rounds):`);
+    // Use interval_groups if available (each is a sub-interval within a round),
+    // otherwise fall back to flat movements
+    if (section.interval_groups && section.interval_groups.length > 0) {
+      for (const group of section.interval_groups) {
+        lines.push(`${group.label}`);
+        for (const mov of group.movements) {
+          lines.push(`  ${formatMovementRow(mov)}`);
+        }
+      }
+    } else {
+      for (const mov of section.movements) {
+        lines.push(`  ${formatMovementRow(mov)}`);
+      }
     }
     const scoreEmom = formatScoreType(section.score_type);
-    if (scoreEmom) lines.push(scoreEmom);
+    if (scoreEmom) lines.push(`  ${scoreEmom}`);
   } else if (fmt === "FOR_TIME") {
     lines.push("FOR TIME");
     if (section.time_cap_minutes) {
       lines.push(`Time Cap: ${section.time_cap_minutes} min`);
     }
     for (const mov of section.movements) {
-      lines.push(formatMovementRow(mov));
+      lines.push(`  ${formatMovementRow(mov)}`);
     }
     const scoreFt = formatScoreType(section.score_type);
-    if (scoreFt) lines.push(scoreFt);
+    if (scoreFt) lines.push(`  ${scoreFt}`);
   } else if (fmt === "RFT") {
     const header = `${section.rounds ?? "?"} ROUNDS FOR TIME`.trim();
     lines.push(section.time_cap_minutes ? `${header} / TC ${section.time_cap_minutes} min` : header);
@@ -197,7 +211,7 @@ export function formatConditioningSection(
       lines.push(formatMovementRow(mov));
     }
     const scoreTabata = formatScoreType(section.score_type);
-    if (scoreTabata) lines.push(scoreTabata);
+    if (scoreTabata) lines.push(`  ${scoreTabata}`);
   } else if (fmt === "CHIPPER") {
     lines.push("CHIPPER");
     for (let i = 0; i < section.movements.length; i++) {
@@ -219,7 +233,7 @@ export function formatConditioningSection(
       lines.push(`${i + 1}. ${text}`);
     }
     const scoreChi = formatScoreType(section.score_type);
-    if (scoreChi) lines.push(scoreChi);
+    if (scoreChi) lines.push(`  ${scoreChi}`);
   }
 
   if (section.notes) {

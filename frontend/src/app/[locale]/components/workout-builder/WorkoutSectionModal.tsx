@@ -43,7 +43,7 @@ function defaultComplexState(): ComplexFormState {
   return { selectedComplexId: null, complexName: "", movements: [], sets: "", weight: "", restSeconds: "", notes: "", label: "" };
 }
 function defaultCondState(): ConditioningFormState {
-  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], notes: "", label: "" };
+  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], intervalGroups: [], notes: "", label: "" };
 }
 function defaultTextState(): TextFormState {
   return { label: "", content: "" };
@@ -138,6 +138,16 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             workSeconds: cd.work_seconds?.toString() ?? "",
             restSecondsInterval: cd.rest_seconds_interval?.toString() ?? "",
             scoreType: cd.score_type ?? "",
+            intervalGroups: cd.interval_groups?.map((g: any) => ({
+              id: Math.random().toString(36).slice(2, 9),
+              label: g.label,
+              movements: (g.movements || []).map((m: any) => ({
+                ...m,
+                repsSets: m.repsSets ?? [],
+                restSeconds: m.restSeconds ?? "",
+                rowId: newRowId(),
+              })),
+            })) ?? [],
             movements: cd.movements || [], notes: cd.notes ?? "", label: cd.label ?? "",
           });
           setStep("configure-conditioning"); break;
@@ -217,6 +227,16 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
           workSeconds: data.work_seconds?.toString() ?? "",
           restSecondsInterval: data.rest_seconds_interval?.toString() ?? "",
           scoreType: data.score_type ?? "",
+          intervalGroups: (data.interval_groups || []).map((g: any) => ({
+            id: Math.random().toString(36).slice(2, 9),
+            label: g.label,
+            movements: (g.movements || []).map((m: any) => ({
+              ...m,
+              repsSets: m.repsSets ?? [],
+              restSeconds: m.restSeconds ?? "",
+              rowId: newRowId(),
+            })),
+          })),
           movements: data.movements || [], notes: data.notes ?? "", label: data.label ?? template.name,
         });
         setStep("configure-conditioning"); break;
@@ -264,11 +284,24 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
     }
 
     if (selectedType === "conditioning") {
-      if (!condState.format || condState.movements.length === 0) return null;
+      if (!condState.format) return null;
+      const hasMovements = condState.movements.length > 0 ||
+        condState.intervalGroups.some((g) => g.movements.length > 0);
+      if (!hasMovements) return null;
+
+      // Auto-calculate duration for EMOM: interval * intervals_per_round * rounds
+      let durationMinutes: number | null = null;
+      if (condState.format === "EMOM" && condState.intervalMinutes && condState.rounds) {
+        const intervalCount = Math.max(condState.intervalGroups.length, 1);
+        durationMinutes = Number(condState.intervalMinutes) * intervalCount * Number(condState.rounds);
+      } else {
+        durationMinutes = condState.durationMinutes ? Number(condState.durationMinutes) : null;
+      }
+
       return {
         id, type: "conditioning", label: condState.label || condState.format,
         format: condState.format,
-        duration_minutes: condState.durationMinutes ? Number(condState.durationMinutes) : null,
+        duration_minutes: durationMinutes,
         interval_minutes: condState.intervalMinutes ? Number(condState.intervalMinutes) : null,
         time_cap_minutes: condState.timeCapMinutes ? Number(condState.timeCapMinutes) : null,
         rounds: condState.rounds ? Number(condState.rounds) : null,
@@ -276,6 +309,9 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         rest_seconds_interval: condState.restSecondsInterval ? Number(condState.restSecondsInterval) : null,
         score_type: condState.scoreType || null,
         movements: condState.movements, notes: condState.notes || null, content: "",
+        interval_groups: condState.intervalGroups.length > 0
+          ? condState.intervalGroups.map((g) => ({ label: g.label, movements: g.movements }))
+          : undefined,
       } as ConditioningSection;
     }
 
@@ -321,7 +357,9 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
     }
     if (selectedType === "conditioning") {
       if (!condState.format) { setErr("Select a format"); return; }
-      if (condState.movements.length === 0) { setErr("Add at least one movement"); return; }
+      const hasMovements = condState.movements.length > 0 ||
+        condState.intervalGroups.some((g) => g.movements.length > 0);
+      if (!hasMovements) { setErr("Add at least one movement"); return; }
     }
 
     const section = buildSection();

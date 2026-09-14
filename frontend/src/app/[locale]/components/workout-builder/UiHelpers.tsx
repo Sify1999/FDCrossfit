@@ -47,7 +47,7 @@ export function Field({ label, value, onChange, placeholder, textarea, type }: {
 
 const FORMAT_PREVIEWS: Record<ConditioningFormat, { icon: React.ComponentType<{ size?: number }>; label: string; fields: string; desc: string }> = {
   AMRAP:     { icon: IconClock,    label: "AMRAP",     fields: "Duration + Movements", desc: "As Many Rounds As Possible in a fixed time" },
-  EMOM:     { icon: IconActivity,   label: "EMOM",      fields: "Duration + Interval + Movements", desc: "Every Minute On the Minute" },
+  EMOM:     { icon: IconActivity,   label: "EMOM",      fields: "Interval + Rounds + Movements", desc: "Every Minute On the Minute" },
   FOR_TIME: { icon: IconPlay,       label: "FOR TIME",  fields: "Time Cap + Movements", desc: "Complete all work as fast as possible" },
   RFT:      { icon: IconLoop,       label: "RFT",       fields: "Rounds + Movements", desc: "Rounds For Time" },
   TABATA:   { icon: IconZap,        label: "TABATA",    fields: "Work/Rest/Secs + Rounds + Movements", desc: "20s work / 10s rest protocol" },

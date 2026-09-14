@@ -4,7 +4,7 @@ import { Field, FormatSelector, ConfirmDialog } from "./UiHelpers";
 import CondMovementRow from "./CondMovementRow";
 import { newRowId } from "./section-formatter";
 import type { MovementRowData, ConditioningFormat } from "./types";
-import { useState, type DragEvent } from "react";
+import { useState, useEffect, type DragEvent } from "react";
 
 const SCORE_TYPE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   AMRAP: [
@@ -60,6 +60,7 @@ type ConditioningFormState = {
   restSecondsInterval: string;
   scoreType: string;
   movements: MovementRowData[];
+  intervalGroups: { id: string; label: string; movements: MovementRowData[] }[];
   notes: string;
   label: string;
 };
@@ -73,6 +74,23 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
   const set = (key: keyof ConditioningFormState, value: any) => {
     onStateChange({ ...state, [key]: value });
   };
+
+  // ── Auto-create first interval group for EMOM ──────────────────────
+  useEffect(() => {
+    if (state.format !== "EMOM") return;
+    if (!state.intervalMinutes || !state.rounds) return;
+    if (state.intervalGroups.length > 0) return;
+    // Auto-create the first interval group with NO movements
+    onStateChange({
+      ...state,
+      intervalGroups: [{
+        id: `igroup_${Math.random().toString(36).slice(2, 9)}`,
+        label: intervalGroupLabel(0),
+        movements: [],
+      }],
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.format, state.intervalMinutes, state.rounds]);
 
   function addRow() {
     const isChipper = state.format === "CHIPPER";
@@ -101,6 +119,70 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
     const [moved] = updated.splice(fromIndex, 1);
     updated.splice(toIndex, 0, moved);
     set("movements", updated);
+  }
+
+  // ── Auto-calculate duration for EMOM ────────────────────────────────
+  function updateEmomDuration(interval: string, rnds: string): void {
+    if (state.format === "EMOM" && interval && rnds) {
+      const dur = Number(interval) * Number(rnds);
+      if (dur > 0) {
+        onStateChange({ ...state, intervalMinutes: interval, rounds: rnds, durationMinutes: String(dur) });
+        return;
+      }
+    }
+    onStateChange({ ...state, intervalMinutes: interval, rounds: rnds });
+  }
+
+  // ── EMOM interval groups ───────────────────────────────────────────
+  function intervalGroupLabel(gIdx: number): string {
+    const interval = Number(state.intervalMinutes) || 1;
+    const startMin = gIdx * interval + 1;
+    const endMin = (gIdx + 1) * interval;
+    return `Minutes ${startMin} - ${endMin}`;
+  }
+
+  function addIntervalGroup() {
+    const newIdx = state.intervalGroups.length;
+    set("intervalGroups", [...state.intervalGroups, {
+      id: `igroup_${Math.random().toString(36).slice(2, 9)}`,
+      label: intervalGroupLabel(newIdx),
+      movements: [],
+    }]);
+  }
+
+  function removeIntervalGroup(index: number) {
+    set("intervalGroups", state.intervalGroups.filter((_, i) => i !== index));
+  }
+
+  function addRowToGroup(gIdx: number) {
+    const updatedGroups = [...state.intervalGroups];
+    updatedGroups[gIdx] = {
+      ...updatedGroups[gIdx],
+      movements: [...updatedGroups[gIdx].movements, {
+        movement_id: null, movement_name: "", reps: "", repsSets: [], unit: "reps", weight: null, restSeconds: "", rowId: newRowId(),
+      } as MovementRowData],
+    };
+    set("intervalGroups", updatedGroups);
+  }
+
+  function updateRowInGroup(gIdx: number, mIdx: number, fieldOrUpdates: keyof MovementRowData | Partial<MovementRowData>, value?: any) {
+    const updatedGroups = [...state.intervalGroups];
+    const row = updatedGroups[gIdx].movements[mIdx];
+    if (typeof fieldOrUpdates === "string") {
+      updatedGroups[gIdx].movements[mIdx] = { ...row, [fieldOrUpdates]: value };
+    } else {
+      updatedGroups[gIdx].movements[mIdx] = { ...row, ...fieldOrUpdates };
+    }
+    set("intervalGroups", updatedGroups);
+  }
+
+  function removeRowFromGroup(gIdx: number, mIdx: number) {
+    const updatedGroups = [...state.intervalGroups];
+    updatedGroups[gIdx] = {
+      ...updatedGroups[gIdx],
+      movements: updatedGroups[gIdx].movements.filter((_, i) => i !== mIdx),
+    };
+    set("intervalGroups", updatedGroups);
   }
 
   // ── Drag-and-drop state ──────────────────────────────────────────────
@@ -146,8 +228,17 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
       )}
       {state.format === "EMOM" && (
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Duration (min)" value={state.durationMinutes} onChange={(v) => set("durationMinutes", v)} placeholder="20" type="number" />
-          <Field label="Interval (min)" value={state.intervalMinutes} onChange={(v) => set("intervalMinutes", v)} placeholder="1" type="number" />
+          <Field label="Interval (min)" value={state.intervalMinutes} onChange={(v) => updateEmomDuration(v, state.rounds)} placeholder="2" type="number" />
+          <Field label="Rounds" value={state.rounds} onChange={(v) => updateEmomDuration(state.intervalMinutes, v)} placeholder="5" type="number" />
+        </div>
+      )}
+      {state.format === "EMOM" && state.intervalMinutes && state.rounds && (
+        <div className="rounded-xl border border-[#B4E3BD]/20 bg-[#B4E3BD]/5 px-4 py-2.5">
+          <p className="text-xs text-gray-500">
+            Total: <span className="font-semibold text-[#B4E3BD]">{Number(state.intervalMinutes) * Number(state.rounds) * Math.max(state.intervalGroups.length, 1)} min</span>
+            {" · "}
+            <span className="font-semibold text-gray-300">{state.rounds}</span> rounds × <span className="font-semibold text-gray-300">{Math.max(state.intervalGroups.length, 1)}</span> interval{state.intervalGroups.length !== 1 ? "s" : ""} × <span className="font-semibold text-gray-300">{state.intervalMinutes}:00</span> each
+          </p>
         </div>
       )}
       {state.format === "FOR_TIME" && (
@@ -206,7 +297,80 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
         </div>
       )}
 
-      {/* ── Movements ────────────────────────────────────────────── */}
+      {/* ── EMOM: Intervals within each round ─────────────────────────── */}
+      {state.format === "EMOM" && state.intervalMinutes && state.rounds && (
+        <div className="border-t border-gray-800 pt-4 mt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-[#B4E3BD]">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12,6 12,12 16,14" />
+            </svg>
+            <p className="text-sm font-semibold text-gray-300">Intervals</p>
+            <span className="text-[10px] text-gray-500">each {state.intervalMinutes}:00 · {state.intervalGroups.length} interval{state.intervalGroups.length !== 1 ? "s" : ""} = {Number(state.intervalMinutes) * Math.max(state.intervalGroups.length, 1)}:00 per round</span>
+          </div>
+          {state.intervalGroups.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-gray-800 bg-gray-950/30 px-4 py-6 text-center">
+              <p className="text-xs text-gray-500 mb-2">Add intervals to build one round. All {state.rounds} rounds repeat the same intervals.</p>
+              <button type="button" onClick={addIntervalGroup}
+                className="inline-flex items-center gap-2 rounded-xl border-2 border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-5 py-2.5 text-sm font-bold text-[#B4E3BD] shadow-lg shadow-[#B4E3BD]/5 transition hover:bg-[#B4E3BD]/20 hover:border-[#B4E3BD] active:scale-[0.98]">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                  <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                </svg>
+                Add Interval
+              </button>
+            </div>
+          )}
+          {state.intervalGroups.length > 0 && (
+            <>
+              <div className="space-y-3">
+                {state.intervalGroups.map((group, gIdx) => (
+                  <div key={group.id} className="rounded-xl border border-[#B4E3BD]/30 bg-[#B4E3BD]/5 shadow-sm shadow-[#B4E3BD]/5">
+                    <div className="flex items-center justify-between border-b border-[#B4E3BD]/10 px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-[#B4E3BD]">
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <line x1="3" y1="9" x2="21" y2="9" />
+                          <line x1="9" y1="3" x2="9" y2="21" />
+                        </svg>
+                        <p className="text-xs font-bold uppercase tracking-wider text-[#B4E3BD]">{group.label}</p>
+                      </div>
+                      <button type="button" onClick={() => removeIntervalGroup(gIdx)}
+                        className="text-[10px] text-gray-500 hover:text-red-400 transition">&times;</button>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {group.movements.length === 0 && (
+                        <p className="text-center text-[10px] text-gray-600 py-1">No movements — add one below</p>
+                      )}
+                      {group.movements.map((row, mIdx) => (
+                        <CondMovementRow
+                          key={row.rowId}
+                          data={row}
+                          onChange={(f, v) => updateRowInGroup(gIdx, mIdx, f, v)}
+                          onRemove={() => removeRowFromGroup(gIdx, mIdx)}
+                        />
+                      ))}
+                      <button type="button" onClick={() => addRowToGroup(gIdx)}
+                        className="w-full rounded-lg border border-dashed border-gray-700 py-1.5 text-xs text-gray-500 transition hover:border-[#B4E3BD]/50 hover:text-[#B4E3BD]">
+                        + Add Movement
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={addIntervalGroup}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#B4E3BD]/30 bg-[#B4E3BD]/5 py-3 text-sm font-bold text-[#B4E3BD] transition hover:bg-[#B4E3BD]/10 hover:border-[#B4E3BD]/60">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0">
+                  <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+                </svg>
+                + Add Another Interval
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Movements (non-EMOM) ────────────────────────────────────── */}
+      {state.format !== "EMOM" && (
       <div>
         <p className="mb-2 text-sm font-semibold text-gray-300">Movements</p>
         {state.movements.length === 0 ? (
@@ -261,6 +425,7 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
           + Add Movement
         </button>
       </div>
+      )}
 
       <Field label="Notes" value={state.notes} onChange={(v) => set("notes", v)} textarea />
       <Field label="Label" value={state.label} onChange={(v) => set("label", v)} placeholder={state.format || "Metcon"} />

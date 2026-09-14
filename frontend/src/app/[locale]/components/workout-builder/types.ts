@@ -83,6 +83,8 @@ export type ConditioningSection = {
   movements: MovementRowData[];
   notes: string | null;
   content: string;
+  /** EMOM interval groups — each covers a range of minutes with its own movements */
+  interval_groups?: { label: string; movements: MovementRowData[] }[];
 };
 
 export type ConditioningFormat =
