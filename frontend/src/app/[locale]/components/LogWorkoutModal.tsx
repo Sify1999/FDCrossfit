@@ -38,6 +38,8 @@ export type MovementDefForLog = {
   prescribed_reps: string;
   prescribed_unit: string;
   prescribed_weight: string | null;
+  /** When true, the "Sets" input is hidden — used for single-movement set rows and conditioning movements */
+  hideSets?: boolean;
 };
 
 export type SectionForLog = {
@@ -303,22 +305,23 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      {!def?.hideSets && (
                       <div>
                         <span className="block text-[10px] text-gray-600">Sets</span>
                         <input type="text" value={mov.sets}
                           onChange={(e) => updateMovement(sIdx, mIdx, "sets", e.target.value)}
-                          placeholder="&mdash;" className="w-12 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                          placeholder="—" className="w-12 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
                       </div>
+                      )}
                       <div>
                         <span className="block text-[10px] text-gray-600">Reps</span>
                         <input type="text" value={mov.reps}
                           onChange={(e) => {
                             const val = e.target.value;
-                            // Immediately normalize "X" or "x" → "Max" (no need to wait for blur)
+                            // Immediately normalize "X" or "x" → "Max"
                             updateMovement(sIdx, mIdx, "reps", val === "X" || val === "x" ? "Max" : val);
                           }}
                           onFocus={() => {
-                            // Clear "Max" so user can type a new value without deleting
                             if (mov.reps === "Max") updateMovement(sIdx, mIdx, "reps", "");
                           }}
                           placeholder={placeReps}
@@ -332,7 +335,7 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                         <span className="block text-[10px] text-gray-600">Weight</span>
                         <input type="text" value={mov.weight}
                           onChange={(e) => updateMovement(sIdx, mIdx, "weight", e.target.value)}
-                          placeholder={def?.prescribed_weight || "&mdash;"}
+                          placeholder={def?.prescribed_weight || "—"}
                           className="w-16 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
                       </div>
                     </div>

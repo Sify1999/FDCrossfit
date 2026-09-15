@@ -9,28 +9,38 @@ import { useState, useEffect, type DragEvent } from "react";
 const SCORE_TYPE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   AMRAP: [
     { value: "rounds", label: "Rounds" },
+    { value: "reps", label: "Total Reps" },
     { value: "cal", label: "Calories" },
     { value: "meters", label: "Meters" },
-    { value: "reps", label: "Total reps" },
   ],
   FOR_TIME: [
-    { value: "time", label: "Finish time" },
+    { value: "time", label: "Finish Time" },
+    { value: "reps", label: "Total Reps" },
     { value: "cal", label: "Calories" },
     { value: "meters", label: "Meters" },
   ],
   RFT: [
-    { value: "time", label: "Finish time" },
+    { value: "time", label: "Finish Time" },
+    { value: "reps", label: "Total Reps" },
+    { value: "cal", label: "Calories" },
+    { value: "meters", label: "Meters" },
   ],
   CHIPPER: [
-    { value: "time", label: "Finish time" },
+    { value: "time", label: "Finish Time" },
+    { value: "reps", label: "Total Reps" },
+    { value: "cal", label: "Calories" },
+    { value: "meters", label: "Meters" },
   ],
   EMOM: [
-    { value: "rounds", label: "Rounds" },
+    { value: "reps", label: "Total Reps" },
     { value: "cal", label: "Calories" },
     { value: "meters", label: "Meters" },
   ],
   TABATA: [
     { value: "rounds", label: "Rounds" },
+    { value: "reps", label: "Total Reps" },
+    { value: "cal", label: "Calories" },
+    { value: "meters", label: "Meters" },
   ],
 };
 

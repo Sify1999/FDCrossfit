@@ -156,6 +156,7 @@ function extractMovementsForLog(sections: WorkoutSection[]): SectionForLog[] {
           prescribed_reps: ms.reps || "",
           prescribed_unit: "reps",
           prescribed_weight: ms.weight || null,
+          hideSets: true,
         }));
       } else {
         movementDefs = [{
@@ -180,6 +181,8 @@ function extractMovementsForLog(sections: WorkoutSection[]): SectionForLog[] {
         prescribed_reps: m.reps || "",
         prescribed_unit: m.unit || "reps",
         prescribed_weight: m.weight || null,
+        // Conditioning movements don't use sets
+        hideSets: s.type === "conditioning",
       })).filter((m: any) => m.movement_name);
     }
 
