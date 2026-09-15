@@ -143,19 +143,50 @@ async function deleteWorkoutRemote(dateKey: string): Promise<void> {
   await api.delete(`/workouts/${dateKey}`);
 }
 
-/** Extract movement names from a workout's structured sections for logging */
+/** Extract movement names + prescribed values from a workout's structured sections for logging */
 function extractMovementsForLog(sections: WorkoutSection[]): SectionForLog[] {
   return sections.map((s: any) => {
-    let names: string[] = [];
+    let movementDefs: SectionForLog["movements"] = [];
+
     if (s.type === "single" && s.movement_name) {
-      names = [s.movement_name];
-    } else if ((s.type === "complex" || s.type === "conditioning") && s.movements) {
-      names = s.movements.map((m: any) => m.movement_name || "").filter(Boolean);
+      // Expand movement_sets into individual rows (one per set)
+      if (s.movement_sets && s.movement_sets.length > 0) {
+        movementDefs = s.movement_sets.map((ms: any, i: number) => ({
+          movement_name: `${s.movement_name} (Set ${i + 1})`,
+          prescribed_reps: ms.reps || "",
+          prescribed_unit: "reps",
+          prescribed_weight: ms.weight || null,
+        }));
+      } else {
+        movementDefs = [{
+          movement_name: s.movement_name,
+          prescribed_reps: s.reps || "",
+          prescribed_unit: "reps",
+          prescribed_weight: s.weight || null,
+        }];
+      }
+
+    } else if (s.type === "complex" || s.type === "conditioning") {
+      // Collect movements from both flat movements array and EMOM interval_groups
+      let allMovements: any[] = [];
+      if (s.movements) allMovements = allMovements.concat(s.movements);
+      if (s.format === "EMOM" && s.interval_groups) {
+        for (const group of s.interval_groups) {
+          if (group.movements) allMovements = allMovements.concat(group.movements);
+        }
+      }
+      movementDefs = allMovements.map((m: any) => ({
+        movement_name: m.movement_name || "",
+        prescribed_reps: m.reps || "",
+        prescribed_unit: m.unit || "reps",
+        prescribed_weight: m.weight || null,
+      })).filter((m: any) => m.movement_name);
     }
+
     return {
       id: s.id,
       label: s.label,
-      movementNames: names,
+      movements: movementDefs,
       scoreType: s.score_type || "",
       format: s.format || "",
       rounds: s.rounds ?? undefined,

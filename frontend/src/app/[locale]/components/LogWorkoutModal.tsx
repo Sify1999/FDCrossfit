@@ -33,10 +33,17 @@ type Props = {
   sections: SectionForLog[];
 };
 
+export type MovementDefForLog = {
+  movement_name: string;
+  prescribed_reps: string;
+  prescribed_unit: string;
+  prescribed_weight: string | null;
+};
+
 export type SectionForLog = {
   id: string;
   label: string;
-  movementNames: string[];
+  movements: MovementDefForLog[];
   scoreType: string;
   format: string;
   rounds?: number;
@@ -88,8 +95,12 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
       section_id: sec.id,
       section_label: sec.label,
       score: "",
-      movements: sec.movementNames.map((name) => ({
-        movement_name: name, sets: "", reps: "", weight: "", notes: "",
+      movements: sec.movements.map((def) => ({
+        movement_name: def.movement_name,
+        sets: "",
+        reps: def.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def.prescribed_reps || ""),
+        weight: def.prescribed_weight || "",
+        notes: "",
       })),
     }));
   }
@@ -101,11 +112,17 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
         section_id: sec.id,
         section_label: sec.label,
         score: existingSection?.score ?? "",
-        movements: sec.movementNames.map((name) => {
-          const existingMov = existingSection?.movements?.find((m) => m.movement_name === name);
+        movements: sec.movements.map((def) => {
+          const existingMov = existingSection?.movements?.find((m) => m.movement_name === def.movement_name);
           return existingMov
             ? { ...existingMov }
-            : { movement_name: name, sets: "", reps: "", weight: "", notes: "" };
+            : {
+                movement_name: def.movement_name,
+                sets: "",
+                reps: def.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def.prescribed_reps || ""),
+                weight: def.prescribed_weight || "",
+                notes: "",
+              };
         }),
       };
     });
@@ -270,10 +287,21 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
               </div>
             )}
               {section.movements.length === 0 && <p className="text-xs text-gray-600">&mdash;</p>}
-              <div className="space-y-2">
-                {section.movements.map((mov, mIdx) => (
-                  <div key={mIdx} className="rounded-xl border border-gray-800 bg-gray-950/60 p-3">
-                    <span className="block text-[10px] text-gray-600 mb-1.5">{mov.movement_name}</span>
+              <div className="space-y-3">
+                {section.movements.map((mov, mIdx) => {
+                  const def = secMeta?.movements?.[mIdx];
+                  const isMax = mov.reps === "Max";
+                  const placeReps = def?.prescribed_reps
+                    ? (def.prescribed_reps?.toUpperCase() === "X" ? "Max" : def.prescribed_reps)
+                    : "Max";
+                  return (
+                  <div key={mIdx} className="rounded-xl border border-gray-800 bg-gray-950/60 p-3 transition hover:border-gray-700">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-gray-200">{mov.movement_name}</span>
+                      {def?.prescribed_reps && (
+                        <span className="text-[9px] text-gray-600">Prescribed: {def.prescribed_reps} {def.prescribed_unit}{def.prescribed_weight ? ` @ ${def.prescribed_weight}` : ""}</span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <div>
                         <span className="block text-[10px] text-gray-600">Sets</span>
@@ -284,14 +312,28 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                       <div>
                         <span className="block text-[10px] text-gray-600">Reps</span>
                         <input type="text" value={mov.reps}
-                          onChange={(e) => updateMovement(sIdx, mIdx, "reps", e.target.value)}
-                          placeholder="&mdash;" className="w-12 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            // Immediately normalize "X" or "x" → "Max" (no need to wait for blur)
+                            updateMovement(sIdx, mIdx, "reps", val === "X" || val === "x" ? "Max" : val);
+                          }}
+                          onFocus={() => {
+                            // Clear "Max" so user can type a new value without deleting
+                            if (mov.reps === "Max") updateMovement(sIdx, mIdx, "reps", "");
+                          }}
+                          placeholder={placeReps}
+                          className={`w-14 rounded-lg border px-2 py-1.5 text-center text-xs outline-none transition ${
+                            isMax
+                              ? "border-[#B4E3BD]/40 bg-[#B4E3BD]/10 font-bold text-[#B4E3BD]"
+                              : "border-gray-800 bg-gray-950 text-white placeholder:text-gray-600 focus:border-[#B4E3BD]"
+                          }`} />
                       </div>
                       <div>
                         <span className="block text-[10px] text-gray-600">Weight</span>
                         <input type="text" value={mov.weight}
                           onChange={(e) => updateMovement(sIdx, mIdx, "weight", e.target.value)}
-                          placeholder="&mdash;" className="w-16 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                          placeholder={def?.prescribed_weight || "&mdash;"}
+                          className="w-16 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
                       </div>
                     </div>
                     <textarea
@@ -302,7 +344,7 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                       className="mt-2 w-full resize-none rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD] focus:bg-gray-900"
                     />
                   </div>
-                ))}
+                );})}
               </div>
             </div>
           )})}

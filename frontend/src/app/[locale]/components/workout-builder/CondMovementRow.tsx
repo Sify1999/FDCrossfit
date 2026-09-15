@@ -99,8 +99,23 @@ export default function CondMovementRow({ data, onChange, onRemove, chipper }: P
         <div className="flex items-center gap-2">
           <div>
             <span className="block text-[10px] text-gray-600">Reps/Dist</span>
-            <input type="text" value={data.reps} onChange={(e) => onChange("reps", e.target.value)}
-              placeholder="10" className="w-16 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-xs text-white placeholder:text-gray-600 outline-none focus:border-[#B4E3BD]" />
+            <input type="text" value={data.reps}
+              onChange={(e) => {
+                const val = e.target.value;
+                // Normalize "X" or "x" → "Max"
+                const normalized = (val === "X" || val === "x") ? "Max" : val;
+                onChange("reps", normalized);
+              }}
+              onFocus={() => {
+                // Clear "Max" so user can type a new value without deleting
+                if (data.reps === "Max") onChange("reps", "");
+              }}
+              placeholder="10"
+              className={`w-16 rounded-lg border px-2 py-1.5 text-xs text-center outline-none transition ${
+                data.reps === "Max"
+                  ? "border-[#B4E3BD]/40 bg-[#B4E3BD]/10 font-bold text-[#B4E3BD]"
+                  : "border-gray-800 bg-gray-950 text-white placeholder:text-gray-600 focus:border-[#B4E3BD]"
+              }`} />
           </div>
           <div>
             <span className="block text-[10px] text-gray-600">Unit</span>

@@ -59,11 +59,12 @@ export function formatMovementRow(
   includeWeight: boolean = true
 ): string {
   let text = row.movement_name;
-  // Reps with unit after the movement name
+  // Reps with unit after the movement name ("X" → "Max reps")
   if (row.reps) {
     const unit = row.unit || "reps";
     const suffix = UNIT_LABELS[unit] ?? ` ${unit}`;
-    text += ` ${row.reps}${suffix}`;
+    const repsDisplay = row.reps.toUpperCase() === "X" || row.reps === "Max" ? "Max" : row.reps;
+    text += ` ${repsDisplay}${suffix}`;
   }
   // Weight (handles "80kg", "50% 1RM", "BW", etc.)
   if (includeWeight && row.weight) {
@@ -91,7 +92,10 @@ export function formatSingleMovementSection(
     for (let i = 0; i < movementSets.length; i++) {
       const ms = movementSets[i];
       let line = `  Set ${i + 1}: `;
-      if (ms.reps) line += ` ${ms.reps} x`;
+      if (ms.reps) {
+        const repsDisplay = ms.reps.toUpperCase() === "X" || ms.reps === "Max" ? "Max" : ms.reps;
+        line += ` ${repsDisplay} x`;
+      }
       if (ms.weight) line += ` @${ms.weight}`;
       lines.push(line);
     }
@@ -102,7 +106,8 @@ export function formatSingleMovementSection(
       parts.push(String(section.sets));
     }
     if (section.reps) {
-      parts.push(`× ${section.reps}`);
+      const repsDisplay = section.reps.toUpperCase() === "X" || section.reps === "Max" ? "Max" : section.reps;
+      parts.push(`× ${repsDisplay}`);
     }
     if (section.weight) {
       parts.push(`@ ${section.weight}`);
