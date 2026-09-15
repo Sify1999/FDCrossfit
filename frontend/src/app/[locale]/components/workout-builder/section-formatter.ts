@@ -43,18 +43,29 @@ function formatScoreType(scoreType: string | null): string {
   return `Score: ${label}`;
 }
 
+const UNIT_LABELS: Record<string, string> = {
+  reps: " reps",
+  cal: " cal",
+  m: "m",
+  sec: " sec",
+};
+
 /**
  * Format a single movement row into display text.
+ * Output: "Run 200m", "Bench Press 12 reps @ 80kg", "Plank 30 sec"
  */
 export function formatMovementRow(
   row: MovementRowData,
   includeWeight: boolean = true
 ): string {
-  let text = "";
+  let text = row.movement_name;
+  // Reps with unit after the movement name
   if (row.reps) {
-    text += `${row.reps} `;
+    const unit = row.unit || "reps";
+    const suffix = UNIT_LABELS[unit] ?? ` ${unit}`;
+    text += ` ${row.reps}${suffix}`;
   }
-  text += row.movement_name;
+  // Weight (handles "80kg", "50% 1RM", "BW", etc.)
   if (includeWeight && row.weight) {
     text += ` @ ${row.weight}`;
   }
@@ -166,7 +177,7 @@ export function formatConditioningSection(
     const intervalCount = (section.interval_groups?.length ?? 1);
     const perRound = interval * intervalCount;
     const totalDuration = perRound * rounds;
-    lines.push(`A.Every ${interval} minutes for ${totalDuration} minutes (${rounds} rounds):`);
+    lines.push(`Every ${interval} minutes for ${totalDuration} minutes (${rounds} rounds):`);
     // Use interval_groups if available (each is a sub-interval within a round),
     // otherwise fall back to flat movements
     if (section.interval_groups && section.interval_groups.length > 0) {
