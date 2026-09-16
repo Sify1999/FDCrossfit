@@ -4,7 +4,7 @@ import { Field, FormatSelector, ConfirmDialog } from "./UiHelpers";
 import CondMovementRow from "./CondMovementRow";
 import { newRowId } from "./section-formatter";
 import type { MovementRowData, ConditioningFormat } from "./types";
-import { useState, useEffect, type DragEvent } from "react";
+import { useState, useEffect, useRef, type DragEvent } from "react";
 
 const SCORE_TYPE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   AMRAP: [
@@ -44,7 +44,7 @@ const SCORE_TYPE_OPTIONS: Record<string, { value: string; label: string }[]> = {
   ],
 };
 
-function getScoreTypeOptions(format: ConditioningFormat) {
+export function getScoreTypeOptions(format: ConditioningFormat) {
   return SCORE_TYPE_OPTIONS[format] ?? [{ value: "rounds", label: "Rounds" }];
 }
 
@@ -58,6 +58,26 @@ function defaultScoreType(format: ConditioningFormat, current: string): string {
   if (current && opts.some((o) => o.value === current)) return current;
   // Otherwise default to the first option
   return opts[0]?.value ?? "";
+}
+
+function addCustomScoreTarget(
+  state: ConditioningFormState,
+  onStateChange: (s: ConditioningFormState) => void,
+  customValue: string
+) {
+  const trimmed = customValue.trim();
+  if (!trimmed || !state.format) return;
+  // Don't add duplicates
+  const alreadyExists = getScoreTypeOptions(state.format).some((o) => o.value === trimmed);
+  if (alreadyExists) return;
+  onStateChange({
+    ...state,
+    customScoreTargets: [
+      ...state.customScoreTargets,
+      { value: trimmed, label: trimmed },
+    ],
+    scoreType: trimmed,
+  });
 }
 
 type ConditioningFormState = {
@@ -77,6 +97,8 @@ type ConditioningFormState = {
   rpe: string;
   effort: string;
   zone: string;
+  /** Custom score targets added on-the-fly by the coach (not persisted globally) */
+  customScoreTargets: { value: string; label: string }[];
 };
 
 type Props = {
@@ -85,6 +107,17 @@ type Props = {
 };
 
 export default function ConditioningForm({ state, onStateChange }: Props) {
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customInputValue, setCustomInputValue] = useState("");
+  const customInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus the custom score input when it appears
+  useEffect(() => {
+    if (showCustomInput && customInputRef.current) {
+      customInputRef.current.focus();
+    }
+  }, [showCustomInput]);
+
   const set = (key: keyof ConditioningFormState, value: any) => {
     onStateChange({ ...state, [key]: value });
   };
@@ -280,7 +313,7 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
         <div>
           <label className="mb-2 block text-xs font-semibold text-gray-400">Score target</label>
           <p className="mb-2 text-[10px] text-gray-600">What is the result based on?</p>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
               onClick={() => set("scoreType", "")}
@@ -307,6 +340,89 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
                 {opt.label}
               </button>
             ))}
+            {/* ── Custom score targets (added on-the-fly) ──────────── */}
+            {state.customScoreTargets.map((opt) => (
+              <div
+                key={opt.value}
+                className={`group inline-flex items-center gap-0.5 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                  state.scoreType === opt.value
+                    ? "border-yellow-500 bg-yellow-500/10 text-yellow-400 shadow-sm shadow-yellow-500/10"
+                    : "border-yellow-500/30 text-yellow-500/70 hover:border-yellow-500/60 hover:text-yellow-400"
+                }`}
+                onClick={() => set("scoreType", opt.value)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set("scoreType", opt.value); } }}
+              >
+                <span>{opt.label}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const filtered = state.customScoreTargets.filter((x) => x.value !== opt.value);
+                    const nextScore = state.scoreType === opt.value ? "" : state.scoreType;
+                    set("customScoreTargets", filtered);
+                    if (nextScore !== state.scoreType) {
+                      onStateChange({ ...state, customScoreTargets: filtered, scoreType: nextScore });
+                    } else {
+                      set("customScoreTargets", filtered);
+                    }
+                  }}
+                  className="inline-flex items-center justify-center rounded-full px-1 text-[9px] text-yellow-500/50 transition hover:text-red-400 hover:bg-red-500/10"
+                  aria-label={`Remove ${opt.label}`}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {/* ── "+" button to add a custom target ──────────────────── */}
+            {!showCustomInput ? (
+              <button
+                type="button"
+                onClick={() => { setShowCustomInput(true); setCustomInputValue(""); }}
+                className="rounded-lg border border-dashed border-gray-700 px-2.5 py-1.5 text-xs font-medium text-gray-500 transition hover:border-[#B4E3BD]/50 hover:text-[#B4E3BD]"
+              >
+                + Custom
+              </button>
+            ) : (
+              <div className="flex items-center gap-1">
+                <input
+                  ref={customInputRef}
+                  type="text"
+                  value={customInputValue}
+                  onChange={(e) => setCustomInputValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      addCustomScoreTarget(state, onStateChange, customInputValue);
+                      setShowCustomInput(false);
+                      setCustomInputValue("");
+                    }
+                    if (e.key === "Escape") {
+                      setShowCustomInput(false);
+                      setCustomInputValue("");
+                    }
+                  }}
+                  onBlur={() => {
+                    // Save on blur if there's content
+                    if (customInputValue.trim()) {
+                      addCustomScoreTarget(state, onStateChange, customInputValue);
+                    }
+                    setShowCustomInput(false);
+                    setCustomInputValue("");
+                  }}
+                  placeholder="Type target name..."
+                  className="w-32 rounded-lg border border-[#B4E3BD]/40 bg-gray-900 px-2 py-1.5 text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]"
+                  maxLength={50}
+                />
+                <button
+                  type="button"
+                  onClick={() => { setShowCustomInput(false); setCustomInputValue(""); }}
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-xs text-gray-500 transition hover:text-red-400"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

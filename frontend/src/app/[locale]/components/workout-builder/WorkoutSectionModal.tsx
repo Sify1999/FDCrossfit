@@ -5,7 +5,7 @@ import { api, getErrorMessage } from "@/lib/api-client";
 import { TypeCard } from "./UiHelpers";
 import SingleMovementForm from "./SingleMovementForm";
 import ComplexForm from "./ComplexForm";
-import ConditioningForm from "./ConditioningForm";
+import ConditioningForm, { type ConditioningFormState, getScoreTypeOptions } from "./ConditioningForm";
 import TextForm from "./TextForm";
 import type {
   Movement,
@@ -17,7 +17,6 @@ import type {
 } from "./types";
 import type { SingleFormState } from "./SingleMovementForm";
 import type { ComplexFormState } from "./ComplexForm";
-import type { ConditioningFormState } from "./ConditioningForm";
 import type { TextFormState } from "./TextForm";
 import { formatSection, newSectionId, newRowId } from "./section-formatter";
 import { fetchSectionTemplates, createSectionTemplate, deleteSectionTemplate, generateTemplateName } from "@/lib/section-templates";
@@ -43,7 +42,7 @@ function defaultComplexState(): ComplexFormState {
   return { selectedComplexId: null, complexName: "", movements: [], sets: "", weight: "", restSeconds: "", notes: "", label: "", rpe: "", effort: "", zone: "" };
 }
 function defaultCondState(): ConditioningFormState {
-  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], intervalGroups: [], notes: "", label: "", rpe: "", effort: "", zone: "" };
+  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], intervalGroups: [], notes: "", label: "", rpe: "", effort: "", zone: "", customScoreTargets: [] };
 }
 function defaultTextState(): TextFormState {
   return { label: "", content: "" };
@@ -152,6 +151,10 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             })) ?? [],
             movements: cd.movements || [], notes: cd.notes ?? "", label: cd.label ?? "",
             rpe: cd.rpe ?? "", effort: cd.effort ?? "", zone: cd.zone ?? "",
+            // Restore custom score target if score_type is a custom value (not in predefined options)
+            customScoreTargets: cd.score_type && cd.format && !getScoreTypeOptions(cd.format).some((o) => o.value === cd.score_type)
+              ? [{ value: cd.score_type, label: cd.score_type }]
+              : [],
           });
           setStep("configure-conditioning"); break;
         }
@@ -244,6 +247,10 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
           })),
           movements: data.movements || [], notes: data.notes ?? "", label: data.label ?? template.name,
           rpe: data.rpe ?? "", effort: data.effort ?? "", zone: data.zone ?? "",
+          // Restore custom score target if score_type is a custom value
+          customScoreTargets: data.score_type && data.format && !getScoreTypeOptions(data.format).some((o: any) => o.value === data.score_type)
+            ? [{ value: data.score_type, label: data.score_type }]
+            : [],
         });
         setStep("configure-conditioning"); break;
       }
