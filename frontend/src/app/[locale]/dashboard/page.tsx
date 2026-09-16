@@ -194,6 +194,9 @@ function extractMovementsForLog(sections: WorkoutSection[]): SectionForLog[] {
       format: s.format || "",
       rounds: s.rounds ?? undefined,
       timeCapMinutes: s.time_cap_minutes ?? undefined,
+      rpe: s.rpe ?? undefined,
+      effort: s.effort ?? undefined,
+      zone: s.zone ?? undefined,
     };
   });
 }

@@ -22,6 +22,9 @@ type LogSectionEntry = {
   section_label: string;
   score: string;
   movements: LogMovementItem[];
+  rpe: string;
+  effort: string;
+  zone: string;
 };
 
 type LogData = LogSectionEntry[];
@@ -50,6 +53,10 @@ export type SectionForLog = {
   format: string;
   rounds?: number;
   timeCapMinutes?: number;
+  /** Coach-prescribed intensity/effort fields for pre-filling the log */
+  rpe?: string;
+  effort?: string;
+  zone?: string;
 };
 export default function LogWorkoutModal({ open, onClose, workoutDate, sections }: Props) {
   useBodyScrollLock(open);
@@ -97,6 +104,9 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
       section_id: sec.id,
       section_label: sec.label,
       score: "",
+      rpe: sec.rpe ?? "",
+      effort: sec.effort ?? "",
+      zone: sec.zone ?? "",
       movements: sec.movements.map((def) => ({
         movement_name: def.movement_name,
         sets: "",
@@ -114,6 +124,11 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
         section_id: sec.id,
         section_label: sec.label,
         score: existingSection?.score ?? "",
+        // Use athlete's saved value if they explicitly set it,
+        // otherwise fall back to the coach's prescribed value from the workout section
+        rpe: existingSection?.rpe ?? sec.rpe ?? "",
+        effort: existingSection?.effort ?? sec.effort ?? "",
+        zone: existingSection?.zone ?? sec.zone ?? "",
         movements: sec.movements.map((def) => {
           const existingMov = existingSection?.movements?.find((m) => m.movement_name === def.movement_name);
           return existingMov
@@ -134,6 +149,14 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
     setLogData((prev) => {
       const next = [...prev];
       next[sIdx] = { ...next[sIdx], score: value };
+      return next;
+    });
+  }
+
+  function updateSection(sIdx: number, field: "rpe" | "effort" | "zone", value: string) {
+    setLogData((prev) => {
+      const next = [...prev];
+      next[sIdx] = { ...next[sIdx], [field]: value };
       return next;
     });
   }
@@ -288,6 +311,30 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                 )}
               </div>
             )}
+              {/* ── RPE / Effort / Zone ────────────────────────────────── */}
+              <div className="mb-3 grid grid-cols-3 gap-2">
+                <div>
+                  <span className="block text-[10px] text-gray-600">RPE</span>
+                  <input type="text" value={section.rpe}
+                    onChange={(e) => updateSection(sIdx, "rpe", e.target.value)}
+                    placeholder="e.g. 7"
+                    className="w-full rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                </div>
+                <div>
+                  <span className="block text-[10px] text-gray-600">Effort</span>
+                  <input type="text" value={section.effort}
+                    onChange={(e) => updateSection(sIdx, "effort", e.target.value)}
+                    placeholder="e.g. Moderate"
+                    className="w-full rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                </div>
+                <div>
+                  <span className="block text-[10px] text-gray-600">Zone</span>
+                  <input type="text" value={section.zone}
+                    onChange={(e) => updateSection(sIdx, "zone", e.target.value)}
+                    placeholder="e.g. 2"
+                    className="w-full rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                </div>
+              </div>
               {section.movements.length === 0 && <p className="text-xs text-gray-600">&mdash;</p>}
               <div className="space-y-3">
                 {section.movements.map((mov, mIdx) => {

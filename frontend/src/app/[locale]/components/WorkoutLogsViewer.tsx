@@ -17,6 +17,9 @@ type LogSectionEntry = {
   section_label: string;
   score: string;
   movements: LogMovementEntry[];
+  rpe?: string;
+  effort?: string;
+  zone?: string;
 };
 
 type WorkoutLogEntry = {
@@ -123,6 +126,14 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
                       </span>
                     )}
                   </div>
+                  {/* ── RPE / Effort / Zone ──────────────────────────────── */}
+                  {(section.rpe || section.effort || section.zone) && (
+                    <div className="mb-3 flex flex-wrap gap-3 text-xs text-gray-400">
+                      {section.rpe && <span className="rounded-md border border-gray-800 bg-gray-950/60 px-2 py-0.5">RPE: {section.rpe}</span>}
+                      {section.effort && <span className="rounded-md border border-gray-800 bg-gray-950/60 px-2 py-0.5">Effort: {section.effort}</span>}
+                      {section.zone && <span className="rounded-md border border-gray-800 bg-gray-950/60 px-2 py-0.5">Zone: {section.zone}</span>}
+                    </div>
+                  )}
                   {section.movements.length === 0 && <p className="text-xs text-gray-600">&mdash;</p>}
                   <div className="space-y-2">
                     {section.movements.map((mov, i) => (

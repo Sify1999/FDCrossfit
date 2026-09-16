@@ -73,6 +73,10 @@ type ConditioningFormState = {
   intervalGroups: { id: string; label: string; movements: MovementRowData[] }[];
   notes: string;
   label: string;
+  /** Coach-prescribed intensity/effort fields */
+  rpe: string;
+  effort: string;
+  zone: string;
 };
 
 type Props = {
@@ -436,6 +440,13 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
         </button>
       </div>
       )}
+
+      {/* ── RPE / Effort / Zone ──────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="RPE" value={state.rpe} onChange={(v) => set("rpe", v)} placeholder="e.g. 7-8" />
+        <Field label="Effort" value={state.effort} onChange={(v) => set("effort", v)} placeholder="e.g. Moderate" />
+        <Field label="Zone" value={state.zone} onChange={(v) => set("zone", v)} placeholder="e.g. Zone 2" />
+      </div>
 
       <Field label="Notes" value={state.notes} onChange={(v) => set("notes", v)} textarea />
       <Field label="Label" value={state.label} onChange={(v) => set("label", v)} placeholder={state.format || "Metcon"} />

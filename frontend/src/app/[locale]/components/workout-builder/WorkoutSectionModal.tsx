@@ -37,13 +37,13 @@ type SectionType = "single" | "complex" | "conditioning" | "text";
 type Step = "select-type" | "configure-single" | "configure-complex" | "configure-conditioning" | "configure-text" | "browse-templates";
 
 function defaultSingleState(): SingleFormState {
-  return { movement: null, reps: "", weight: "", restSeconds: "", tempo: "", notes: "", label: "", setRows: [{ reps: "", weight: "", id: newRowId() }] };
+  return { movement: null, reps: "", weight: "", restSeconds: "", tempo: "", notes: "", label: "", setRows: [{ reps: "", weight: "", id: newRowId() }], rpe: "", effort: "", zone: "" };
 }
 function defaultComplexState(): ComplexFormState {
-  return { selectedComplexId: null, complexName: "", movements: [], sets: "", weight: "", restSeconds: "", notes: "", label: "" };
+  return { selectedComplexId: null, complexName: "", movements: [], sets: "", weight: "", restSeconds: "", notes: "", label: "", rpe: "", effort: "", zone: "" };
 }
 function defaultCondState(): ConditioningFormState {
-  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], intervalGroups: [], notes: "", label: "" };
+  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], intervalGroups: [], notes: "", label: "", rpe: "", effort: "", zone: "" };
 }
 function defaultTextState(): TextFormState {
   return { label: "", content: "" };
@@ -115,6 +115,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             reps: s.reps ?? "", weight: s.weight ?? "", restSeconds: s.rest_seconds?.toString() ?? "",
             tempo: s.tempo ?? "", notes: s.notes ?? "", label: s.label ?? "",
             setRows: savedSets.length ? savedSets : defaultSets,
+            rpe: s.rpe ?? "", effort: s.effort ?? "", zone: s.zone ?? "",
           });
           setStep("configure-single"); break;
         }
@@ -125,6 +126,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             movements: c.movements || [], sets: c.sets?.toString() ?? "",
             weight: c.weight ?? "", restSeconds: c.rest_seconds?.toString() ?? "",
             notes: c.notes ?? "", label: c.label ?? "",
+            rpe: c.rpe ?? "", effort: c.effort ?? "", zone: c.zone ?? "",
           });
           setStep("configure-complex"); break;
         }
@@ -149,6 +151,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
               })),
             })) ?? [],
             movements: cd.movements || [], notes: cd.notes ?? "", label: cd.label ?? "",
+            rpe: cd.rpe ?? "", effort: cd.effort ?? "", zone: cd.zone ?? "",
           });
           setStep("configure-conditioning"); break;
         }
@@ -206,6 +209,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
           reps: data.reps ?? "", weight: data.weight ?? "", restSeconds: data.rest_seconds?.toString() ?? "",
           tempo: data.tempo ?? "", notes: data.notes ?? "", label: data.label ?? "",
           setRows: savedSets.length ? savedSets : defaultSets,
+          rpe: data.rpe ?? "", effort: data.effort ?? "", zone: data.zone ?? "",
         });
         setStep("configure-single"); break;
       }
@@ -215,6 +219,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
           movements: data.movements || [], sets: data.sets?.toString() ?? "",
           weight: data.weight ?? "", restSeconds: data.rest_seconds?.toString() ?? "",
           notes: data.notes ?? "", label: data.label ?? template.name,
+          rpe: data.rpe ?? "", effort: data.effort ?? "", zone: data.zone ?? "",
         });
         setStep("configure-complex"); break;
       }
@@ -238,6 +243,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             })),
           })),
           movements: data.movements || [], notes: data.notes ?? "", label: data.label ?? template.name,
+          rpe: data.rpe ?? "", effort: data.effort ?? "", zone: data.zone ?? "",
         });
         setStep("configure-conditioning"); break;
       }
@@ -267,6 +273,9 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         tempo: singleState.tempo || null, notes: singleState.notes || null,
         content: "",
         movement_sets: movementSets.length > 0 ? movementSets : undefined,
+        rpe: singleState.rpe || null,
+        effort: singleState.effort || null,
+        zone: singleState.zone || null,
       } as SingleMovementSection;
     }
 
@@ -280,6 +289,9 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         weight: complexState.weight || null,
         rest_seconds: complexState.restSeconds ? Number(complexState.restSeconds) : null,
         notes: complexState.notes || null, content: "",
+        rpe: complexState.rpe || null,
+        effort: complexState.effort || null,
+        zone: complexState.zone || null,
       } as ComplexSection;
     }
 
@@ -312,11 +324,14 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         interval_groups: condState.intervalGroups.length > 0
           ? condState.intervalGroups.map((g) => ({ label: g.label, movements: g.movements }))
           : undefined,
+        rpe: condState.rpe || null,
+        effort: condState.effort || null,
+        zone: condState.zone || null,
       } as ConditioningSection;
     }
 
     if (selectedType === "text") {
-      return { id, type: "text", label: textState.label || "Free text", content: textState.content } as TextSection;
+      return { id, type: "text", label: textState.label || "Free text", content: textState.content, rpe: null, effort: null, zone: null } as TextSection;
     }
 
     return null;

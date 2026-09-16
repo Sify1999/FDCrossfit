@@ -14,6 +14,10 @@ type SingleFormState = {
   label: string;
   /** Multi-set rows — each has its own reps & weight */
   setRows: { reps: string; weight: string; id: string }[];
+  /** Coach-prescribed intensity/effort fields */
+  rpe: string;
+  effort: string;
+  zone: string;
 };
 
 type Props = {
@@ -122,6 +126,14 @@ export default function SingleMovementForm({ state, onStateChange, onMovementCha
         <Field label="Rest (sec)" value={state.restSeconds} onChange={(v) => set("restSeconds", v)} placeholder="90" type="number" />
         <Field label="Tempo" value={state.tempo} onChange={(v) => set("tempo", v)} placeholder="e.g. 20X1" />
       </div>
+
+      {/* ── RPE / Effort / Zone ──────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="RPE" value={state.rpe} onChange={(v) => set("rpe", v)} placeholder="e.g. 7-8" />
+        <Field label="Effort" value={state.effort} onChange={(v) => set("effort", v)} placeholder="e.g. Moderate" />
+        <Field label="Zone" value={state.zone} onChange={(v) => set("zone", v)} placeholder="e.g. Zone 2" />
+      </div>
+
       <Field label="Notes" value={state.notes} onChange={(v) => set("notes", v)} textarea />
     </div>
   );

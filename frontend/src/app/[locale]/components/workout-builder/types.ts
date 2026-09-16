@@ -5,6 +5,32 @@ export type Movement = {
   default_unit: string;
 };
 
+// ─── Cardio movements that support expanded unit options ─────────────
+export const CARDIO_MOVEMENT_NAMES = new Set([
+  "Assault Bike",
+  "Bike",
+  "Row",
+  "Ski Erg",
+]);
+
+export const CARDIO_UNIT_OPTIONS = [
+  { value: "m", label: "meters (m)" },
+  { value: "cal", label: "calories" },
+  { value: "sec", label: "time (sec)" },
+  { value: "watts", label: "watts" },
+  { value: "pace", label: "pace" },
+  { value: "rpm", label: "rpm" },
+  { value: "distance/time", label: "distance / time" },
+  { value: "calories/time", label: "calories / time" },
+] as const;
+
+export const DEFAULT_UNIT_OPTIONS = [
+  { value: "reps", label: "reps" },
+  { value: "cal", label: "cal" },
+  { value: "m", label: "m" },
+  { value: "sec", label: "sec" },
+] as const;
+
 // ─── Complex ─────────────────────────────────────────────────────────
 export type ComplexMovementItem = {
   movement_id: number;
@@ -50,6 +76,10 @@ export type SingleMovementSection = {
   content: string;
   /** Multi-set rows — each set has its own reps & weight */
   movement_sets?: { reps: string; weight: string }[];
+  /** Coach-prescribed intensity/effort fields */
+  rpe: string | null;
+  effort: string | null;
+  zone: string | null;
 };
 
 /** Complex — multiple movements performed as a sequence */
@@ -65,6 +95,10 @@ export type ComplexSection = {
   rest_seconds: number | null;
   notes: string | null;
   content: string;
+  /** Coach-prescribed intensity/effort fields */
+  rpe: string | null;
+  effort: string | null;
+  zone: string | null;
 };
 
 /** Conditioning — AMRAP, EMOM, For Time, RFT, Tabata, Chipper */
@@ -85,6 +119,10 @@ export type ConditioningSection = {
   content: string;
   /** EMOM interval groups — each covers a range of minutes with its own movements */
   interval_groups?: { label: string; movements: MovementRowData[] }[];
+  /** Coach-prescribed intensity/effort fields */
+  rpe: string | null;
+  effort: string | null;
+  zone: string | null;
 };
 
 export type ConditioningFormat =
@@ -101,6 +139,10 @@ export type TextSection = {
   label: string;
   type: "text";
   content: string;
+  /** Coach-prescribed intensity/effort fields */
+  rpe: string | null;
+  effort: string | null;
+  zone: string | null;
 };
 
 export type WorkoutSection =

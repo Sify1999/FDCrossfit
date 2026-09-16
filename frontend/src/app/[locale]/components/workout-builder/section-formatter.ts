@@ -43,11 +43,33 @@ function formatScoreType(scoreType: string | null): string {
   return `Score: ${label}`;
 }
 
+/**
+ * Format RPE / Effort / Zone lines if present.
+ */
+function formatIntensity(
+  rpe: string | null,
+  effort: string | null,
+  zone: string | null
+): string[] {
+  const parts: string[] = [];
+
+  if (rpe) parts.push(`RPE : ${rpe}`);
+  if (effort) parts.push(`EFFORT : ${effort}`);
+  if (zone) parts.push(`ZONE : ${zone}`);
+
+  return parts.length > 0 ? [parts.join(" - ")] : [];
+}
+
 const UNIT_LABELS: Record<string, string> = {
-  reps: " reps",
-  cal: " cal",
-  m: "m",
-  sec: " sec",
+  reps: " Reps",
+  cal: " Cal",
+  m: "M",
+  sec: " Sec",
+  watts: " Watts",
+  pace: " Pace",
+  rpm: " RPM",
+  "distance/time": " Dist/Time",
+  "calories/time": " Cal/Time",
 };
 
 /**
@@ -58,14 +80,15 @@ export function formatMovementRow(
   row: MovementRowData,
   includeWeight: boolean = true
 ): string {
-  let text = row.movement_name;
+  let text = "";
   // Reps with unit after the movement name ("X" → "Max reps")
   if (row.reps) {
     const unit = row.unit || "reps";
     const suffix = UNIT_LABELS[unit] ?? ` ${unit}`;
     const repsDisplay = row.reps.toUpperCase() === "X" || row.reps === "Max" ? "Max" : row.reps;
-    text += ` ${repsDisplay}${suffix}`;
+    text += `${repsDisplay}${suffix} `;
   }
+  text += row.movement_name;
   // Weight (handles "80kg", "50% 1RM", "BW", etc.)
   if (includeWeight && row.weight) {
     text += ` @ ${row.weight}`;
@@ -84,8 +107,9 @@ export function formatSingleMovementSection(
   section: SingleMovementSection
 ): string[] {
   const lines: string[] = [];
-  lines.push(section.movement_name);
 
+  lines.push(section.movement_name);
+  
   // Use movement_sets if available (new multi-set format)
   const movementSets = section.movement_sets?.filter((ms) => ms.reps || ms.weight);
   if (movementSets && movementSets.length > 0) {
@@ -123,6 +147,11 @@ export function formatSingleMovementSection(
   if (section.notes) {
     lines.push(section.notes);
   }
+
+  // RPE / Effort / Zone (always at the end)
+  const intensityLines = formatIntensity(section.rpe, section.effort, section.zone);
+  lines.push(...intensityLines);
+
   return lines;
 }
 
@@ -157,6 +186,11 @@ export function formatComplexSection(section: ComplexSection): string[] {
   if (section.notes) {
     lines.push(section.notes);
   }
+
+  // RPE / Effort / Zone
+  const intensityLines = formatIntensity(section.rpe, section.effort, section.zone);
+  lines.push(...intensityLines);
+
   return lines;
 }
 
@@ -255,6 +289,11 @@ export function formatConditioningSection(
   if (section.notes) {
     lines.push(section.notes);
   }
+
+  // RPE / Effort / Zone
+  const intensityLines = formatIntensity(section.rpe, section.effort, section.zone);
+  lines.push(...intensityLines);
+
   return lines;
 }
 

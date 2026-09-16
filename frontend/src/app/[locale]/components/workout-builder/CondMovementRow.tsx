@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MovementRowData, Movement } from "./types";
+import { CARDIO_MOVEMENT_NAMES, CARDIO_UNIT_OPTIONS, DEFAULT_UNIT_OPTIONS } from "./types";
 import MovementPicker from "./MovementPicker";
 
 type Props = {
@@ -33,6 +34,10 @@ export default function CondMovementRow({ data, onChange, onRemove, chipper }: P
   const repsSets = data.repsSets?.length ? data.repsSets : [""];
   const [restExpanded, setRestExpanded] = useState(false);
   const showRestInput = restExpanded || Boolean(data.restSeconds?.trim());
+
+  // Determine which unit options to show based on movement type
+  const isCardioMovement = CARDIO_MOVEMENT_NAMES.has(data.movement_name);
+  const unitOptions = isCardioMovement ? CARDIO_UNIT_OPTIONS : DEFAULT_UNIT_OPTIONS;
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-gray-800 bg-gray-950/60 p-3 sm:flex-row sm:flex-wrap sm:items-center">
@@ -82,10 +87,9 @@ export default function CondMovementRow({ data, onChange, onRemove, chipper }: P
             <span className="block text-[10px] text-gray-600">Unit</span>
             <select value={data.unit} onChange={(e) => onChange("unit", e.target.value)}
               className="rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-xs text-white outline-none focus:border-[#B4E3BD]">
-              <option value="reps">reps</option>
-              <option value="cal">cal</option>
-              <option value="m">m</option>
-              <option value="sec">sec</option>
+              {unitOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -121,10 +125,9 @@ export default function CondMovementRow({ data, onChange, onRemove, chipper }: P
             <span className="block text-[10px] text-gray-600">Unit</span>
             <select value={data.unit} onChange={(e) => onChange("unit", e.target.value)}
               className="rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-xs text-white outline-none focus:border-[#B4E3BD]">
-              <option value="reps">reps</option>
-              <option value="cal">cal</option>
-              <option value="m">m</option>
-              <option value="sec">sec</option>
+              {unitOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
           <div>

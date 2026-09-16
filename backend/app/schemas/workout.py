@@ -47,6 +47,11 @@ class WorkoutSection(BaseModel):
     # Multi-set rows for single-movement sections
     movement_sets: list[dict] | None = None
 
+    # Coach-prescribed intensity / effort fields
+    rpe: str | None = None
+    effort: str | None = None
+    zone: str | None = None
+
 
 class WorkoutBase(BaseModel):
     title: str = Field(min_length=1, max_length=255)

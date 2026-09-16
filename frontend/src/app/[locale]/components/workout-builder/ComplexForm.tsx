@@ -16,6 +16,10 @@ type ComplexFormState = {
   restSeconds: string;
   notes: string;
   label: string;
+  /** Coach-prescribed intensity/effort fields */
+  rpe: string;
+  effort: string;
+  zone: string;
 };
 
 type Props = {
@@ -210,6 +214,13 @@ return (
           className="mt-2 w-full rounded-xl border border-dashed border-gray-800 py-2 text-sm text-gray-400 transition hover:border-[#B4E3BD]/50 hover:text-[#B4E3BD]">
           + Add Movement
         </button>
+      </div>
+
+      {/* ── RPE / Effort / Zone ──────────────────────────────────────── */}
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="RPE" value={state.rpe} onChange={(v) => set("rpe", v)} placeholder="e.g. 7-8" />
+        <Field label="Effort" value={state.effort} onChange={(v) => set("effort", v)} placeholder="e.g. Moderate" />
+        <Field label="Zone" value={state.zone} onChange={(v) => set("zone", v)} placeholder="e.g. Zone 2" />
       </div>
 
       <Field label="Notes" value={state.notes} onChange={(v) => set("notes", v)} textarea />
