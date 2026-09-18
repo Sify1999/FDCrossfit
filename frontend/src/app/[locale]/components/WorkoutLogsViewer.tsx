@@ -65,7 +65,7 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
   useBodyScrollLock(open);
   const [logs, setLogs] = useState<WorkoutLogEntry[]>([]);
   const [athletes, setAthletes] = useState<AthleteInfo[]>([]);
-  const [sectionMeta, setSectionMeta] = useState<Record<string, { format?: string; rounds?: number }>>({});
+  const [sectionMeta, setSectionMeta] = useState<Record<string, { format?: string; rounds?: number; score_type?: string; ranking_direction?: string }>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -92,12 +92,17 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
         ]);
         setLogs(logsData);
         setAthletes(usersData);
-        // Build a map of section_id -> { format, rounds } from the workout sections
+        // Build a map of section_id -> { format, rounds, score_type, ranking_direction }
         if (workoutData?.sections) {
-          const map: Record<string, { format?: string; rounds?: number }> = {};
+          const map: Record<string, { format?: string; rounds?: number; score_type?: string; ranking_direction?: string }> = {};
           for (const sec of workoutData.sections) {
-            if (sec.id && sec.format === "EMOM") {
-              map[sec.id] = { format: sec.format, rounds: sec.rounds ?? 0 };
+            if (sec.id) {
+              map[sec.id] = {
+                format: sec.format,
+                rounds: sec.rounds ?? 0,
+                score_type: sec.score_type,
+                ranking_direction: sec.ranking_direction,
+              };
             }
           }
           setSectionMeta(map);
@@ -123,6 +128,69 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
     ? { id: selectedUserId, username: `user_${selectedUserId}`, full_name: null }
     : null);
   const detailName = detailAthlete?.full_name || detailAthlete?.username || `User #${selectedUserId}`;
+
+  // ── Leaderboard sorting ──────────────────────────────────────────────────
+  // Find the primary scoring section (first conditioning section with a score_type & ranking_direction)
+  const primaryScoringSection = Object.values(sectionMeta).find(
+    (meta) => meta.score_type && meta.ranking_direction
+  );
+  const rankingDirection = primaryScoringSection?.ranking_direction || "Higher";
+
+  /** Extract a sortable numeric value from a score string like "120", "2:45", "150 reps" */
+  function parseScoreValue(score: string): number {
+    if (!score) return 0;
+    // Try mm:ss first
+    const timeMatch = score.trim().match(/^(\d+):(\d{1,2})$/);
+    if (timeMatch) {
+      return parseInt(timeMatch[1], 10) * 60 + parseInt(timeMatch[2], 10);
+    }
+    // Extract leading number
+    const numMatch = score.trim().match(/^[\d,.]+/);
+    return numMatch ? parseFloat(numMatch[0].replace(/,/g, "")) || 0 : 0;
+  }
+
+  /** Compute the primary score for an athlete's log */
+  function getPrimaryScore(log: WorkoutLogEntry): number {
+    // Use the first section that has a score and whose section_id matches a scoring section
+    for (const sec of log.log_data) {
+      const meta = sectionMeta[sec.section_id];
+      if (sec.score && meta?.score_type) {
+        return parseScoreValue(sec.score);
+      }
+    }
+    // Fallback: use first section with any score
+    const firstScore = log.log_data.find((s) => s.score);
+    return firstScore ? parseScoreValue(firstScore.score) : 0;
+  }
+
+  /** Sorted logs — refresh when logs or sectionMeta change */
+  const sortedLogs = (() => {
+    if (logs.length === 0) return [];
+    const withScores = logs.map((log) => ({
+      log,
+      score: getPrimaryScore(log),
+    }));
+    // Sort: Higher → descending, Lower → ascending
+    if (rankingDirection === "Lower") {
+      withScores.sort((a, b) => a.score - b.score);
+    } else {
+      withScores.sort((a, b) => b.score - a.score);
+    }
+    return withScores;
+  })();
+
+  const medalStyles = [
+    // Gold — warm amber tones
+    "border-amber-400/60 bg-amber-500/10 shadow-amber-500/20 ring-1 ring-amber-400/30 hover:bg-amber-500/15 hover:border-amber-400/80",
+    // Silver — cool gray tones
+    "border-gray-300/50 bg-gray-200/10 shadow-gray-300/20 ring-1 ring-gray-300/30 hover:bg-gray-200/20 hover:border-gray-300/70",
+    // Bronze — warm orange-brown tones
+    "border-orange-600/50 bg-orange-700/10 shadow-orange-600/20 ring-1 ring-orange-600/30 hover:bg-orange-700/20 hover:border-orange-600/70",
+  ];
+
+  const medalInitials = ["border-amber-400/50 bg-amber-400/20 text-amber-300", "border-gray-300/50 bg-gray-300/20 text-gray-200", "border-orange-600/50 bg-orange-600/20 text-orange-400"];
+  const medalName = ["text-amber-300", "text-gray-200", "text-orange-400"];
+  const medalScore = ["text-amber-400/90 border-amber-400/30 bg-amber-500/10", "text-gray-200/90 border-gray-300/30 bg-gray-200/10", "text-orange-400/90 border-orange-600/30 bg-orange-700/10"];
 
   if (!open) return null;
 
@@ -297,26 +365,35 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
               {!loading && !error && logs.length === 0 && <p className="py-8 text-center text-sm text-gray-500">No athletes have logged this workout yet.</p>}
               {!loading && !error && logs.length > 0 && (
                 <div className="space-y-2">
-                  {logs.map((log) => {
-                    // Collect non-empty scores for quick preview
-                    const scorePreview = log.log_data
-                      .filter((sec) => sec.score && sec.score.trim())
-                      .map((sec) => (sec.score.trim()));
-                    const hasScores = scorePreview.length > 0;
+                  {sortedLogs.map(({ log, score }, rank) => {
+                    const hasScores = score > 0 || log.log_data.some((sec) => sec.score && sec.score.trim());
+                    const isMedal = rank < 3;
+                    const medalIdx = isMedal ? rank : -1;
                     return (
                     <button key={log.user_id} onClick={() => handleSelectAthlete(log.user_id)}
-                      className="flex w-full items-center gap-4 rounded-2xl border border-gray-800 bg-gray-950/60 px-5 py-4 text-left transition hover:border-[#B4E3BD]/60 hover:bg-gray-900 active:scale-[0.99] group">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD]/15 text-sm font-bold text-[#B4E3BD] ring-1 ring-[#B4E3BD]/20">{initials(athleteName(log.user_id))}</span>
+                      className={`flex w-full items-center gap-4 rounded-2xl border px-5 py-4 text-left transition active:scale-[0.99] group ${
+                        isMedal
+                          ? medalStyles[rank]
+                          : "border-gray-800 bg-gray-950/60 hover:border-[#B4E3BD]/60 hover:bg-gray-900"
+                      }`}>
+                      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                        isMedal
+                          ? medalInitials[rank]
+                          : "bg-[#B4E3BD]/15 text-[#B4E3BD] ring-1 ring-[#B4E3BD]/20"
+                      }`}>{initials(athleteName(log.user_id))}</span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-white group-hover:text-[#B4E3BD] transition-colors">{athleteName(log.user_id)}</span>
+                        <span className={`block truncate text-sm font-semibold transition-colors ${
+                          isMedal ? medalName[rank] : "text-white group-hover:text-[#B4E3BD]"
+                        }`}>{athleteName(log.user_id)}</span>
                         {hasScores ? (
-                          <span className="mt-0.5 flex flex-wrap gap-1.5">
-                            {scorePreview.map((s, i) => (
-                              <span key={i} className="inline-flex items-center gap-1 rounded-md border border-[#B4E3BD]/20 bg-[#B4E3BD]/5 px-2 py-0.5 text-[11px] font-semibold text-[#B4E3BD]/90">
-                                {log.log_data[i]?.section_label && <span className="text-[9px] uppercase tracking-wider text-[#B4E3BD]/60">{log.log_data[i].section_label}:</span>}
-                                Score: {s}
+                          <span className="mt-0.5 flex flex-wrap items-center gap-1.5">
+                            {score > 0 && (
+                              <span className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${
+                                isMedal ? medalScore[rank] : "border-[#B4E3BD]/20 bg-[#B4E3BD]/5 text-[#B4E3BD]/90"
+                              }`}>
+                                Score: {score}
                               </span>
-                            ))}
+                            )}
                           </span>
                         ) : (
                           <span className="block truncate text-xs text-gray-600">{formatDate(log.updated_at)}</span>

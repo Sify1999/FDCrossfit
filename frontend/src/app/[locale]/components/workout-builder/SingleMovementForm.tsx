@@ -123,7 +123,7 @@ export default function SingleMovementForm({ state, onStateChange, onMovementCha
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Rest (sec)" value={state.restSeconds} onChange={(v) => set("restSeconds", v)} placeholder="90" type="number" />
+        <Field label="Rest" value={state.restSeconds} onChange={(v) => set("restSeconds", v)} placeholder="e.g. 1:30" />
         <Field label="Tempo" value={state.tempo} onChange={(v) => set("tempo", v)} placeholder="e.g. 20X1" />
       </div>
 

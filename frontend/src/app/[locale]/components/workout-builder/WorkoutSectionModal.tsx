@@ -18,7 +18,7 @@ import type {
 import type { SingleFormState } from "./SingleMovementForm";
 import type { ComplexFormState } from "./ComplexForm";
 import type { TextFormState } from "./TextForm";
-import { formatSection, newSectionId, newRowId, parseMinutes, formatMinutes } from "./section-formatter";
+import { formatSection, newSectionId, newRowId, parseMinutes, formatMinutes, formatRest, parseRestToSeconds } from "./section-formatter";
 import { fetchSectionTemplates, createSectionTemplate, deleteSectionTemplate, generateTemplateName } from "@/lib/section-templates";
 import type { SectionTemplateRead } from "@/lib/section-templates";
 import { IconDumbbell, IconFolder, IconStopwatch, IconFileText, IconChevronRight, IconTrash, ICON_MAP } from "./icons";
@@ -111,7 +111,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             : [{ reps: "", weight: "", id: newRowId() }];
           setSingleState({
             movement: s.movement_id ? { id: s.movement_id, name: s.movement_name, default_unit: "reps" } : null,
-            reps: s.reps ?? "", weight: s.weight ?? "", restSeconds: s.rest_seconds?.toString() ?? "",
+            reps: s.reps ?? "", weight: s.weight ?? "", restSeconds: s.rest_seconds ? formatRest(s.rest_seconds) : "",
             tempo: s.tempo ?? "", notes: s.notes ?? "", label: s.label ?? "",
             setRows: savedSets.length ? savedSets : defaultSets,
             rpe: s.rpe ?? "", effort: s.effort ?? "", zone: s.zone ?? "",
@@ -123,7 +123,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
           setComplexState({
             selectedComplexId: c.complex_id, complexName: c.complex_name,
             movements: c.movements || [], sets: c.sets?.toString() ?? "",
-            weight: c.weight ?? "", restSeconds: c.rest_seconds?.toString() ?? "",
+            weight: c.weight ?? "", restSeconds: c.rest_seconds ? formatRest(c.rest_seconds) : "",
             notes: c.notes ?? "", label: c.label ?? "",
             rpe: c.rpe ?? "", effort: c.effort ?? "", zone: c.zone ?? "",
           });
@@ -278,7 +278,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         movement_id: singleState.movement.id, movement_name: singleState.movement.name,
         sets: movementSets.length > 0 ? movementSets.length : null,
         reps: movementSets[0]?.reps || null, weight: movementSets[0]?.weight || null,
-        rest_seconds: singleState.restSeconds ? Number(singleState.restSeconds) : null,
+        rest_seconds: singleState.restSeconds ? parseRestToSeconds(singleState.restSeconds) : null,
         tempo: singleState.tempo || null, notes: singleState.notes || null,
         content: "",
         movement_sets: movementSets.length > 0 ? movementSets : undefined,
@@ -296,7 +296,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         movements: complexState.movements,
         sets: complexState.sets ? Number(complexState.sets) : null,
         weight: complexState.weight || null,
-        rest_seconds: complexState.restSeconds ? Number(complexState.restSeconds) : null,
+        rest_seconds: complexState.restSeconds ? parseRestToSeconds(complexState.restSeconds) : null,
         notes: complexState.notes || null, content: "",
         rpe: complexState.rpe || null,
         effort: complexState.effort || null,

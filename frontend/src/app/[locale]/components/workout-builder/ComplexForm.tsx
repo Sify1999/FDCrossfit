@@ -142,7 +142,7 @@ return (
       <div className="grid grid-cols-3 gap-3">
         <Field label="Sets" value={state.sets} onChange={(v) => set("sets", v)} placeholder="3" type="number" />
         <Field label="Weight" value={state.weight} onChange={(v) => set("weight", v)} placeholder="60kg" />
-        <Field label="Rest (sec)" value={state.restSeconds} onChange={(v) => set("restSeconds", v)} placeholder="120" type="number" />
+        <Field label="Rest" value={state.restSeconds} onChange={(v) => set("restSeconds", v)} placeholder="e.g. 1:30" />
       </div>
 
       <div>

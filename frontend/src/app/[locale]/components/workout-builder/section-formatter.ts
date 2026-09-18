@@ -19,6 +19,22 @@ export function formatRest(seconds: number | null): string {
 }
 
 /**
+ * Parse a user-input rest value (Min:Sec or plain seconds) to total seconds.
+ * e.g. "1:30" → 90, "2:00" → 120, "90" → 90
+ */
+export function parseRestToSeconds(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return 0;
+  const colonMatch = trimmed.match(/^(\d+):(\d{1,2})$/);
+  if (colonMatch) {
+    const mm = parseInt(colonMatch[1], 10);
+    const ss = parseInt(colonMatch[2], 10);
+    return mm * 60 + ss;
+  }
+  return parseInt(trimmed, 10) || 0;
+}
+
+/**
  * Format weight as a human-readable string.
  * Accepts strings like "80kg", "80% 1RM", "BW", "BW+20kg", or numeric.
  */
