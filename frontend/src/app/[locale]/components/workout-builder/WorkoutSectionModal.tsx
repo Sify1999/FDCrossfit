@@ -18,7 +18,7 @@ import type {
 import type { SingleFormState } from "./SingleMovementForm";
 import type { ComplexFormState } from "./ComplexForm";
 import type { TextFormState } from "./TextForm";
-import { formatSection, newSectionId, newRowId } from "./section-formatter";
+import { formatSection, newSectionId, newRowId, parseMinutes, formatMinutes } from "./section-formatter";
 import { fetchSectionTemplates, createSectionTemplate, deleteSectionTemplate, generateTemplateName } from "@/lib/section-templates";
 import type { SectionTemplateRead } from "@/lib/section-templates";
 import { IconDumbbell, IconFolder, IconStopwatch, IconFileText, IconChevronRight, IconTrash, ICON_MAP } from "./icons";
@@ -132,9 +132,9 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         case "conditioning": {
           const cd = editSection as ConditioningSection;
           setCondState({
-            format: cd.format, durationMinutes: cd.duration_minutes?.toString() ?? "",
-            intervalMinutes: cd.interval_minutes?.toString() ?? "",
-            timeCapMinutes: cd.time_cap_minutes?.toString() ?? "",
+            format: cd.format, durationMinutes: cd.duration_minutes ? formatMinutes(cd.duration_minutes) : "",
+            intervalMinutes: cd.interval_minutes ? formatMinutes(cd.interval_minutes) : "",
+            timeCapMinutes: cd.time_cap_minutes ? formatMinutes(cd.time_cap_minutes) : "",
             rounds: cd.rounds?.toString() ?? "",
             workSeconds: cd.work_seconds?.toString() ?? "",
             restSecondsInterval: cd.rest_seconds_interval?.toString() ?? "",
@@ -228,9 +228,9 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
       }
       case "conditioning": {
         setCondState({
-          format: data.format ?? null, durationMinutes: data.duration_minutes?.toString() ?? "",
-          intervalMinutes: data.interval_minutes?.toString() ?? "",
-          timeCapMinutes: data.time_cap_minutes?.toString() ?? "",
+          format: data.format ?? null, durationMinutes: data.duration_minutes ? formatMinutes(data.duration_minutes) : "",
+          intervalMinutes: data.interval_minutes ? formatMinutes(data.interval_minutes) : "",
+          timeCapMinutes: data.time_cap_minutes ? formatMinutes(data.time_cap_minutes) : "",
           rounds: data.rounds?.toString() ?? "",
           workSeconds: data.work_seconds?.toString() ?? "",
           restSecondsInterval: data.rest_seconds_interval?.toString() ?? "",
@@ -312,17 +312,21 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
       let durationMinutes: number | null = null;
       if (condState.format === "EMOM" && condState.intervalMinutes && condState.rounds) {
         const intervalCount = Math.max(condState.intervalGroups.length, 1);
-        durationMinutes = Number(condState.intervalMinutes) * intervalCount * Number(condState.rounds);
+        const parsedInterval = parseMinutes(condState.intervalMinutes);
+        if (!isNaN(parsedInterval)) {
+          durationMinutes = parsedInterval * intervalCount * Number(condState.rounds);
+        }
       } else {
-        durationMinutes = condState.durationMinutes ? Number(condState.durationMinutes) : null;
+        const parsed = parseMinutes(condState.durationMinutes);
+        durationMinutes = condState.durationMinutes && !isNaN(parsed) ? parsed : null;
       }
 
       return {
         id, type: "conditioning", label: condState.label || condState.format,
         format: condState.format,
         duration_minutes: durationMinutes,
-        interval_minutes: condState.intervalMinutes ? Number(condState.intervalMinutes) : null,
-        time_cap_minutes: condState.timeCapMinutes ? Number(condState.timeCapMinutes) : null,
+        interval_minutes: condState.intervalMinutes ? parseMinutes(condState.intervalMinutes) || null : null,
+        time_cap_minutes: condState.timeCapMinutes ? parseMinutes(condState.timeCapMinutes) || null : null,
         rounds: condState.rounds ? Number(condState.rounds) : null,
         work_seconds: condState.workSeconds ? Number(condState.workSeconds) : null,
         rest_seconds_interval: condState.restSecondsInterval ? Number(condState.restSecondsInterval) : null,

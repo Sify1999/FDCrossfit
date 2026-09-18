@@ -30,12 +30,15 @@ class WorkoutSection(BaseModel):
 
     # Conditioning fields
     format: str | None = None  # "AMRAP", "EMOM", "FOR_TIME", "RFT", "TABATA", "CHIPPER"
-    duration_minutes: int | None = None
-    interval_minutes: int | None = None
-    time_cap_minutes: int | None = None
+    duration_minutes: float | None = None
+    interval_minutes: float | None = None
+    time_cap_minutes: float | None = None
     rounds: int | None = None
     work_seconds: int | None = None
     rest_seconds_interval: int | None = None
+
+    # EMOM interval groups — each has a label and list of movements
+    interval_groups: list[dict] | None = None
 
     # Generic notes (used by all types)
     notes: str | None = None

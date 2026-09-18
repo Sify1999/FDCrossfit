@@ -14,7 +14,10 @@ type LogMovementItem = {
   sets: string;
   reps: string;
   weight: string;
-  notes: string;
+  /** For EMOM: reps per round (index 0 = round 1) */
+  repsPerRound?: string[];
+  /** For EMOM: weight per round (index 0 = round 1) */
+  weightPerRound?: string[];
 };
 
 type LogSectionEntry = {
@@ -25,6 +28,12 @@ type LogSectionEntry = {
   rpe: string;
   effort: string;
   zone: string;
+  /** Per-section note (replaces per-movement notes) */
+  note: string;
+  /** Section format (e.g. "EMOM") — saved for backwards-compat in the viewer */
+  format?: string;
+  /** Number of rounds (for EMOM) */
+  rounds?: number;
 };
 
 type LogData = LogSectionEntry[];
@@ -65,6 +74,7 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRounds, setSelectedRounds] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (!open) return;
@@ -107,39 +117,77 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
       rpe: sec.rpe ?? "",
       effort: sec.effort ?? "",
       zone: sec.zone ?? "",
-      movements: sec.movements.map((def) => ({
-        movement_name: def.movement_name,
-        sets: "",
-        reps: def.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def.prescribed_reps || ""),
-        weight: def.prescribed_weight || "",
-        notes: "",
-      })),
+      note: "",
+      format: sec.format,
+      rounds: sec.rounds,
+      movements: sec.movements.map((def) => {
+        const isEmom = sec.format === "EMOM";
+        const repsCount = sec.rounds ?? 0;
+        return {
+          movement_name: def.movement_name,
+          sets: "",
+          reps: def.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def.prescribed_reps || ""),
+          weight: def.prescribed_weight || "",
+          // For EMOM: initialize reps & weight per round from the prescribed values
+          repsPerRound: isEmom && repsCount > 0
+            ? Array(repsCount).fill(def.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def.prescribed_reps || ""))
+            : undefined,
+          weightPerRound: isEmom && repsCount > 0
+            ? Array(repsCount).fill(def.prescribed_weight || "")
+            : undefined,
+        };
+      }),
     }));
   }
 
   function mergeLogWithSections(existing: LogData, sectionList: SectionForLog[]): LogData {
     return sectionList.map((sec) => {
       const existingSection = existing.find((e) => e.section_id === sec.id);
+      const isEmom = sec.format === "EMOM";
+      const repsCount = sec.rounds ?? 0;
       return {
         section_id: sec.id,
         section_label: sec.label,
         score: existingSection?.score ?? "",
-        // Use athlete's saved value if they explicitly set it,
-        // otherwise fall back to the coach's prescribed value from the workout section
         rpe: existingSection?.rpe ?? sec.rpe ?? "",
         effort: existingSection?.effort ?? sec.effort ?? "",
         zone: existingSection?.zone ?? sec.zone ?? "",
+        note: existingSection?.note ?? "",
+        format: existingSection?.format ?? sec.format,
+        rounds: existingSection?.rounds ?? sec.rounds,
         movements: sec.movements.map((def) => {
           const existingMov = existingSection?.movements?.find((m) => m.movement_name === def.movement_name);
-          return existingMov
-            ? { ...existingMov }
-            : {
-                movement_name: def.movement_name,
-                sets: "",
-                reps: def.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def.prescribed_reps || ""),
-                weight: def.prescribed_weight || "",
-                notes: "",
-              };
+          const prescribedReps = def.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def.prescribed_reps || "");
+          if (existingMov) {
+            return {
+              movement_name: existingMov.movement_name,
+              sets: existingMov.sets ?? "",
+              reps: existingMov.reps ?? "",
+              weight: existingMov.weight ?? "",
+              repsPerRound: isEmom && repsCount > 0
+                ? (existingMov.repsPerRound?.length === repsCount
+                    ? existingMov.repsPerRound
+                    : Array(repsCount).fill(prescribedReps))
+                : undefined,
+              weightPerRound: isEmom && repsCount > 0
+                ? (existingMov.weightPerRound?.length === repsCount
+                    ? existingMov.weightPerRound
+                    : Array(repsCount).fill(def.prescribed_weight || ""))
+                : undefined,
+            };
+          }
+          return {
+            movement_name: def.movement_name,
+            sets: "",
+            reps: prescribedReps,
+            weight: def.prescribed_weight || "",
+            repsPerRound: isEmom && repsCount > 0
+              ? Array(repsCount).fill(prescribedReps)
+              : undefined,
+            weightPerRound: isEmom && repsCount > 0
+              ? Array(repsCount).fill(def.prescribed_weight || "")
+              : undefined,
+          };
         }),
       };
     });
@@ -169,6 +217,73 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
         ...next[sIdx],
         movements: [...next[sIdx].movements.slice(0, mIdx), mov, ...next[sIdx].movements.slice(mIdx + 1)],
       };
+      return next;
+    });
+  }
+
+  /** Update reps for a specific round in an EMOM movement */
+  function updateMovementRoundReps(sIdx: number, mIdx: number, roundIndex: number, value: string) {
+    setLogData((prev) => {
+      const next = [...prev];
+      const mov = next[sIdx].movements[mIdx];
+      const repsPerRound = [...(mov.repsPerRound ?? [])];
+      repsPerRound[roundIndex] = value;
+      const updated = { ...mov, repsPerRound };
+      next[sIdx] = {
+        ...next[sIdx],
+        movements: [...next[sIdx].movements.slice(0, mIdx), updated, ...next[sIdx].movements.slice(mIdx + 1)],
+      };
+      return next;
+    });
+  }
+
+  /** Update weight for a specific round in an EMOM movement */
+  function updateMovementRoundWeight(sIdx: number, mIdx: number, roundIndex: number, value: string) {
+    setLogData((prev) => {
+      const next = [...prev];
+      const mov = next[sIdx].movements[mIdx];
+      const weightPerRound = [...(mov.weightPerRound ?? [])];
+      weightPerRound[roundIndex] = value;
+      const updated = { ...mov, weightPerRound };
+      next[sIdx] = {
+        ...next[sIdx],
+        movements: [...next[sIdx].movements.slice(0, mIdx), updated, ...next[sIdx].movements.slice(mIdx + 1)],
+      };
+      return next;
+    });
+  }
+
+  function setSelectedRound(sIdx: number, roundIndex: number) {
+    const key = `sec_${sIdx}`;
+    setSelectedRounds((prev) => ({ ...prev, [key]: roundIndex }));
+  }
+
+  /** Copy the current round's reps & weights to all other rounds in an EMOM section */
+  function copyToOtherRounds(sIdx: number) {
+    setLogData((prev) => {
+      const next = [...prev];
+      const section = next[sIdx];
+      const isEmom = section.format === "EMOM" && (section.rounds ?? 0) > 0;
+      if (!isEmom) return next;
+      const roundKey = `sec_${sIdx}`;
+      const sourceRound = selectedRounds[roundKey] ?? 0;
+      const rounds = section.rounds ?? 0;
+
+      const updatedMovements = section.movements.map((mov) => {
+        if (!mov.repsPerRound || !mov.weightPerRound) return mov;
+        const sourceReps = mov.repsPerRound[sourceRound] ?? "";
+        const sourceWeight = mov.weightPerRound[sourceRound] ?? "";
+        const newReps = [...mov.repsPerRound];
+        const newWeight = [...mov.weightPerRound];
+        for (let r = 0; r < rounds; r++) {
+          if (r !== sourceRound) {
+            newReps[r] = sourceReps;
+            newWeight[r] = sourceWeight;
+          }
+        }
+        return { ...mov, repsPerRound: newReps, weightPerRound: newWeight };
+      });
+      next[sIdx] = { ...section, movements: updatedMovements };
       return next;
     });
   }
@@ -336,13 +451,58 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                 </div>
               </div>
               {section.movements.length === 0 && <p className="text-xs text-gray-600">&mdash;</p>}
+
+              {/* ── EMOM round selector (per-section) ────────────────────────── */}
+              {secMeta?.format === "EMOM" && (secMeta.rounds ?? 0) > 1 && (
+                <div className="mb-3">
+                  <div className="flex items-center justify-between mb-1.5">
+{(secMeta as any)?.format === "AMRAP" && (
+                      <div className="mb-3 rounded-lg border border-[#B4E3BD]/10 bg-[#B4E3BD]/5 px-3 py-2">
+                        <p className="text-[10px] text-gray-500 italic">Enter your reps for the last round</p>
+                      </div>
+                    )}
+                    <span className="text-[10px] font-semibold text-gray-500">Round</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToOtherRounds(sIdx)}
+                      title="Copy current round's reps &amp; weights to all other rounds"
+                      className="rounded-md border border-dashed border-gray-700 px-2 py-0.5 text-[9px] font-medium text-gray-500 transition hover:border-[#B4E3BD]/50 hover:text-[#B4E3BD]"
+                    >
+                      Copy to other rounds
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.from({ length: secMeta.rounds ?? 0 }, (_, ri) => {
+                      const roundKey = `sec_${sIdx}`;
+                      const currentRound = selectedRounds[roundKey] ?? 0;
+                      const isActive = ri === currentRound;
+                      return (
+                        <button
+                          key={ri}
+                          type="button"
+                          onClick={() => setSelectedRound(sIdx, ri)}
+                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                            isActive
+                              ? "bg-[#B4E3BD] text-black shadow-sm shadow-[#B4E3BD]/30 scale-110"
+                              : "border border-gray-700 bg-gray-950 text-gray-400 hover:border-[#B4E3BD]/60 hover:text-[#B4E3BD]"
+                          }`}
+                        >
+                          {ri + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
                 {section.movements.map((mov, mIdx) => {
                   const def = secMeta?.movements?.[mIdx];
                   const isMax = mov.reps === "Max";
-                  const placeReps = def?.prescribed_reps
-                    ? (def.prescribed_reps?.toUpperCase() === "X" ? "Max" : def.prescribed_reps)
-                    : "Max";
+                  const placeReps = def?.prescribed_reps?.toUpperCase() === "X" ? "Max" : (def?.prescribed_reps || "Max");
+                  const isEmomMov = secMeta?.format === "EMOM" && (secMeta.rounds ?? 0) > 0;
+                  const roundKey = `sec_${sIdx}`;
+                  const currentRound = selectedRounds[roundKey] ?? 0;
                   return (
                   <div key={mIdx} className="rounded-xl border border-gray-800 bg-gray-950/60 p-3 transition hover:border-gray-700">
                     <div className="flex items-center justify-between mb-2">
@@ -361,17 +521,33 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                       </div>
                       )}
                       <div>
-                        <span className="block text-[10px] text-gray-600">Reps</span>
-                        <input type="text" value={mov.reps}
+                        <span className="block text-[10px] text-gray-600">
+                          {isEmomMov
+                            ? `Reps Rnd ${currentRound + 1}`
+                            : secMeta?.format === "AMRAP"
+                              ? "Last round"
+                              : "Reps"}
+                        </span>
+                        <input type="text" value={isEmomMov && mov.repsPerRound ? (mov.repsPerRound[currentRound] ?? "") : mov.reps}
                           onChange={(e) => {
                             const val = e.target.value;
-                            // Immediately normalize "X" or "x" → "Max"
-                            updateMovement(sIdx, mIdx, "reps", val === "X" || val === "x" ? "Max" : val);
+                            const normalized = val === "X" || val === "x" ? "Max" : val;
+                            if (isEmomMov && mov.repsPerRound) {
+                              updateMovementRoundReps(sIdx, mIdx, currentRound, normalized);
+                            } else {
+                              updateMovement(sIdx, mIdx, "reps", normalized);
+                            }
                           }}
                           onFocus={() => {
-                            if (mov.reps === "Max") updateMovement(sIdx, mIdx, "reps", "");
+                            if (mov.reps === "Max") {
+                              if (isEmomMov && mov.repsPerRound) {
+                                updateMovementRoundReps(sIdx, mIdx, currentRound, "");
+                              } else {
+                                updateMovement(sIdx, mIdx, "reps", "");
+                              }
+                            }
                           }}
-                          placeholder={placeReps}
+                          placeholder={secMeta?.format === "AMRAP" ? "Last round" : placeReps}
                           className={`w-14 rounded-lg border px-2 py-1.5 text-center text-xs outline-none transition ${
                             isMax
                               ? "border-[#B4E3BD]/40 bg-[#B4E3BD]/10 font-bold text-[#B4E3BD]"
@@ -379,23 +555,38 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                           }`} />
                       </div>
                       <div>
-                        <span className="block text-[10px] text-gray-600">Weight</span>
-                        <input type="text" value={mov.weight}
-                          onChange={(e) => updateMovement(sIdx, mIdx, "weight", e.target.value)}
-                          placeholder={def?.prescribed_weight || "—"}
-                          className="w-16 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                        <span className="block text-[10px] text-gray-600">{isEmomMov ? `Wt Rnd ${currentRound + 1}` : "Weight"}</span>
+                        {isEmomMov && mov.weightPerRound ? (
+                          <input type="text" value={mov.weightPerRound[currentRound] ?? ""}
+                            onChange={(e) => updateMovementRoundWeight(sIdx, mIdx, currentRound, e.target.value)}
+                            placeholder={def?.prescribed_weight || "—"}
+                            className="w-16 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                        ) : (
+                          <input type="text" value={mov.weight}
+                            onChange={(e) => updateMovement(sIdx, mIdx, "weight", e.target.value)}
+                            placeholder={def?.prescribed_weight || "—"}
+                            className="w-16 rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
+                        )}
                       </div>
                     </div>
-                    <textarea
-                      value={mov.notes}
-                      onChange={(e) => updateMovement(sIdx, mIdx, "notes", e.target.value)}
-                      placeholder="e.g. Rx'd, scaled to 20kg, felt great..."
-                      rows={1}
-                      className="mt-2 w-full resize-none rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD] focus:bg-gray-900"
-                    />
                   </div>
                 );})}
               </div>
+
+              {/* ── Per-section note (replaces per-movement notes) ────────────── */}
+              <textarea
+                value={section.note}
+                onChange={(e) => {
+                  setLogData((prev) => {
+                    const next = [...prev];
+                    next[sIdx] = { ...next[sIdx], note: e.target.value };
+                    return next;
+                  });
+                }}
+                placeholder="Add a Note to this Result"
+                rows={2}
+                className="mt-3 w-full resize-none rounded-xl border border-gray-800 bg-gray-950 px-3 py-2.5 text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD] focus:bg-gray-900"
+              />
             </div>
           )})}
         </div>

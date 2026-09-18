@@ -27,6 +27,41 @@ export function formatWeight(weight: string | null): string {
   return weight;
 }
 
+/**
+ * Parse a user-input interval value into decimal minutes.
+ * Accepts "2:30" → 2.5, "1:45" → 1.75, "3" → 3, "0:45" → 0.75
+ * Returns NaN for invalid input.
+ */
+export function parseMinutes(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return NaN;
+  // Try mm:ss format
+  const colonMatch = trimmed.match(/^(\d+):(\d{1,2})$/);
+  if (colonMatch) {
+    const mm = parseInt(colonMatch[1], 10);
+    const ss = parseInt(colonMatch[2], 10);
+    if (ss >= 60) return NaN; // seconds can't exceed 59
+    return mm + ss / 60;
+  }
+  // Try plain number (minutes)
+  const num = parseFloat(trimmed);
+  return isNaN(num) ? NaN : num;
+}
+
+/**
+ * Format a decimal minute value for display.
+ * 2.5 → "2:30", 3 → "3", 0.75 → "0:45"
+ * Returns empty string for invalid input.
+ */
+export function formatMinutes(minutes: number | null | undefined): string {
+  if (minutes == null || isNaN(minutes)) return "";
+  const totalSec = Math.round(minutes * 60);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (s === 0) return String(m);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 const SCORE_TYPE_LABELS: Record<string, string> = {
   rounds: "Rounds",
   cal: "Calories",
@@ -216,7 +251,7 @@ export function formatConditioningSection(
     const intervalCount = (section.interval_groups?.length ?? 1);
     const perRound = interval * intervalCount;
     const totalDuration = perRound * rounds;
-    lines.push(`Every ${interval} minutes for ${totalDuration} minutes (${rounds} rounds):`);
+    lines.push(`Every ${formatMinutes(interval)} for ${formatMinutes(totalDuration)} (${rounds} rounds):`);
     // Use interval_groups if available (each is a sub-interval within a round),
     // otherwise fall back to flat movements
     if (section.interval_groups && section.interval_groups.length > 0) {
@@ -236,7 +271,7 @@ export function formatConditioningSection(
   } else if (fmt === "FOR_TIME") {
     lines.push("FOR TIME");
     if (section.time_cap_minutes) {
-      lines.push(`Time Cap: ${section.time_cap_minutes} min`);
+      lines.push(`Time Cap: ${formatMinutes(section.time_cap_minutes)}`);
     }
     for (const mov of section.movements) {
       lines.push(`  ${formatMovementRow(mov)}`);

@@ -2,7 +2,7 @@
 
 import { Field, FormatSelector, ConfirmDialog } from "./UiHelpers";
 import CondMovementRow from "./CondMovementRow";
-import { newRowId } from "./section-formatter";
+import { newRowId, parseMinutes, formatMinutes } from "./section-formatter";
 import type { MovementRowData, ConditioningFormat } from "./types";
 import { useState, useEffect, useRef, type DragEvent } from "react";
 
@@ -171,10 +171,13 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
   // ── Auto-calculate duration for EMOM ────────────────────────────────
   function updateEmomDuration(interval: string, rnds: string): void {
     if (state.format === "EMOM" && interval && rnds) {
-      const dur = Number(interval) * Number(rnds);
-      if (dur > 0) {
-        onStateChange({ ...state, intervalMinutes: interval, rounds: rnds, durationMinutes: String(dur) });
-        return;
+      const parsedInterval = parseMinutes(interval);
+      if (!isNaN(parsedInterval)) {
+        const dur = parsedInterval * Number(rnds);
+        if (dur > 0) {
+          onStateChange({ ...state, intervalMinutes: interval, rounds: rnds, durationMinutes: String(dur) });
+          return;
+        }
       }
     }
     onStateChange({ ...state, intervalMinutes: interval, rounds: rnds });
@@ -271,30 +274,30 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
 
       {/* ── Format-specific fields ────────────────────────────────── */}
       {state.format === "AMRAP" && (
-        <Field label="Duration (min)" value={state.durationMinutes} onChange={(v) => set("durationMinutes", v)} placeholder="20" type="number" />
+        <Field label="Duration" value={state.durationMinutes} onChange={(v) => set("durationMinutes", v)} placeholder="e.g. 20 or 15:00" />
       )}
       {state.format === "EMOM" && (
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Interval (min)" value={state.intervalMinutes} onChange={(v) => updateEmomDuration(v, state.rounds)} placeholder="2" type="number" />
+          <Field label="Interval" value={state.intervalMinutes} onChange={(v) => updateEmomDuration(v, state.rounds)} placeholder="e.g. 2 or 2:30" />
           <Field label="Rounds" value={state.rounds} onChange={(v) => updateEmomDuration(state.intervalMinutes, v)} placeholder="5" type="number" />
         </div>
       )}
       {state.format === "EMOM" && state.intervalMinutes && state.rounds && (
         <div className="rounded-xl border border-[#B4E3BD]/20 bg-[#B4E3BD]/5 px-4 py-2.5">
           <p className="text-xs text-gray-500">
-            Total: <span className="font-semibold text-[#B4E3BD]">{Number(state.intervalMinutes) * Number(state.rounds) * Math.max(state.intervalGroups.length, 1)} min</span>
+            Total: <span className="font-semibold text-[#B4E3BD]">{formatMinutes(parseMinutes(state.intervalMinutes) * Number(state.rounds) * Math.max(state.intervalGroups.length, 1))}</span>
             {" · "}
-            <span className="font-semibold text-gray-300">{state.rounds}</span> rounds × <span className="font-semibold text-gray-300">{Math.max(state.intervalGroups.length, 1)}</span> interval{state.intervalGroups.length !== 1 ? "s" : ""} × <span className="font-semibold text-gray-300">{state.intervalMinutes}:00</span> each
+            <span className="font-semibold text-gray-300">{state.rounds}</span> rounds × <span className="font-semibold text-gray-300">{Math.max(state.intervalGroups.length, 1)}</span> interval{state.intervalGroups.length !== 1 ? "s" : ""} × <span className="font-semibold text-gray-300">{state.intervalMinutes}</span> each
           </p>
         </div>
       )}
       {state.format === "FOR_TIME" && (
-        <Field label="Time Cap (min)" value={state.timeCapMinutes} onChange={(v) => set("timeCapMinutes", v)} placeholder="15" type="number" />
+        <Field label="Time Cap" value={state.timeCapMinutes} onChange={(v) => set("timeCapMinutes", v)} placeholder="e.g. 15 or 15:00" />
       )}
       {state.format === "RFT" && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Rounds" value={state.rounds} onChange={(v) => set("rounds", v)} placeholder="5" type="number" />
-          <Field label="Time Cap (min)" value={state.timeCapMinutes} onChange={(v) => set("timeCapMinutes", v)} placeholder="15" type="number" />
+          <Field label="Time Cap" value={state.timeCapMinutes} onChange={(v) => set("timeCapMinutes", v)} placeholder="e.g. 15 or 15:00" />
         </div>
       )}
       {state.format === "TABATA" && (

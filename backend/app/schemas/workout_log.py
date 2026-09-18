@@ -11,6 +11,9 @@ class LogMovementItem(BaseModel):
     reps: str = Field(default="")
     weight: str = Field(default="")
     notes: str = Field(default="")
+    # EMOM: per-round reps and weight
+    repsPerRound: list[str] | None = None
+    weightPerRound: list[str] | None = None
 
 
 class LogSectionEntry(BaseModel):
@@ -20,6 +23,15 @@ class LogSectionEntry(BaseModel):
     section_label: str = Field(default="")
     score: str = Field(default="")
     movements: list[LogMovementItem] = Field(default_factory=list)
+    # Coach-prescribed intensity / effort fields
+    rpe: str = Field(default="")
+    effort: str = Field(default="")
+    zone: str = Field(default="")
+    # Per-section note
+    note: str = Field(default="")
+    # Section metadata for viewer detection
+    format: str | None = None
+    rounds: int | None = None
 
 
 class WorkoutLogUpsert(BaseModel):
