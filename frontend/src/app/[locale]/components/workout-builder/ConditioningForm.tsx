@@ -200,10 +200,10 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
 
   // ── EMOM interval groups ───────────────────────────────────────────
   function intervalGroupLabel(gIdx: number): string {
-    const interval = Number(state.intervalMinutes) || 1;
-    const startMin = gIdx * interval + 1;
+    const interval = parseMinutes(state.intervalMinutes) || 1;
+    const startMin = gIdx * interval;
     const endMin = (gIdx + 1) * interval;
-    return `Minutes ${startMin} - ${endMin}`;
+    return `Minutes ${formatMinutes(startMin)} - ${formatMinutes(endMin)}`;
   }
 
   function addIntervalGroup() {
