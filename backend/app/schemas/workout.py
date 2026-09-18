@@ -47,6 +47,9 @@ class WorkoutSection(BaseModel):
     # "rounds", "cal", "meters", "time", "reps", "sets", "weight"
     score_type: str | None = None
 
+    # Ranking direction for the score target — "higher" or "lower"
+    ranking_direction: str | None = None
+
     # Multi-set rows for single-movement sections
     movement_sets: list[dict] | None = None
 
