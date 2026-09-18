@@ -48,6 +48,20 @@ export function getScoreTypeOptions(format: ConditioningFormat) {
   return SCORE_TYPE_OPTIONS[format] ?? [{ value: "rounds", label: "Rounds" }];
 }
 
+/** Score types that default to "higher" ranking */
+const HIGHER_DEFAULT_SCORES = new Set(["rounds", "reps", "cal", "meters"]);
+
+/** Score types that default to "lower" ranking */
+const LOWER_DEFAULT_SCORES = new Set(["time"]);
+
+export function defaultRankingDirection(scoreType: string): string {
+  if (!scoreType) return "";
+  if (HIGHER_DEFAULT_SCORES.has(scoreType)) return "Higher";
+  if (LOWER_DEFAULT_SCORES.has(scoreType)) return "Lower";
+  // Custom / unknown scores — leave empty, coach chooses
+  return "";
+}
+
 /**
  * Returns the first available score-type value for a given format,
  * or "" if the current value is already valid for that format.
@@ -89,6 +103,7 @@ type ConditioningFormState = {
   workSeconds: string;
   restSecondsInterval: string;
   scoreType: string;
+  rankingDirection: string;
   movements: MovementRowData[];
   intervalGroups: { id: string; label: string; movements: MovementRowData[] }[];
   notes: string;
@@ -319,7 +334,7 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
           <div className="flex flex-wrap items-center gap-1.5">
             <button
               type="button"
-              onClick={() => set("scoreType", "")}
+              onClick={() => { onStateChange({ ...state, scoreType: "", rankingDirection: "" }); }}
               className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                 state.scoreType === ""
                   ? "border-gray-600 bg-gray-800 text-gray-300"
@@ -333,7 +348,7 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => set("scoreType", opt.value)}
+                onClick={() => { onStateChange({ ...state, scoreType: opt.value, rankingDirection: defaultRankingDirection(opt.value) }); }}
                 className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
                   state.scoreType === opt.value
                     ? "border-[#B4E3BD] bg-[#B4E3BD]/10 text-[#B4E3BD] shadow-sm shadow-[#B4E3BD]/10"
@@ -352,7 +367,7 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
                     ? "border-yellow-500 bg-yellow-500/10 text-yellow-400 shadow-sm shadow-yellow-500/10"
                     : "border-yellow-500/30 text-yellow-500/70 hover:border-yellow-500/60 hover:text-yellow-400"
                 }`}
-                onClick={() => set("scoreType", opt.value)}
+                onClick={() => { onStateChange({ ...state, scoreType: opt.value, rankingDirection: defaultRankingDirection(opt.value) }); }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); set("scoreType", opt.value); } }}
@@ -427,6 +442,46 @@ export default function ConditioningForm({ state, onStateChange }: Props) {
               </div>
             )}
           </div>
+
+            {/* ── Ranking direction (Higher | Lower) ───────────────────────── */}
+            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-800">
+              <span className="text-[10px] text-gray-600 font-semibold uppercase tracking-wider">Ranking</span>
+              <span className="mx-1 text-gray-700 text-[10px]">|</span>
+              <button
+                type="button"
+                onClick={() => set("rankingDirection", "Higher")}
+                disabled={!state.scoreType}
+                className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                  !state.scoreType
+                    ? "border-gray-800/40 text-gray-700 cursor-not-allowed"
+                    : state.rankingDirection === "Higher"
+                      ? "border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-sm shadow-emerald-500/10"
+                      : "border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="inline-block mr-1 -mt-0.5">
+                  <path d="M12 5v14M5 12l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Higher
+              </button>
+              <button
+                type="button"
+                onClick={() => set("rankingDirection", "Lower")}
+                disabled={!state.scoreType}
+                className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${
+                  !state.scoreType
+                    ? "border-gray-800/40 text-gray-700 cursor-not-allowed"
+                    : state.rankingDirection === "Lower"
+                      ? "border-red-500/80 bg-red-500/10 text-red-400 shadow-sm shadow-red-500/10"
+                      : "border-gray-800 text-gray-500 hover:border-gray-600 hover:text-gray-300"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="inline-block mr-1 -mt-0.5">
+                  <path d="M12 19V5M5 12l7 7 7-7" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                Lower
+              </button>
+            </div>
         </div>
       )}
 

@@ -59,6 +59,7 @@ export type SectionForLog = {
   label: string;
   movements: MovementDefForLog[];
   scoreType: string;
+  ranking_direction: string;
   format: string;
   rounds?: number;
   timeCapMinutes?: number;
@@ -333,7 +334,7 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                   {isTimeScore
                     ? "Finish time"
                     : (secMeta?.format === "AMRAP" ? "Score — completed" : "Score")}{" "}
-                  {secMeta?.scoreType && !isTimeScore ? `(${secMeta.scoreType})` : ""}
+                  {secMeta?.scoreType && !isTimeScore ? `${secMeta.scoreType}${secMeta.ranking_direction === "Lower" ? " ↓" : secMeta.ranking_direction === "Higher" ? " ↑" : ""}` : ""}
                 </span>
                 {isTimeScore && secMeta?.format === "RFT" && secMeta?.rounds && secMeta.rounds > 1 ? (
                   /* ── RFT: one time input per round ──────────────── */
@@ -558,7 +559,7 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                           }`} />
                       </div>
                       <div>
-                        <span className="block text-[10px] text-gray-600">{isEmomMov ? `Wt Rnd ${currentRound + 1}` : "Weight"}</span>
+                        <span className="block text-[10px] text-gray-600">{isEmomMov ? `Weight Rnd ${currentRound + 1}` : "Weight"}</span>
                         {isEmomMov && mov.weightPerRound ? (
                           <input type="text" value={mov.weightPerRound[currentRound] ?? ""}
                             onChange={(e) => updateMovementRoundWeight(sIdx, mIdx, currentRound, e.target.value)}

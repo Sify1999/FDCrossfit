@@ -72,10 +72,11 @@ const SCORE_TYPE_LABELS: Record<string, string> = {
   weight: "Weight",
 };
 
-function formatScoreType(scoreType: string | null): string {
+function formatScoreType(scoreType: string | null, rankingDirection?: string | null): string {
   if (!scoreType) return "";
   const label = SCORE_TYPE_LABELS[scoreType] || scoreType;
-  return `Score: ${label}`;
+  const dir = rankingDirection === "Higher" ? " ↑" : rankingDirection === "Lower" ? " ↓" : "";
+  return `Score: ${label}${dir}`;
 }
 
 /**
@@ -243,7 +244,7 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(`  ${formatMovementRow(mov)}`);
     }
-    const score = formatScoreType(section.score_type);
+    const score = formatScoreType(section.score_type, section.ranking_direction);
     if (score) lines.push(`  ${score}`);
   } else if (fmt === "EMOM") {
     const interval = section.interval_minutes ?? 2;
@@ -266,7 +267,7 @@ export function formatConditioningSection(
         lines.push(`  ${formatMovementRow(mov)}`);
       }
     }
-    const scoreEmom = formatScoreType(section.score_type);
+    const scoreEmom = formatScoreType(section.score_type, section.ranking_direction);
     if (scoreEmom) lines.push(`  ${scoreEmom}`);
   } else if (fmt === "FOR_TIME") {
     lines.push("FOR TIME");
@@ -276,7 +277,7 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(`  ${formatMovementRow(mov)}`);
     }
-    const scoreFt = formatScoreType(section.score_type);
+    const scoreFt = formatScoreType(section.score_type, section.ranking_direction);
     if (scoreFt) lines.push(`  ${scoreFt}`);
   } else if (fmt === "RFT") {
     const header = `${section.rounds ?? "?"} ROUNDS FOR TIME`.trim();
@@ -284,7 +285,7 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(formatMovementRow(mov));
     }
-    const scoreRft = formatScoreType(section.score_type);
+    const scoreRft = formatScoreType(section.score_type, section.ranking_direction);
     if (scoreRft) lines.push(scoreRft);
   } else if (fmt === "TABATA") {
     lines.push("TABATA");
@@ -295,7 +296,7 @@ export function formatConditioningSection(
     for (const mov of section.movements) {
       lines.push(formatMovementRow(mov));
     }
-    const scoreTabata = formatScoreType(section.score_type);
+    const scoreTabata = formatScoreType(section.score_type, section.ranking_direction);
     if (scoreTabata) lines.push(`  ${scoreTabata}`);
   } else if (fmt === "CHIPPER") {
     lines.push("CHIPPER");
@@ -317,7 +318,7 @@ export function formatConditioningSection(
       }
       lines.push(`${i + 1}. ${text}`);
     }
-    const scoreChi = formatScoreType(section.score_type);
+    const scoreChi = formatScoreType(section.score_type, section.ranking_direction);
     if (scoreChi) lines.push(`  ${scoreChi}`);
   }
 

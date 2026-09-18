@@ -191,6 +191,7 @@ function extractMovementsForLog(sections: WorkoutSection[]): SectionForLog[] {
       label: s.label,
       movements: movementDefs,
       scoreType: s.score_type || "",
+      ranking_direction: s.ranking_direction || "",
       format: s.format || "",
       rounds: s.rounds ?? undefined,
       timeCapMinutes: s.time_cap_minutes ?? undefined,

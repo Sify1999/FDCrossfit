@@ -123,6 +123,8 @@ export type ConditioningSection = {
   rpe: string | null;
   effort: string | null;
   zone: string | null;
+  /** Ranking direction: "higher" or "lower" for leaderboard scoring */
+  ranking_direction: string | null;
 };
 
 export type ConditioningFormat =

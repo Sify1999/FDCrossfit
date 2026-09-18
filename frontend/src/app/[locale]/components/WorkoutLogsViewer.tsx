@@ -30,6 +30,8 @@ type LogSectionEntry = {
   format?: string;
   /** Number of rounds (for EMOM) */
   rounds?: number;
+  /** Ranking direction for leaderboard ("Higher" | "Lower") */
+  ranking_direction?: string;
 };
 
 type WorkoutLogEntry = {
@@ -170,7 +172,7 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
                     </div>
                     {section.score && (
                       <span className="shrink-0 rounded-full border border-[#B4E3BD]/30 bg-[#B4E3BD]/10 px-3 py-1 text-xs font-bold text-[#B4E3BD] shadow-sm shadow-[#B4E3BD]/5">
-                        Score: {section.score}
+                        Score: {section.score}{section.ranking_direction === "Higher" ? " ↑" : section.ranking_direction === "Lower" ? " ↓" : ""}
                       </span>
                     )}
                   </div>

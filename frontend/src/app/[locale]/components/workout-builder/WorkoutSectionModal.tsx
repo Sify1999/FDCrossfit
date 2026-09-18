@@ -5,7 +5,7 @@ import { api, getErrorMessage } from "@/lib/api-client";
 import { TypeCard } from "./UiHelpers";
 import SingleMovementForm from "./SingleMovementForm";
 import ComplexForm from "./ComplexForm";
-import ConditioningForm, { type ConditioningFormState, getScoreTypeOptions } from "./ConditioningForm";
+import ConditioningForm, { type ConditioningFormState, getScoreTypeOptions, defaultRankingDirection } from "./ConditioningForm";
 import TextForm from "./TextForm";
 import type {
   Movement,
@@ -42,7 +42,7 @@ function defaultComplexState(): ComplexFormState {
   return { selectedComplexId: null, complexName: "", movements: [], sets: "", weight: "", restSeconds: "", notes: "", label: "", rpe: "", effort: "", zone: "" };
 }
 function defaultCondState(): ConditioningFormState {
-  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", movements: [], intervalGroups: [], notes: "", label: "", rpe: "", effort: "", zone: "", customScoreTargets: [] };
+  return { format: null, durationMinutes: "", intervalMinutes: "", timeCapMinutes: "", rounds: "", workSeconds: "", restSecondsInterval: "", scoreType: "", rankingDirection: "", movements: [], intervalGroups: [], notes: "", label: "", rpe: "", effort: "", zone: "", customScoreTargets: [] };
 }
 function defaultTextState(): TextFormState {
   return { label: "", content: "" };
@@ -139,6 +139,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
             workSeconds: cd.work_seconds?.toString() ?? "",
             restSecondsInterval: cd.rest_seconds_interval?.toString() ?? "",
             scoreType: cd.score_type ?? "",
+            rankingDirection: cd.ranking_direction ?? defaultRankingDirection(cd.score_type ?? ""),
             intervalGroups: cd.interval_groups?.map((g: any) => ({
               id: Math.random().toString(36).slice(2, 9),
               label: g.label,
@@ -235,6 +236,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
           workSeconds: data.work_seconds?.toString() ?? "",
           restSecondsInterval: data.rest_seconds_interval?.toString() ?? "",
           scoreType: data.score_type ?? "",
+          rankingDirection: data.ranking_direction ?? defaultRankingDirection(data.score_type ?? ""),
           intervalGroups: (data.interval_groups || []).map((g: any) => ({
             id: Math.random().toString(36).slice(2, 9),
             label: g.label,
@@ -331,6 +333,7 @@ export default function WorkoutSectionModal({ open, onClose, onAdd, editSection,
         work_seconds: condState.workSeconds ? Number(condState.workSeconds) : null,
         rest_seconds_interval: condState.restSecondsInterval ? Number(condState.restSecondsInterval) : null,
         score_type: condState.scoreType || null,
+        ranking_direction: condState.rankingDirection || null,
         movements: condState.movements, notes: condState.notes || null, content: "",
         interval_groups: condState.intervalGroups.length > 0
           ? condState.intervalGroups.map((g) => ({ label: g.label, movements: g.movements }))
