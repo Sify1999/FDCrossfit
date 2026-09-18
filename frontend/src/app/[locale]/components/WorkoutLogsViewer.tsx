@@ -142,7 +142,7 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
                 </p>
               </div>
               <button type="button" onClick={() => setSelectedUserId(null)}
-                className="rounded-full border border-gray-800 px-4 py-1.5 text-xs font-semibold text-gray-300 transition hover:border-gray-600">&larr; Back</button>
+                className="rounded-full border border-gray-800 px-4 py-1.5 text-xs font-semibold text-gray-300 transition hover:border-gray-600">Back</button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
               {selectedLog.log_data.length === 0 && <p className="py-8 text-center text-sm text-gray-500">No data logged yet.</p>}
@@ -174,6 +174,14 @@ export default function WorkoutLogsViewer({ open, onClose, workoutDate }: Props)
                       </span>
                     )}
                   </div>
+
+                  {/* ── AMRAP instruction ─────────────────────────────────────────── */}
+                  {(workoutSec?.format === "AMRAP" || section.format === "AMRAP") && (
+                    <div className="mb-3 rounded-lg border border-[#B4E3BD]/10 bg-[#B4E3BD]/5 px-3 py-2">
+                      <p className="text-[10px] text-gray-500 italic">Reps for the last round</p>
+                    </div>
+                  )}
+
                   {section.movements.length === 0 && <p className="text-xs text-gray-600">&mdash;</p>}
 
                   {/* ── EMOM round indicator badges ──────────────────────────── */}

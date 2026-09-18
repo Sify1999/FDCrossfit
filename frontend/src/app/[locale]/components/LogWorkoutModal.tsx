@@ -450,17 +450,20 @@ export default function LogWorkoutModal({ open, onClose, workoutDate, sections }
                     className="w-full rounded-lg border border-gray-800 bg-gray-950 px-2 py-1.5 text-center text-xs text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD]" />
                 </div>
               </div>
+
+              {/* ── AMRAP instruction ─────────────────────────────────────────── */}
+              {(secMeta as any)?.format === "AMRAP" && (
+                <div className="mb-3 rounded-lg border border-[#B4E3BD]/10 bg-[#B4E3BD]/5 px-3 py-2">
+                  <p className="text-[10px] text-gray-500 italic">Enter your reps for the last round</p>
+                </div>
+              )}
+
               {section.movements.length === 0 && <p className="text-xs text-gray-600">&mdash;</p>}
 
               {/* ── EMOM round selector (per-section) ────────────────────────── */}
               {secMeta?.format === "EMOM" && (secMeta.rounds ?? 0) > 1 && (
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1.5">
-{(secMeta as any)?.format === "AMRAP" && (
-                      <div className="mb-3 rounded-lg border border-[#B4E3BD]/10 bg-[#B4E3BD]/5 px-3 py-2">
-                        <p className="text-[10px] text-gray-500 italic">Enter your reps for the last round</p>
-                      </div>
-                    )}
                     <span className="text-[10px] font-semibold text-gray-500">Round</span>
                     <button
                       type="button"
