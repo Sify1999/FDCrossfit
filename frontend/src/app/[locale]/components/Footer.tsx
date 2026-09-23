@@ -34,8 +34,8 @@
         label: t("links.contact"),
       },
       {
-        href: `/${locale}/book`,
-        label: t("links.book"),
+        href: `/${locale}/competition`,
+        label: t("links.competition"),
       }
     ];
 

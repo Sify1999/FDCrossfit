@@ -59,6 +59,7 @@
     "contact": "Contact",
     "coaches": "Coaches",
     "book": "Book Now",
+    "competition": "Competition",
     "logout": "Logout"
   },
   "auth": {
@@ -189,7 +190,8 @@
       "coaches": "Coaches",
       "pricing": "Pricing",
       "contact": "Contact",
-      "book": "Book Now"
+      "book": "Book Now",
+      "competition" : "Competition"
     }
   },
   "bookPage": {
@@ -322,5 +324,35 @@
     "confirmRemoveSection": "Are you sure you want to remove this section? This cannot be undone.",
     "deleteWorkout": "Delete workout",
     "confirmDeleteWorkout": "Are you sure you want to delete the entire workout for this day? This cannot be undone."
+  },
+  "competition": {
+    "hero": {
+      "title": "FD Crossfit Championship",
+      "subtitle": "Push your boundaries, compete at your best. Sign up now and show what you're made of.",
+      "btnSignIn": "Sign Up",
+      "btnSchedule": "Schedule",
+      "btnScores": "Scoreboard"
+    },
+    "signIn": {
+      "title": "Sign Up for the Competition",
+      "description": "Register now to compete in the FD Crossfit Championship. Limited spots available — secure yours today."
+    },
+    "schedule": {
+      "title": "Competition Schedule",
+      "description": "Check the full schedule of events, heats, and categories. Plan your competition day with ease."
+    },
+    "scores": {
+      "title": "Scoreboard & Rankings",
+      "description": "Live updates of athlete rankings and competition scores. Track your progress against the best."
+    },
+    "difficulty": {
+      "label": "Select Level",
+      "beginner": "Beginner",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced",
+      "beginnerDesc": "For first-time competitors",
+      "intermediateDesc": "For experienced athletes",
+      "advancedDesc": "For elite competitors"
+    }
   }
 }
