@@ -1,0 +1,63 @@
+};
+
+function EventCard({ index, event }: { index: number; event: CompetitionEvent }) {
+  const [timeValue, meridiem] = event.time.split(" ");
+
+  return (
+    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#181818] to-[#141414] transition-all duration-500 hover:-translate-y-1.5 hover:border-[#B4E3BD]/60 hover:shadow-2xl hover:shadow-[#B4E3BD]/15">
+      
+      <div className="p-5 lg:flex lg:items-stretch lg:p-0">
+        {/* ── Desktop: time panel ────────────────────────────────── */}
+        <div className="hidden shrink-0 flex-col items-center justify-center gap-1.5 border-r border-white/5 bg-gradient-to-b from-[#B4E3BD]/5 via-transparent to-transparent px-6 py-8 lg:flex lg:w-44">
+          <span className="flex flex-col items-center gap-0.5">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">Event</span>
+            <span className="text-2xl font-black leading-none text-[#B4E3BD]">{String(index + 1)}</span>
+          </span>
+          <span className="mt-3 text-4xl font-black leading-none tracking-tight text-white">{timeValue}</span>
+          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500">{meridiem}</span>
+          <span className="mt-4 inline-flex items-center gap-1.5 text-xs text-gray-500">
+            <IconClock />
+            <span className="leading-none">{event.date}</span>
+          </span>
+        </div>
+
+        {/* ── Mobile header ──────────────────────────────────────── */}
+        <div className="mb-3 flex items-center justify-between gap-2 lg:hidden">
+          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#B4E3BD]">
+            <span className="inline-block h-2 w-2 rounded-full bg-[#B4E3BD]" />
+            Event {index + 1}
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-[11px] font-medium text-gray-400">
+            <IconClock />
+            <span className="leading-none">{event.time}</span>
+          </span>
+        </div>
+
+        {/* ── Details ─────────────────────────────────────────────── */}
+        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:px-8 lg:py-6">
+          <h3 className="mb-1.5 text-lg font-bold text-white lg:text-2xl">{event.name}</h3>
+          <p className="mb-3 text-sm leading-relaxed text-gray-400 lg:text-base">{event.format}</p>
+
+          {/* Meta row — location + duration */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+              {event.duration}
+            </span>
+          </div>
+        </div>
+
+        {/* Desktop arrow */}
+        <div className="hidden items-center pr-6 lg:flex">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-600 transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#B4E3BD]">
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+

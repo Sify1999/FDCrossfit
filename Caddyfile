@@ -1,0 +1,24 @@
+:80 {
+    # Compress text responses (JS, CSS, JSON, HTML, SVG)
+    encode zstd gzip
+
+    # API -> backend. Never cached.
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # Static assets -> 30-day cache.
+    # header_down overrides the Cache-Control that Next.js sends upstream.
+    @assets path /images/* /videos/* /icons/* /_next/image*
+    handle @assets {
+        reverse_proxy frontend:3000 {
+            header_down Cache-Control "public, max-age=2592000"
+        }
+    }
+
+    # Everything else -> Next.js
+    # (/_next/static/* already gets immutable caching from Next itself)
+    handle {
+        reverse_proxy frontend:3000
+    }
+}

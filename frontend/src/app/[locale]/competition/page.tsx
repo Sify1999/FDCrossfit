@@ -43,6 +43,16 @@ function IconClock() {
     </svg>
   );
 }
+function IconCalendarSmall() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
 
 function IconPlay() {
   return (
@@ -206,10 +216,9 @@ function DifficultyPicker({
   );
 }
 
-/* ─── Level tabs — simple segmented control for the schedule section.
-   No sliding-highlight animation on purpose: that math has to be mirrored
-   for RTL, and a plain active/inactive state is both simpler and already
-   direction-safe via `me-` (margin-inline-end). ─────────────────────── */
+/* ─── Level tabs — segmented control for the schedule section.
+   Plain active/inactive state, direction-safe. On phones the three
+   tabs share the full width equally so they never wrap. ─────────── */
 function LevelTabs({
   t, active, onChange,
 }: {
@@ -218,7 +227,7 @@ function LevelTabs({
   onChange: (level: LevelKey) => void;
 }) {
   return (
-    <div className="mx-auto mb-10 flex w-full max-w-md flex-wrap justify-center gap-1.5 rounded-full border border-white/10 bg-[#141414] p-1.5">
+    <div className="mx-auto mb-8 grid w-full max-w-md grid-cols-3 gap-1 rounded-full border border-white/10 bg-[#141414] p-1 sm:mb-12 sm:gap-1.5 sm:p-1.5">
       {LEVELS.map((lvl) => {
         const isActive = active === lvl.key;
         return (
@@ -226,12 +235,11 @@ function LevelTabs({
             key={lvl.key}
             type="button"
             onClick={() => onChange(lvl.key)}
-            className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors duration-300 ${
+            className={`flex items-center justify-center gap-1.5 rounded-full px-2 py-2.5 text-xs font-semibold transition-colors duration-300 sm:px-4 sm:text-sm ${
               isActive ? "bg-[#B4E3BD] text-black" : "text-gray-400 hover:bg-white/5 hover:text-white"
             }`}
           >
-            <span className="me-1.5 inline-flex h-6 w-6 items-center justify-center">{t(`difficulty.${lvl.key}`)} </span>
-            
+            {t(`difficulty.${lvl.key}`)}
           </button>
         );
       })}
@@ -244,87 +252,98 @@ type CompetitionEvent = {
   id: string;
   date: string;
   time: string;
-  name: string;
-  format: string;
-  duration: string;
 };
 
 const SCHEDULE: Record<LevelKey, CompetitionEvent[]> = {
   beginner: [
-    { id: "b1", date: "Sat, Jun 14", time: "9:00 AM", name: "Opening WOD", format: "AMRAP 10 min — bodyweight", duration: "45 min" },
-    { id: "b2", date: "Sat, Jun 14", time: "10:15 AM", name: "Strength Basics", format: "For Time — light load", duration: "50 min" },
-    { id: "b3", date: "Sat, Jun 14", time: "11:30 AM", name: "Technique Session", format: "Max Load — coach supervised", duration: "40 min" },
-    { id: "b4", date: "Sat, Jun 14", time: "1:00 PM", name: "Team Relay", format: "Partner WOD", duration: "30 min" },
+    { id: "b1", date: "Sat, Jun 14", time: "9:00 AM" },
+    { id: "b2", date: "Sat, Jun 14", time: "10:15 AM" },
+    { id: "b3", date: "Sat, Jun 14", time: "11:30 AM" },
+    { id: "b4", date: "Sat, Jun 14", time: "1:00 PM" },
   ],
   intermediate: [
-    { id: "i1", date: "Sat, Jun 14", time: "9:00 AM", name: "Opening WOD", format: "AMRAP 12 min — RX light", duration: "45 min" },
-    { id: "i2", date: "Sat, Jun 14", time: "10:15 AM", name: "Strength Lifts", format: "For Time — RX light", duration: "50 min" },
-    { id: "i3", date: "Sat, Jun 14", time: "11:30 AM", name: "Max Effort", format: "1RM Complex", duration: "40 min" },
-    { id: "i4", date: "Sat, Jun 14", time: "1:00 PM", name: "Team Relay", format: "Partner WOD — scaled", duration: "30 min" },
+    { id: "i1", date: "Sat, Jun 14", time: "9:00 AM" },
+    { id: "i2", date: "Sat, Jun 14", time: "10:15 AM" },
+    { id: "i3", date: "Sat, Jun 14", time: "11:30 AM" },
+    { id: "i4", date: "Sat, Jun 14", time: "1:00 PM" },
   ],
   advanced: [
-    { id: "a1", date: "Sat, Jun 14", time: "9:00 AM", name: "Opening WOD", format: "AMRAP 15 min — RX", duration: "45 min" },
-    { id: "a2", date: "Sat, Jun 14", time: "10:15 AM", name: "Max Strength", format: "For Time — RX heavy", duration: "50 min" },
-    { id: "a3", date: "Sat, Jun 14", time: "11:30 AM", name: "Elite Lift-Off", format: "1RM — Max Load", duration: "40 min" },
-    { id: "a4", date: "Sat, Jun 14", time: "1:00 PM", name: "Championship Relay", format: "Team WOD — RX", duration: "30 min" },
+    { id: "a1", date: "Sat, Jun 14", time: "9:00 AM" },
+    { id: "a2", date: "Sat, Jun 14", time: "10:15 AM" },
+    { id: "a3", date: "Sat, Jun 14", time: "11:30 AM" },
+    { id: "a4", date: "Sat, Jun 14", time: "1:00 PM" },
   ],
 };
 
+/* ─── Event card ─────────────────────────────────────────────────────
+   One horizontal row, three equal columns (event · time · date), so the
+   content is centered perfectly at every width. dir="ltr" keeps the
+   column order and the dividers identical in Farsi and English — the
+   content is just numbers and short English strings, so nothing reads
+   wrong. On phones the sizes shrink but it stays on ONE line. ──────── */
 function EventCard({ index, event }: { index: number; event: CompetitionEvent }) {
   const [timeValue, meridiem] = event.time.split(" ");
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#181818] to-[#141414] transition-all duration-500 hover:-translate-y-1.5 hover:border-[#B4E3BD]/60 hover:shadow-2xl hover:shadow-[#B4E3BD]/15">
-      
-      <div className="p-5 lg:flex lg:items-stretch lg:p-0">
-        {/* ── Desktop: time panel ────────────────────────────────── */}
-        <div className="hidden shrink-0 flex-col items-center justify-center gap-1.5 border-r border-white/5 bg-gradient-to-b from-[#B4E3BD]/5 via-transparent to-transparent px-6 py-8 lg:flex lg:w-44">
-          <span className="flex flex-col items-center gap-0.5">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">Event</span>
-            <span className="text-2xl font-black leading-none text-[#B4E3BD]">{String(index + 1)}</span>
+    <div
+      dir="ltr"
+      style={{ animationDelay: `${index * 90}ms` }}
+      className="
+        group relative overflow-hidden rounded-2xl border border-white/10
+        bg-gradient-to-br from-[#1a1a1a] to-[#121212]
+        shadow-lg shadow-black/40
+        opacity-0 animate-[fadeIn_0.5s_ease-out_forwards]
+        transition-all duration-500
+        hover:-translate-y-1 hover:border-[#B4E3BD]/60
+        hover:shadow-2xl hover:shadow-[#B4E3BD]/20
+      "
+    >
+      {/* Top mint hairline — same motif as the section dividers */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent opacity-60 transition-opacity duration-500 group-hover:opacity-100"
+      />
+      {/* Soft hover glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-2/3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#B4E3BD]/0 blur-3xl transition-colors duration-500 group-hover:bg-[#B4E3BD]/10"
+      />
+
+      <div className="relative grid grid-cols-3 items-center divide-x divide-white/10 py-4 text-center sm:py-6">
+        {/* Event number */}
+        <div className="flex flex-col items-center justify-center gap-1.5 px-2">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-500 sm:text-[11px]">
+            Event
           </span>
-          <span className="mt-3 text-4xl font-black leading-none tracking-tight text-white">{timeValue}</span>
-          <span className="text-xs font-semibold uppercase tracking-[0.15em] text-gray-500">{meridiem}</span>
-          <span className="mt-4 inline-flex items-center gap-1.5 text-xs text-gray-500">
-            <IconClock />
-            <span className="leading-none">{event.date}</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 text-sm font-black text-[#B4E3BD] transition-all duration-300 group-hover:border-[#B4E3BD] group-hover:bg-[#B4E3BD] group-hover:text-black sm:h-10 sm:w-10 sm:text-lg">
+            {index + 1}
           </span>
         </div>
 
-        {/* ── Mobile header ──────────────────────────────────────── */}
-        <div className="mb-3 flex items-center justify-between gap-2 lg:hidden">
-          <span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-[#B4E3BD]">
-            <span className="inline-block h-2 w-2 rounded-full bg-[#B4E3BD]" />
-            Event {index + 1}
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-[11px] font-medium text-gray-400">
-            <IconClock />
-            <span className="leading-none">{event.time}</span>
-          </span>
-        </div>
-
-        {/* ── Details ─────────────────────────────────────────────── */}
-        <div className="lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:px-8 lg:py-6">
-          <h3 className="mb-1.5 text-lg font-bold text-white lg:text-2xl">{event.name}</h3>
-          <p className="mb-3 text-sm leading-relaxed text-gray-400 lg:text-base">{event.format}</p>
-
-          {/* Meta row — location + duration */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-              {event.duration}
+        {/* Time */}
+        <div className="flex flex-col items-center justify-center gap-0.5 px-2">
+          <span className="flex items-baseline justify-center gap-1">
+            <span className="text-xl font-black leading-none tracking-tight text-white sm:text-4xl">
+              {timeValue}
             </span>
-          </div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#B4E3BD] sm:text-xs">
+              {meridiem}
+            </span>
+          </span>
+          <span className="mt-1 hidden items-center gap-1 text-[10px] uppercase tracking-widest text-gray-600 sm:flex">
+            <IconClock />
+            Start
+          </span>
         </div>
 
-        {/* Desktop arrow */}
-        <div className="hidden items-center pr-6 lg:flex">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-600 transition-all duration-300 group-hover:translate-x-1 group-hover:text-[#B4E3BD]">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
+        {/* Date */}
+        <div className="flex flex-col items-center justify-center gap-1.5 px-2">
+          <span className="text-[#B4E3BD]/70 transition-colors duration-300 group-hover:text-[#B4E3BD]">
+            <IconCalendarSmall />
+          </span>
+          <span className="text-xs font-semibold leading-tight text-gray-300 sm:text-base">
+            {event.date}
+          </span>
         </div>
       </div>
     </div>
@@ -351,7 +370,7 @@ function SectionHeader({
       <h2 className="mb-6 text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">
         {title}
       </h2>
-      <p className="mx-auto mb-12 max-w-xl text-lg leading-relaxed text-gray-400">
+      <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed text-gray-400 sm:mb-12 sm:text-lg">
         {description}
       </p>
     </div>
@@ -584,7 +603,8 @@ export default function CompetitionPage() {
       {/* ════════════════════════════════════════════════════════════════
           SCHEDULE SECTION (زمان بندی)
       ════════════════════════════════════════════════════════════════ */}
-      <section id="section-schedule" className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#111111] px-6 py-24 sm:px-12">
+      <section id="section-schedule" className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-[#111111] px-4 py-20 sm:px-12 sm:py-24">
+        <div aria-hidden className="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/30 to-transparent" />
         <div aria-hidden className="pointer-events-none absolute -right-32 top-1/3 h-72 w-72 rounded-full bg-[#B4E3BD]/5 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -left-32 bottom-1/4 h-72 w-72 rounded-full bg-[#B4E3BD]/5 blur-3xl" />
         <div className="relative z-10 w-full">
@@ -597,16 +617,18 @@ export default function CompetitionPage() {
 
           <LevelTabs t={t} active={activeLevel} onChange={setActiveLevel} />
 
+          {/* Single centered column of one-line cards. `key` remounts the
+              list on level change so the staggered fade-in replays. */}
           <div
             key={activeLevel}
-            className="mx-auto grid max-w-5xl animate-[fadeIn_0.4s_ease-out] grid-cols-1 gap-4 sm:grid-cols-2 lg:gap-6"
+            className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4"
           >
             {SCHEDULE[activeLevel].map((event, i) => (
               <EventCard key={event.id} index={i} event={event} />
             ))}
           </div>
 
-          <div className="mt-12 flex justify-center">
+          <div className="mt-10 flex justify-center sm:mt-12">
             <BackToTop onClick={() => scrollTo("hero")} />
           </div>
         </div>
