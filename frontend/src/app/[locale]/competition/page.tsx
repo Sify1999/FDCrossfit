@@ -3,6 +3,9 @@
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useState, useRef, useEffect } from "react";
 import Image from "next/image";
+import { api } from "@/lib/api-client";
+import AddAthleteModal from "../components/AddAthleteModal";
+import ShowAthletesModal from "../components/ShowAthletesModal";
 
 /* ─── Icons (inline, currentColor so they inherit) ─────────────────── */
 function IconSignIn() {
@@ -274,36 +277,24 @@ const SCHEDULE: Record<LevelKey, CompetitionEvent[]> = {
     { id: "a4", date: "Sat, Jun 14", time: "1:00 PM" },
     ],
 };
-/* ─── Leaderboard test data with event (1-4) per athlete ──────────── */
+/* ─── Leaderboard types ──────────────────────────── */
 type LeaderboardEntry = {
+  id: number;
   name: string;
-  level: "Beginner" | "Intermediate" | "Advanced";
-  event: 1 | 2 | 3 | 4;
-  score: number;
+  level: string;
+  event: number;
+  score: number | null;
 };
 
-const LEADERBOARD_DATA: LeaderboardEntry[] = [
-  // Event 1
-  { name: "Parsa A.",   level: "Advanced",      event: 1, score: 1245 },
-  { name: "Sara M.",    level: "Intermediate",   event: 1, score: 1180 },
-  { name: "Kim L.",     level: "Beginner",       event: 1, score: 1090 },
-  { name: "Mike T.",    level: "Intermediate",   event: 1, score: 964  },
-  // Event 2
-  { name: "John D.",    level: "Advanced",      event: 2, score: 1132 },
-  { name: "Amir H.",    level: "Intermediate",   event: 2, score: 1045 },
-  { name: "Elena R.",   level: "Beginner",       event: 2, score: 998  },
-  { name: "Chris B.",   level: "Beginner",       event: 2, score: 887  },
-  // Event 3
-  { name: "Fatemeh K.", level: "Advanced",      event: 3, score: 912  },
-  { name: "Omid J.",    level: "Intermediate",   event: 3, score: 843  },
-  { name: "Ali R.",     level: "Intermediate",   event: 3, score: 790  },
-  { name: "Nina W.",    level: "Beginner",       event: 3, score: 755  },
-  // Event 4
-  { name: "Tom S.",     level: "Advanced",      event: 4, score: 820  },
-  { name: "Laleh M.",   level: "Intermediate",   event: 4, score: 765  },
-  { name: "Jack P.",    level: "Beginner",       event: 4, score: 710  },
-  { name: "Reza K.",    level: "Beginner",       event: 4, score: 690  },
-];
+type AthleteFromApi = {
+  id: number;
+  name: string;
+  level: string;
+  event: number;
+  score: number | null;
+  created_at: string;
+  updated_at: string;
+};
 
 const LEVEL_BADGE_STYLES: Record<string, string> = {
   Beginner: "bg-[#B4E3BD]/10 text-[#B4E3BD] border-[#B4E3BD]/20",
@@ -313,7 +304,7 @@ const LEVEL_BADGE_STYLES: Record<string, string> = {
 
 function LevelBadge({ level }: { level: string }) {
   return (
-    <span className={`inline-block rounded-full border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-wider ${LEVEL_BADGE_STYLES[level] || ""}`}>
+    <span className={`inline-block rounded-full border px-2 sm:px-3 py-0.5 text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider ${LEVEL_BADGE_STYLES[level] || ""}`}>
       {level}
     </span>
   );
@@ -444,43 +435,63 @@ function FilterDropdown({
   onSelect,
 }: {
   label: string;
-  options: { value: string | number | null; label: string }[];
-  selected: string | number | null;
-  onSelect: (val: string | number | null) => void;
+  options: { value: string | number; label: string }[];
+  selected: string | number;
+  onSelect: (val: string | number) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      const isOutside =
+        btnRef.current && !btnRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target);
+      if (isOutside) setOpen(false);
     };
-    if (open) document.addEventListener("mousedown", handler);
+    if (open) {
+      document.addEventListener("mousedown", handler);
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        setPosition({ top: rect.bottom + 4, left: Math.max(4, rect.left) });
+      }
+    }
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
   const currentLabel =
-    selected === null ? label : options.find((o) => o.value === selected)?.label ?? label;
+    options.find((o) => o.value === selected)?.label ?? label;
 
   return (
-    <div className="relative inline-flex" ref={ref}>
+    <div className="relative inline-flex">
       <button
+        ref={btnRef}
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-[0.15em] transition-all duration-200 ${
-          selected !== null
-            ? "bg-[#B4E3BD]/10 text-[#B4E3BD]"
-            : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+        className={`inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em] sm:tracking-[0.15em] transition-all duration-200 ${
+          "bg-[#B4E3BD]/10 text-[#B4E3BD]"
         }`}
       >
         {currentLabel}
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-xl shadow-black/5">
+      {open && position && (
+        <div
+          ref={dropdownRef}
+          style={{
+            position: "fixed",
+            top: position.top,
+            left: position.left,
+            zIndex: 9999,
+          }}
+          className="min-w-[120px] sm:min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-xl shadow-black/5"
+        >
           {options.map((opt) => {
             const isActive = selected === opt.value;
             return (
@@ -490,16 +501,16 @@ function FilterDropdown({
                   onSelect(opt.value);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors ${
+                className={`flex w-full items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm transition-colors ${
                   isActive ? "bg-[#B4E3BD]/10 font-semibold text-[#B4E3BD]" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
                 {isActive && (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="shrink-0 text-[#B4E3BD]">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="shrink-0 text-[#B4E3BD]">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 )}
-                <span className={isActive ? "" : "ml-6"}>{opt.label}</span>
+                <span className={isActive ? "" : "ml-5 sm:ml-6"}>{opt.label}</span>
               </button>
             );
           })}
@@ -550,13 +561,49 @@ export default function CompetitionPage() {
   }, []);
 
   // ── Leaderboard filters ──────────────────────────────────────────
-  const [levelFilter, setLevelFilter] = useState<string | null>(null);
-  const [eventFilter, setEventFilter] = useState<number | null>(null);
+  const [levelFilter, setLevelFilter] = useState<string>("Beginner");
+  const [eventFilter, setEventFilter] = useState<number>(1);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [showAthletesOpen, setShowAthletesOpen] = useState(false);
 
-  const filtered = LEADERBOARD_DATA
-    .filter((r) => !levelFilter || r.level === levelFilter)
-    .filter((r) => !eventFilter || r.event === eventFilter)
-    .sort((a, b) => b.score - a.score)
+  // Load leaderboard data from the API
+  const loadLeaderboard = useCallback(async () => {
+    setLoadingLeaderboard(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("level", levelFilter);
+      params.set("event", String(eventFilter));
+      const qs = params.toString();
+      const data = await api.get<{ athletes: AthleteFromApi[] }>(
+        `/competition-athletes?${qs}`
+      );
+      setLeaderboard(
+        data.athletes.map((a) => ({
+          id: a.id,
+          name: a.name,
+          level: a.level,
+          event: a.event,
+          score: a.score,
+        }))
+      );
+    } catch {
+      setLeaderboard([]);
+    } finally {
+      setLoadingLeaderboard(false);
+    }
+  }, [levelFilter, eventFilter]);
+
+  // Fetch on mount + when filters change
+  useEffect(() => {
+    loadLeaderboard();
+  }, [loadLeaderboard]);
+
+  const filtered = leaderboard
+    .filter((r) => r.level === levelFilter)
+    .filter((r) => r.event === eventFilter)
+    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
     .map((row, i) => ({ ...row, place: i + 1 }));
 
   // ── Schedule difficulty picker ─────────────────────────────────────
@@ -588,7 +635,7 @@ export default function CompetitionPage() {
   }, [scrollTo]);
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-black text-white">
+    <main className="min-h-screen bg-black text-white">
       {/* ════════════════════════════════════════════════════════════════
           HERO — Video always left / Text + Buttons right
       ════════════════════════════════════════════════════════════════ */}
@@ -763,7 +810,7 @@ export default function CompetitionPage() {
       {/* ════════════════════════════════════════════════════════════════
           SCORES SECTION (جدول امتیازات)
       ════════════════════════════════════════════════════════════════ */}
-      <section id="section-scores" className="relative min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 px-6 py-24 sm:px-12">
+      <section id="section-scores" className="relative overflow-hidden min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 px-6 py-24 sm:px-12">
         {/* Decorative blur blobs */}
         <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-[#B4E3BD]/10 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[#B4E3BD]/5 blur-3xl" />
@@ -787,47 +834,77 @@ export default function CompetitionPage() {
             </p>
           </div>
 
+          {/* Add Athlete button bar */}
+          <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+            <div>
+              {loadingLeaderboard && (
+                <span className="text-sm text-gray-400">Loading…</span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAthletesOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border-2 border-[#B4E3BD] px-5 py-2.5 text-sm font-semibold text-[#B4E3BD] transition-all hover:bg-[#B4E3BD] hover:text-black active:scale-[0.98]"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Show Athletes
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-[#B4E3BD] px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-[#a3dcae] active:scale-[0.98]"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add Athlete
+              </button>
+            </div>
+          </div>
+
           {/* Leaderboard Table */}
-          <div className="rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/80">
-            <table className="w-full">
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/80">
+            <table className="w-full min-w-[480px] sm:min-w-0">
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50/80">
-                  <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-gray-500 first:pl-6">Place</th>
-                  <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-gray-500">Name</th>
-                  <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-gray-500">
+                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500 first:pl-4 sm:first:pl-6">#</th>
+                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500">Name</th>
+                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500">
                     <FilterDropdown
                       label="Level"
                       options={[
-                        { value: null, label: "All Levels" },
                         { value: "Beginner", label: "Beginner" },
                         { value: "Intermediate", label: "Intermediate" },
                         { value: "Advanced", label: "Advanced" },
                       ]}
                       selected={levelFilter}
-                      onSelect={(v) => setLevelFilter(v as string | null)}
+                      onSelect={(v) => setLevelFilter(v as string)}
                     />
                   </th>
-                  <th className="px-5 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-gray-500">
+                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500">
                     <FilterDropdown
                       label="Event"
                       options={[
-                        { value: null, label: "All Events" },
                         { value: 1, label: "Event 1" },
                         { value: 2, label: "Event 2" },
                         { value: 3, label: "Event 3" },
                         { value: 4, label: "Event 4" },
                       ]}
                       selected={eventFilter}
-                      onSelect={(v) => setEventFilter(v as number | null)}
+                      onSelect={(v) => setEventFilter(v as number)}
                     />
                   </th>
-                  <th className="px-5 py-4 text-right text-xs font-bold uppercase tracking-[0.15em] text-gray-500 last:pr-6">Score</th>
+                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-right text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500 last:pr-4 sm:last:pr-6">Score</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-400">
+                    <td colSpan={5} className="px-4 sm:px-6 py-10 sm:py-12 text-center text-sm text-gray-400">
                       No results match your filters.
                     </td>
                   </tr>
@@ -835,34 +912,37 @@ export default function CompetitionPage() {
                   filtered.map((row) => {
                     const badge =
                       row.place === 1
-                        ? "bg-yellow-100 text-yellow-700 shadow-sm shadow-yellow-200/50"
+                        ? "bg-amber-100 text-amber-800 shadow-sm shadow-amber-200/50"
                         : row.place === 2
-                          ? "bg-gray-200 text-gray-500 shadow-sm shadow-gray-300/50"
+                          ? "bg-slate-100 text-slate-600 shadow-sm shadow-slate-200/50"
                           : row.place === 3
-                            ? "bg-amber-100 text-amber-700 shadow-sm shadow-amber-200/50"
+                            ? "bg-orange-100 text-orange-700 shadow-sm shadow-orange-200/50"
                             : "text-gray-500";
 
                     const rowBg =
                       row.place === 1
-                        ? "bg-yellow-50 hover:bg-yellow-100"
+                        ? "bg-amber-50/70 hover:bg-amber-100/70"
                         : row.place === 2
-                          ? "bg-gray-100 hover:bg-gray-200"
+                          ? "bg-slate-50/70 hover:bg-slate-100/70"
                           : row.place === 3
-                            ? "bg-amber-50 hover:bg-amber-100"
+                            ? "bg-orange-50/70 hover:bg-orange-100/70"
                             : "hover:bg-[#B4E3BD]/5";
 
                     return (
                       <tr key={`${row.name}-${row.event}`} className={`border-b border-gray-100 transition-colors duration-200 last:border-0 ${rowBg}`}>
-                        <td className="px-5 py-4 first:pl-6">
-                          <span className={`inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-sm font-black tabular-nums ${badge}`}>
+                        <td className="px-3 sm:px-5 py-3 sm:py-4 first:pl-4 sm:first:pl-6">
+                          <span className={`inline-flex items-center justify-center rounded-lg px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs sm:text-sm font-black tabular-nums ${badge}`}>
                             {row.place}
                           </span>
                         </td>
-                        <td className="px-5 py-4 text-sm font-semibold text-gray-900">{row.name}</td>
-                        <td className="px-5 py-4"><LevelBadge level={row.level} /></td>
-                        <td className="px-5 py-4 text-sm text-gray-600">Event {row.event}</td>
-                        <td className="px-5 py-4 text-right text-sm font-bold tabular-nums text-gray-900 last:pr-6">
-                          {row.score.toLocaleString()}
+                        <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 max-w-[100px] sm:max-w-none truncate">{row.name}</td>
+                        <td className="px-3 sm:px-5 py-3 sm:py-4"><LevelBadge level={row.level} /></td>
+                        <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-gray-600 whitespace-nowrap">
+                          <span className="sm:hidden">Ev {row.event}</span>
+                          <span className="hidden sm:inline">Event {row.event}</span>
+                        </td>
+                        <td className="px-3 sm:px-5 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold tabular-nums text-gray-900 last:pr-4 sm:last:pr-6 whitespace-nowrap">
+                          {row.score !== null ? row.score.toLocaleString() : <span className="text-gray-300">—</span>}
                         </td>
                       </tr>
                     );
@@ -878,6 +958,21 @@ export default function CompetitionPage() {
           </div>
         </div>
       </section>
+
+      <AddAthleteModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSaved={() => {
+          loadLeaderboard();
+        }}
+      />
+      <ShowAthletesModal
+        open={showAthletesOpen}
+        onClose={() => setShowAthletesOpen(false)}
+        onDataChanged={() => {
+          loadLeaderboard();
+        }}
+      />
     </main>
   );
 }
