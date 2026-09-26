@@ -7,7 +7,19 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import get_settings
-from app.routers import athlete_records, auth, comments, complexes, health, movements, section_templates, users, workout_logs, workouts
+from app.routers import (
+    athlete_records,
+    auth,
+    comments,
+    competition_athletes,
+    complexes,
+    health,
+    movements,
+    section_templates,
+    users,
+    workout_logs,
+    workouts,
+)
 
 settings = get_settings()
 
@@ -96,3 +108,4 @@ app.include_router(movements.router, prefix="/api")
 app.include_router(complexes.router, prefix="/api")
 app.include_router(section_templates.router, prefix="/api")
 app.include_router(workout_logs.router, prefix="/api")
+app.include_router(competition_athletes.router, prefix="/api")
