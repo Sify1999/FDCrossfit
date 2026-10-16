@@ -27,20 +27,25 @@ type Props = {
   onSaved: () => void;
 };
 
-const ALL_EVENTS = [1, 2, 3, 4] as const;
+const ALL_EVENTS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
 
 const EVENT_COLORS: Record<number, { bg: string; border: string; text: string }> = {
-  1: { bg: "bg-rose-500/15", border: "border-rose-500/40", text: "text-rose-400" },
-  2: { bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-400" },
-  3: { bg: "bg-emerald-500/15", border: "border-emerald-500/40", text: "text-emerald-400" },
-  4: { bg: "bg-violet-500/15", border: "border-violet-500/40", text: "text-violet-400" },
+  1: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  2: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  3: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  4: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  5: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  6: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  7: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  8: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  9: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
 };
 
 const LEVEL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  Beginner: { bg: "bg-[#B4E3BD]/15", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  Intermediate: { bg: "bg-orange-500/15", border: "border-orange-500/40", text: "text-orange-400" },
-  Advanced: { bg: "bg-cyan-500/15", border: "border-cyan-500/40", text: "text-cyan-400" },
+  Beginner: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+  Intermediate: { bg: "bg-[#f97316]/20", border: "border-[#f97316]/40", text: "text-[#f97316]" },
+  Advanced: { bg: "bg-[#ec4899]/20", border: "border-[#ec4899]/40", text: "text-[#ec4899]" },
 };
 
 export default function AddAthleteModal({ open, onClose, onSaved }: Props) {
@@ -48,7 +53,7 @@ export default function AddAthleteModal({ open, onClose, onSaved }: Props) {
 
   const [name, setName] = useState("");
   const [level, setLevel] = useState<string>("Beginner");
-  const [selectedEvents, setSelectedEvents] = useState<number[]>([1]);
+  const [selectedEvents, setSelectedEvents] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +89,7 @@ export default function AddAthleteModal({ open, onClose, onSaved }: Props) {
       onClose();
       setName("");
       setLevel("Beginner");
-      setSelectedEvents([1]);
+      setSelectedEvents([1, 2, 3, 4, 5, 6, 7, 8]);
     } catch (err) {
       setError(getErrorMessage(err, "Failed to add athlete. Please try again."));
     } finally {

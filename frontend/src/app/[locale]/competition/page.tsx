@@ -250,32 +250,378 @@ function LevelTabs({
   );
 }
 
-/* ─── Schedule data — 4 events per level with richer fields ──────── */
-type CompetitionEvent = {
-  id: string;
-  date: string;
+/* ─── Schedule data — 4 days per level. Each day holds a list of
+   events, and every event holds the heats that run throughout the
+   day (heat number + start time). ───────────────────────────────── */
+type Heat = {
+  heat: number;
   time: string;
+  /** End time — the heat renders as a compact range, e.g. "8:00-8:12" */
+  end: string;
 };
 
-const SCHEDULE: Record<LevelKey, CompetitionEvent[]> = {
+type CompetitionEvent = {
+  name: string;
+  heats: Heat[];
+};
+
+type CompetitionDay = {
+  id: string;
+  day: number;
+  date: string;
+  events: CompetitionEvent[];
+};
+
+const SCHEDULE: Record<LevelKey, CompetitionDay[]> = {
   beginner: [
-    { id: "b1", date: "Sat, Jun 14", time: "9:00 AM" },
-    { id: "b2", date: "Sat, Jun 14", time: "10:15 AM" },
-    { id: "b3", date: "Sat, Jun 14", time: "11:30 AM" },
-    { id: "b4", date: "Sat, Jun 14", time: "1:00 PM" },
+    {
+      id: "b-day1",
+      day: 1,
+      date: "Sat, Jun 14",
+      events: [
+        {
+          name: "Fundamentals WOD",
+          heats: [
+            { heat: 1, time: "8:00 AM", end: "8:12 AM" },
+            { heat: 2, time: "8:25 AM", end: "8:38 AM" },
+            { heat: 3, time: "8:50 AM", end: "9:03 AM" },
+          ],
+        },
+        {
+          name: "Max Back Squat",
+          heats: [
+            { heat: 1, time: "10:15 AM", end: "10:28 AM" },
+            { heat: 2, time: "10:40 AM", end: "10:53 AM" },
+          ],
+        },
+        {
+          name: "AMRAP 10",
+          heats: [
+            { heat: 1, time: "1:00 PM", end: "1:12 PM" },
+            { heat: 2, time: "1:25 PM", end: "1:37 PM" },
+            { heat: 3, time: "1:50 PM", end: "2:02 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "b-day2",
+      day: 2,
+      date: "Sun, Jun 15",
+      events: [
+        {
+          name: "Partner Relay",
+          heats: [
+            { heat: 1, time: "9:00 AM", end: "9:14 AM" },
+            { heat: 2, time: "9:25 AM", end: "9:39 AM" },
+          ],
+        },
+        {
+          name: "Deadlift Ladder",
+          heats: [
+            { heat: 1, time: "11:15 AM", end: "11:30 AM" },
+            { heat: 2, time: "11:40 AM", end: "11:55 AM" },
+            { heat: 3, time: "12:05 PM", end: "12:20 PM" },
+          ],
+        },
+        {
+          name: "Row Sprint",
+          heats: [
+            { heat: 1, time: "2:00 PM", end: "2:14 PM" },
+            { heat: 2, time: "2:25 PM", end: "2:39 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "b-day3",
+      day: 3,
+      date: "Mon, Jun 16",
+      events: [
+        {
+          name: "Strength Circuit",
+          heats: [
+            { heat: 1, time: "8:30 AM", end: "8:44 AM" },
+            { heat: 2, time: "8:55 AM", end: "9:09 AM" },
+            { heat: 3, time: "9:20 AM", end: "9:34 AM" },
+          ],
+        },
+        {
+          name: "Burpee Mile",
+          heats: [
+            { heat: 1, time: "11:00 AM", end: "11:14 AM" },
+            { heat: 2, time: "11:25 AM", end: "11:39 AM" },
+          ],
+        },
+        {
+          name: "Team Throwdown",
+          heats: [
+            { heat: 1, time: "1:30 PM", end: "1:42 PM" },
+            { heat: 2, time: "1:55 PM", end: "2:07 PM" },
+            { heat: 3, time: "2:20 PM", end: "2:32 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "b-day4",
+      day: 4,
+      date: "Tue, Jun 17",
+      events: [
+        {
+          name: "Clean & Jerk Test",
+          heats: [
+            { heat: 1, time: "9:15 AM", end: "9:30 AM" },
+            { heat: 2, time: "9:40 AM", end: "9:55 AM" },
+          ],
+        },
+        {
+          name: "Final Showdown",
+          heats: [
+            { heat: 1, time: "12:00 PM", end: "12:14 PM" },
+            { heat: 2, time: "12:25 PM", end: "12:39 PM" },
+            { heat: 3, time: "12:50 PM", end: "1:04 PM" },
+          ],
+        },
+        {
+          name: "Awards Ceremony",
+          heats: [{ heat: 1, time: "4:00 PM", end: "4:45 PM" }],
+        },
+      ],
+    },
   ],
   intermediate: [
-    { id: "i1", date: "Sat, Jun 14", time: "9:00 AM" },
-    { id: "i2", date: "Sat, Jun 14", time: "10:15 AM" },
-    { id: "i3", date: "Sat, Jun 14", time: "11:30 AM" },
-    { id: "i4", date: "Sat, Jun 14", time: "1:00 PM" },
+    {
+      id: "i-day1",
+      day: 1,
+      date: "Sat, Jun 14",
+      events: [
+        {
+          name: "Opening AMRAP",
+          heats: [
+            { heat: 1, time: "8:30 AM", end: "8:45 AM" },
+            { heat: 2, time: "8:55 AM", end: "9:10 AM" },
+            { heat: 3, time: "9:20 AM", end: "9:35 AM" },
+          ],
+        },
+        {
+          name: "Max Clean & Jerk",
+          heats: [
+            { heat: 1, time: "10:45 AM", end: "10:58 AM" },
+            { heat: 2, time: "11:10 AM", end: "11:23 AM" },
+            { heat: 3, time: "11:35 AM", end: "11:48 AM" },
+          ],
+        },
+        {
+          name: "Chipper 15",
+          heats: [
+            { heat: 1, time: "1:30 PM", end: "1:45 PM" },
+            { heat: 2, time: "1:55 PM", end: "2:10 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "i-day2",
+      day: 2,
+      date: "Sun, Jun 15",
+      events: [
+        {
+          name: "Hero WOD",
+          heats: [
+            { heat: 1, time: "9:30 AM", end: "9:45 AM" },
+            { heat: 2, time: "9:55 AM", end: "10:10 AM" },
+          ],
+        },
+        {
+          name: "Thruster Ladder",
+          heats: [
+            { heat: 1, time: "11:45 AM", end: "12:00 PM" },
+            { heat: 2, time: "12:10 PM", end: "12:25 PM" },
+            { heat: 3, time: "12:35 PM", end: "12:50 PM" },
+          ],
+        },
+        {
+          name: "Sprint Rounds",
+          heats: [
+            { heat: 1, time: "2:30 PM", end: "2:44 PM" },
+            { heat: 2, time: "2:55 PM", end: "3:09 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "i-day3",
+      day: 3,
+      date: "Mon, Jun 16",
+      events: [
+        {
+          name: "Deadlift Superset",
+          heats: [
+            { heat: 1, time: "8:45 AM", end: "9:00 AM" },
+            { heat: 2, time: "9:10 AM", end: "9:25 AM" },
+            { heat: 3, time: "9:35 AM", end: "9:50 AM" },
+          ],
+        },
+        {
+          name: "Double-Under Derby",
+          heats: [
+            { heat: 1, time: "11:15 AM", end: "11:30 AM" },
+            { heat: 2, time: "11:40 AM", end: "11:55 AM" },
+          ],
+        },
+        {
+          name: "Trio Tag-Team",
+          heats: [
+            { heat: 1, time: "1:45 PM", end: "2:00 PM" },
+            { heat: 2, time: "2:10 PM", end: "2:25 PM" },
+            { heat: 3, time: "2:35 PM", end: "2:50 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "i-day4",
+      day: 4,
+      date: "Tue, Jun 17",
+      events: [
+        {
+          name: "Snatch Complex",
+          heats: [
+            { heat: 1, time: "9:30 AM", end: "9:47 AM" },
+            { heat: 2, time: "9:55 AM", end: "10:12 AM" },
+          ],
+        },
+        {
+          name: "Finisher",
+          heats: [
+            { heat: 1, time: "12:15 PM", end: "12:27 PM" },
+            { heat: 2, time: "12:40 PM", end: "12:52 PM" },
+          ],
+        },
+        {
+          name: "Podium & Awards",
+          heats: [{ heat: 1, time: "4:30 PM", end: "5:15 PM" }],
+        },
+      ],
+    },
   ],
   advanced: [
-    { id: "a1", date: "Sat, Jun 14", time: "9:00 AM" },
-    { id: "a2", date: "Sat, Jun 14", time: "10:15 AM" },
-    { id: "a3", date: "Sat, Jun 14", time: "11:30 AM" },
-    { id: "a4", date: "Sat, Jun 14", time: "1:00 PM" },
-    ],
+    {
+      id: "a-day1",
+      day: 1,
+      date: "Sat, Jun 14",
+      events: [
+        {
+          name: "Qualifier AMRAP",
+          heats: [
+            { heat: 1, time: "8:15 AM", end: "8:30 AM" },
+            { heat: 2, time: "8:40 AM", end: "8:55 AM" },
+            { heat: 3, time: "9:05 AM", end: "9:20 AM" },
+          ],
+        },
+        {
+          name: "Max Snatch",
+          heats: [
+            { heat: 1, time: "10:30 AM", end: "10:42 AM" },
+            { heat: 2, time: "10:55 AM", end: "11:07 AM" },
+            { heat: 3, time: "11:20 AM", end: "11:32 AM" },
+          ],
+        },
+        {
+          name: "Couplet 20",
+          heats: [
+            { heat: 1, time: "1:15 PM", end: "1:30 PM" },
+            { heat: 2, time: "1:40 PM", end: "1:55 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "a-day2",
+      day: 2,
+      date: "Sun, Jun 15",
+      events: [
+        {
+          name: "International WOD",
+          heats: [
+            { heat: 1, time: "9:15 AM", end: "9:32 AM" },
+            { heat: 2, time: "9:40 AM", end: "9:57 AM" },
+          ],
+        },
+        {
+          name: "Clean Ladder",
+          heats: [
+            { heat: 1, time: "11:30 AM", end: "11:45 AM" },
+            { heat: 2, time: "11:55 AM", end: "12:10 PM" },
+            { heat: 3, time: "12:20 PM", end: "12:35 PM" },
+          ],
+        },
+        {
+          name: "Sprint Finals",
+          heats: [
+            { heat: 1, time: "2:15 PM", end: "2:28 PM" },
+            { heat: 2, time: "2:40 PM", end: "2:53 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "a-day3",
+      day: 3,
+      date: "Mon, Jun 16",
+      events: [
+        {
+          name: "Strength Trial",
+          heats: [
+            { heat: 1, time: "8:20 AM", end: "8:36 AM" },
+            { heat: 2, time: "8:45 AM", end: "9:01 AM" },
+          ],
+        },
+        {
+          name: "Rope & Row",
+          heats: [
+            { heat: 1, time: "10:45 AM", end: "10:58 AM" },
+            { heat: 2, time: "11:10 AM", end: "11:23 AM" },
+            { heat: 3, time: "11:35 AM", end: "11:48 AM" },
+          ],
+        },
+        {
+          name: "Championship Relay",
+          heats: [
+            { heat: 1, time: "1:30 PM", end: "1:44 PM" },
+            { heat: 2, time: "1:55 PM", end: "2:09 PM" },
+            { heat: 3, time: "2:20 PM", end: "2:34 PM" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "a-day4",
+      day: 4,
+      date: "Tue, Jun 17",
+      events: [
+        {
+          name: "Final Event",
+          heats: [
+            { heat: 1, time: "9:45 AM", end: "10:00 AM" },
+            { heat: 2, time: "10:10 AM", end: "10:25 AM" },
+          ],
+        },
+        {
+          name: "Showdown",
+          heats: [
+            { heat: 1, time: "12:30 PM", end: "12:44 PM" },
+            { heat: 2, time: "12:55 PM", end: "1:09 PM" },
+          ],
+        },
+        {
+          name: "Champion Ceremony",
+          heats: [{ heat: 1, time: "5:00 PM", end: "5:45 PM" }],
+        },
+      ],
+    },
+  ],
 };
 /* ─── Leaderboard types ──────────────────────────── */
 type LeaderboardEntry = {
@@ -284,6 +630,8 @@ type LeaderboardEntry = {
   level: string;
   event: number;
   score: number | null;
+  tiebreaker_type: string | null;
+  tiebreaker_value: number | null;
 };
 
 type AthleteFromApi = {
@@ -292,14 +640,29 @@ type AthleteFromApi = {
   level: string;
   event: number;
   score: number | null;
+  tiebreaker_type: string | null;
+  tiebreaker_value: number | null;
   created_at: string;
   updated_at: string;
 };
 
 const LEVEL_BADGE_STYLES: Record<string, string> = {
-  Beginner: "bg-[#B4E3BD]/10 text-[#B4E3BD] border-[#B4E3BD]/20",
-  Intermediate: "bg-amber-50 text-amber-600 border-amber-200/60",
-  Advanced: "bg-sky-50 text-sky-600 border-sky-200/60",
+  Beginner: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  Intermediate: "bg-[#f97316]/35 text-[#7c1d00] border-[#f97316]/50 shadow-sm shadow-[#f97316]/20",
+  Advanced: "bg-[#ec4899]/35 text-[#7b1a3d] border-[#ec4899]/50 shadow-sm shadow-[#ec4899]/20",
+};
+
+const EVENT_BADGE_STYLES: Record<number, string> = {
+  0: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  1: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  2: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  3: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  4: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  5: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  6: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  7: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  8: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
+  9: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
 };
 
 function LevelBadge({ level }: { level: string }) {
@@ -310,80 +673,186 @@ function LevelBadge({ level }: { level: string }) {
   );
 }
 
-/* ─── Event card ─────────────────────────────────────────────────────
-   One horizontal row, three equal columns (event · time · date), so the
-   content is centered perfectly at every width. dir="ltr" keeps the
-   column order and the dividers identical in Farsi and English — the
-   content is just numbers and short English strings, so nothing reads
-   wrong. On phones the sizes shrink but it stays on ONE line. ──────── */
-function EventCard({ index, event }: { index: number; event: CompetitionEvent }) {
-  const [timeValue, meridiem] = event.time.split(" ");
+function EventBadge({ event }: { event: number }) {
+  const label = event === 0 ? "Total" : `Ev ${event}`;
+  return (
+    <span className={`inline-block rounded-full border px-2 sm:px-3 py-0.5 text-[9px] sm:text-[11px] font-semibold tracking-wider ${EVENT_BADGE_STYLES[event] || ""}`}>
+      {label}
+    </span>
+  );
+}
+
+/* ─── Time display — every heat shows a compact start-end range
+   ("8:00-8:12") built from its start and end times, keeping the rows
+   tidy at every width. Hovering a range reveals the full times. ───── */
+function formatHeatRange(time: string, end: string): string {
+  const [t, m] = time.split(" ");
+  const [e, em] = end.split(" ");
+  // Same meridiem (or missing) → compact "8:00-8:12". Otherwise spell both out.
+  return m == null || m === em || em == null ? `${t}-${e}` : `${t} ${m} – ${e} ${em}`;
+}
+
+function TimeCell({ time, end }: { time: string; end: string }) {
+  return (
+    <span
+      className="flex items-center justify-end gap-1.5 text-xs font-bold tabular-nums text-white sm:text-sm"
+      title={`${time} – ${end}`}
+    >
+      <span className="text-[#B4E3BD]">
+        <IconClock />
+      </span>
+      {formatHeatRange(time, end)}
+    </span>
+  );
+}
+
+/* ─── Day accordion — each DAY is the main row. Clicking a day expands
+   it and reveals every event and heat, one row per heat (event · heat ·
+   start time). The header follows the page direction; the expanded table
+   is pinned to LTR so columns read in the same order in EN and FA. ─── */
+function DaySchedule({
+  t,
+  day,
+  index,
+  open,
+  onToggle,
+}: {
+  t: (key: string) => string;
+  day: CompetitionDay;
+  index: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const heatCount = day.events.reduce((sum, e) => sum + e.heats.length, 0);
+  const eventCount = day.events.length;
 
   return (
     <div
-      dir="ltr"
       style={{ animationDelay: `${index * 90}ms` }}
-      className="
-        group relative overflow-hidden rounded-2xl border border-white/10
-        bg-gradient-to-br from-[#1a1a1a] to-[#121212]
-        shadow-lg shadow-black/40
-        opacity-0 animate-[fadeIn_0.5s_ease-out_forwards]
-        transition-all duration-500
-        hover:-translate-y-1 hover:border-[#B4E3BD]/60
-        hover:shadow-2xl hover:shadow-[#B4E3BD]/20
-      "
+      className={`group overflow-hidden rounded-2xl border opacity-0 animate-[fadeIn_0.5s_ease-out_forwards] shadow-lg shadow-black/40 transition-all duration-300 ${
+        open
+          ? "border-[#B4E3BD]/50 bg-gradient-to-br from-[#1c1c1c] to-[#141414] shadow-xl shadow-[#B4E3BD]/15"
+          : "border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#121212] hover:border-[#B4E3BD]/40 hover:shadow-xl hover:shadow-[#B4E3BD]/10"
+      }`}
     >
-      {/* Top mint hairline — same motif as the section dividers */}
-      <div
-        aria-hidden
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent opacity-60 transition-opacity duration-500 group-hover:opacity-100"
-      />
-      {/* Soft hover glow */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 h-24 w-2/3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#B4E3BD]/0 blur-3xl transition-colors duration-500 group-hover:bg-[#B4E3BD]/10"
-      />
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={`${day.id}-panel`}
+        className="relative flex w-full items-center gap-3 px-4 py-4 text-start sm:gap-5 sm:px-6 sm:py-5 focus-visible:ring-2 focus-visible:ring-[#B4E3BD]/60"
+      >
+        <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent opacity-60 transition-opacity duration-300" />
 
-      <div className="relative grid grid-cols-3 items-center divide-x divide-white/10 py-4 text-center sm:py-6">
-        {/* Event number */}
-        <div className="flex flex-col items-center justify-center gap-1.5 px-2">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-500 sm:text-[11px]">
-            Event
-          </span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 text-sm font-black text-[#B4E3BD] transition-all duration-300 group-hover:border-[#B4E3BD] group-hover:bg-[#B4E3BD] group-hover:text-black sm:h-10 sm:w-10 sm:text-lg">
-            {index + 1}
-          </span>
-        </div>
+        <span
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-base font-black transition-all duration-300 sm:h-14 sm:w-14 sm:text-xl ${
+            open
+              ? "border-[#B4E3BD] bg-[#B4E3BD] text-black shadow-lg shadow-[#B4E3BD]/40"
+              : "border-[#B4E3BD]/40 bg-[#B4E3BD]/10 text-[#B4E3BD] group-hover:border-[#B4E3BD] group-hover:bg-[#B4E3BD]/20"
+          }`}
+        >
+          {day.day}
+        </span>
 
-        {/* Time */}
-        <div className="flex flex-col items-center justify-center gap-0.5 px-2">
-          <span className="flex items-baseline justify-center gap-1">
-            <span className="text-xl font-black leading-none tracking-tight text-white sm:text-4xl">
-              {timeValue}
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold uppercase tracking-[0.14em] text-white sm:text-base">
+            {t("schedule.day")} {day.day}
+          </span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-gray-400 sm:text-xs">
+            <span className="inline-flex items-center gap-1.5 text-[#B4E3BD]/80">
+              <IconCalendarSmall />
+              {day.date}
             </span>
-            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#B4E3BD] sm:text-xs">
-              {meridiem}
+            <span className="text-gray-600">•</span>
+            <span>
+              {eventCount} {t("schedule.events")}
+            </span>
+            <span className="text-gray-600">•</span>
+            <span>
+              {heatCount} {t("schedule.heats")}
             </span>
           </span>
-          <span className="mt-1 hidden items-center gap-1 text-[10px] uppercase tracking-widest text-gray-600 sm:flex">
-            <IconClock />
-            Start
-          </span>
-        </div>
+        </span>
 
-        {/* Date */}
-        <div className="flex flex-col items-center justify-center gap-1.5 px-2">
-          <span className="text-[#B4E3BD]/70 transition-colors duration-300 group-hover:text-[#B4E3BD]">
-            <IconCalendarSmall />
-          </span>
-          <span className="text-xs font-semibold leading-tight text-gray-300 sm:text-base">
-            {event.date}
-          </span>
+        <svg
+          width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+          className={`shrink-0 transition-transform duration-300 ${open ? "rotate-180 text-[#B4E3BD]" : "text-gray-500 group-hover:text-[#B4E3BD]"}`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: open ? "1fr" : "0fr" }}
+      >
+        <div id={`${day.id}-panel`} className="min-h-0 overflow-hidden">
+          <div dir="ltr" className="border-t border-white/5 bg-black/30 px-3 pb-4 pt-3 sm:px-6 sm:pb-5">
+            <div className="grid grid-cols-[minmax(0,1.7fr)_auto_minmax(0,1fr)] items-center gap-3 px-2 pb-2 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,1fr)] sm:px-3">
+              <span className="text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.event")}</span>
+              <span className="w-16 text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:w-20 sm:text-[11px]">{t("schedule.heat")}</span>
+              <span className="text-end text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.time")}</span>
+            </div>
+
+            {day.events.map((event, ei) =>
+              event.heats.map((heat) => (
+                <div
+                  key={`${day.id}-e${ei}-h${heat.heat}`}
+                  className="grid grid-cols-[minmax(0,1.7fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-lg border-t border-white/5 px-2 py-2 transition-colors duration-200 hover:bg-[#B4E3BD]/[0.06] sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,1fr)] sm:px-3 sm:py-2.5"
+                >
+                  <span className="min-w-0">
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="truncate text-xs font-semibold text-white sm:text-sm">{t("schedule.event")}</span>
+                      <span className="shrink-0 text-base font-black leading-none text-[#B4E3BD] sm:text-lg">{ei + 1}</span>
+                    </span>
+                    <span className="block truncate text-[10px] text-gray-500 sm:text-xs">{event.name}</span>
+                  </span>
+
+                  <span className="inline-flex w-16 sm:w-20 items-center justify-center rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-2 py-1 text-[10px] sm:text-xs font-semibold whitespace-nowrap text-[#B4E3BD]">
+                    {t("schedule.heat")} {heat.heat}
+                  </span>
+
+                  <TimeCell time={heat.time} end={heat.end} />
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
 }
+
+/* ─── Day accordion list — only ONE day stays open at a time, so the
+   schedule stays compact and predictable: opening a day closes any
+   other open day. The list remounts per level via `key`, which also
+   resets the open state when switching Beginner/Intermediate/Advanced. */
+function DayScheduleList({
+  t,
+  days,
+}: {
+  t: (key: string) => string;
+  days: CompetitionDay[];
+}) {
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  return (
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+      {days.map((day, i) => (
+        <DaySchedule
+          key={day.id}
+          t={t}
+          index={i}
+          day={day}
+          open={openId === day.id}
+          onToggle={() => setOpenId((cur) => (cur === day.id ? null : day.id))}
+        />
+      ))}
+    </div>
+  );
+}
+
 
 /* ─── Shared section header with enhanced styling ───────────────── */
 function SectionHeader({
@@ -562,7 +1031,7 @@ export default function CompetitionPage() {
 
   // ── Leaderboard filters ──────────────────────────────────────────
   const [levelFilter, setLevelFilter] = useState<string>("Beginner");
-  const [eventFilter, setEventFilter] = useState<number>(1);
+  const [eventFilter, setEventFilter] = useState<number>(0); // 0 = Total (sum of all events)
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -574,20 +1043,46 @@ export default function CompetitionPage() {
     try {
       const params = new URLSearchParams();
       params.set("level", levelFilter);
-      params.set("event", String(eventFilter));
+      if (eventFilter !== 0) params.set("event", String(eventFilter));
       const qs = params.toString();
       const data = await api.get<{ athletes: AthleteFromApi[] }>(
         `/competition-athletes?${qs}`
       );
-      setLeaderboard(
-        data.athletes.map((a) => ({
-          id: a.id,
-          name: a.name,
-          level: a.level,
-          event: a.event,
-          score: a.score,
-        }))
-      );
+      if (eventFilter === 0) {
+        // Aggregate: sum every athlete's scores across all events
+        const summed = new Map<string, { level: string; score: number }>();
+        for (const a of data.athletes) {
+          if (a.score !== null) {
+            const cur = summed.get(a.name) ?? { level: a.level, score: 0 };
+            cur.score += a.score;
+            // level should be consistent; pick whichever we saw first
+            summed.set(a.name, cur);
+          }
+        }
+        setLeaderboard(
+          Array.from(summed.entries()).map(([name, s]) => ({
+            id: 0,
+            name,
+            level: s.level,
+            event: 0,
+            score: s.score,
+            tiebreaker_type: null,
+            tiebreaker_value: null,
+          }))
+        );
+      } else {
+        setLeaderboard(
+          data.athletes.map((a) => ({
+            id: a.id,
+            name: a.name,
+            level: a.level,
+            event: a.event,
+            score: a.score,
+            tiebreaker_type: a.tiebreaker_type,
+            tiebreaker_value: a.tiebreaker_value,
+          }))
+        );
+      }
     } catch {
       setLeaderboard([]);
     } finally {
@@ -602,8 +1097,11 @@ export default function CompetitionPage() {
 
   const filtered = leaderboard
     .filter((r) => r.level === levelFilter)
-    .filter((r) => r.event === eventFilter)
-    .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    .filter((r) => eventFilter === 0 || r.event === eventFilter)
+    .sort((a, b) => {
+        const s = (b.score ?? 0) - (a.score ?? 0);
+        return s !== 0 ? s : ((b.tiebreaker_value ?? 0) - (a.tiebreaker_value ?? 0));
+      })
     .map((row, i) => ({ ...row, place: i + 1 }));
 
   // ── Schedule difficulty picker ─────────────────────────────────────
@@ -790,16 +1288,19 @@ export default function CompetitionPage() {
 
           <LevelTabs t={t} active={activeLevel} onChange={setActiveLevel} />
 
-          {/* Single centered column of one-line cards. `key` remounts the
-              list on level change so the staggered fade-in replays. */}
-          <div
-            key={activeLevel}
-            className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4"
-          >
-            {SCHEDULE[activeLevel].map((event, i) => (
-              <EventCard key={event.id} index={i} event={event} />
-            ))}
+          {/* Tap hint — keeps the accordion behaviour obvious */}
+          <div className="mb-6 flex justify-center sm:mb-8">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] text-gray-400 sm:text-xs">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#B4E3BD]">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+              {t("schedule.hint")}
+            </span>
           </div>
+
+          {/* Day accordions. `key` remounts the list on level change so
+              the staggered fade-in replays. */}
+          <DayScheduleList key={activeLevel} t={t} days={SCHEDULE[activeLevel]} />
 
           <div className="mt-10 flex justify-center sm:mt-12">
             <BackToTop onClick={() => scrollTo("hero")} />
@@ -889,10 +1390,16 @@ export default function CompetitionPage() {
                     <FilterDropdown
                       label="Event"
                       options={[
+                        { value: 0, label: "Total" },
                         { value: 1, label: "Event 1" },
                         { value: 2, label: "Event 2" },
                         { value: 3, label: "Event 3" },
                         { value: 4, label: "Event 4" },
+                        { value: 5, label: "Event 5" },
+                        { value: 6, label: "Event 6" },
+                        { value: 7, label: "Event 7" },
+                        { value: 8, label: "Event 8" },
+                        { value: 9, label: "Event 9" },
                       ]}
                       selected={eventFilter}
                       onSelect={(v) => setEventFilter(v as number)}
@@ -912,20 +1419,20 @@ export default function CompetitionPage() {
                   filtered.map((row) => {
                     const badge =
                       row.place === 1
-                        ? "bg-amber-100 text-amber-800 shadow-sm shadow-amber-200/50"
+                        ? "bg-[#FFD700]/35 text-[#8B6914] border-[#FFD700]/50 shadow-sm shadow-[#FFD700]/30"
                         : row.place === 2
-                          ? "bg-slate-100 text-slate-600 shadow-sm shadow-slate-200/50"
+                          ? "bg-[#C0C0C0]/35 text-[#4A4A4A] border-[#C0C0C0]/50 shadow-sm shadow-[#C0C0C0]/30"
                           : row.place === 3
-                            ? "bg-orange-100 text-orange-700 shadow-sm shadow-orange-200/50"
+                            ? "bg-[#CD7F32]/35 text-[#5C3317] border-[#CD7F32]/50 shadow-sm shadow-[#CD7F32]/30"
                             : "text-gray-500";
 
                     const rowBg =
                       row.place === 1
-                        ? "bg-amber-50/70 hover:bg-amber-100/70"
+                        ? "bg-[#FFD700]/[0.08] hover:bg-[#FFD700]/[0.12]"
                         : row.place === 2
-                          ? "bg-slate-50/70 hover:bg-slate-100/70"
+                          ? "bg-[#C0C0C0]/[0.08] hover:bg-[#C0C0C0]/[0.12]"
                           : row.place === 3
-                            ? "bg-orange-50/70 hover:bg-orange-100/70"
+                            ? "bg-[#CD7F32]/[0.08] hover:bg-[#CD7F32]/[0.12]"
                             : "hover:bg-[#B4E3BD]/5";
 
                     return (
@@ -937,10 +1444,7 @@ export default function CompetitionPage() {
                         </td>
                         <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 max-w-[100px] sm:max-w-none truncate">{row.name}</td>
                         <td className="px-3 sm:px-5 py-3 sm:py-4"><LevelBadge level={row.level} /></td>
-                        <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm text-gray-600 whitespace-nowrap">
-                          <span className="sm:hidden">Ev {row.event}</span>
-                          <span className="hidden sm:inline">Event {row.event}</span>
-                        </td>
+                        <td className="px-3 sm:px-5 py-3 sm:py-4"><EventBadge event={row.event} /></td>
                         <td className="px-3 sm:px-5 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold tabular-nums text-gray-900 last:pr-4 sm:last:pr-6 whitespace-nowrap">
                           {row.score !== null ? row.score.toLocaleString() : <span className="text-gray-300">—</span>}
                         </td>

@@ -339,7 +339,14 @@
     },
     "schedule": {
       "title": "Competition Schedule",
-      "description": "Check the full schedule of events, heats, and categories. Plan your competition day with ease."
+      "description": "Four days of competition — tap any day to explore its events and heats, then plan your day with ease.",
+      "day": "Day",
+      "event": "Event",
+      "events": "Events",
+      "heat": "Heat",
+      "heats": "Heats",
+      "time": "Time",
+      "hint": "Click a day to expand its events and heats"
     },
     "scores": {
       "title": "Scoreboard & Rankings",

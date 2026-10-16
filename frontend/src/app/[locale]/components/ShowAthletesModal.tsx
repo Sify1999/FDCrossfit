@@ -11,6 +11,8 @@ type AthleteEntry = {
   level: string;
   event: number;
   score: number | null;
+  tiebreaker_type: string | null;
+  tiebreaker_value: number | null;
 };
 
 type Props = {
@@ -20,16 +22,21 @@ type Props = {
 };
 
 const EVENT_COLORS: Record<number, { chip: string; dot: string; bg: string }> = {
-  1: { chip: "bg-rose-500/20 text-rose-300 border-rose-500/30", dot: "bg-rose-400", bg: "hover:bg-rose-500/5" },
-  2: { chip: "bg-amber-500/20 text-amber-300 border-amber-500/30", dot: "bg-amber-400", bg: "hover:bg-amber-500/5" },
-  3: { chip: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30", dot: "bg-emerald-400", bg: "hover:bg-emerald-500/5" },
-  4: { chip: "bg-violet-500/20 text-violet-300 border-violet-500/30", dot: "bg-violet-400", bg: "hover:bg-violet-500/5" },
+  1: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  2: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  3: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  4: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  5: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  6: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  7: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  8: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
+  9: { chip: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", dot: "bg-[#B4E3BD]", bg: "hover:bg-[#B4E3BD]/5" },
 };
 
 const LEVEL_STYLES: Record<string, { badge: string; bg: string }> = {
-  Beginner: { badge: "bg-[#B4E3BD]/15 text-[#B4E3BD] border-[#B4E3BD]/30", bg: "hover:bg-[#B4E3BD]/5" },
-  Intermediate: { badge: "bg-orange-500/15 text-orange-300 border-orange-500/30", bg: "hover:bg-orange-500/5" },
-  Advanced: { badge: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30", bg: "hover:bg-cyan-500/5" },
+  Beginner: { badge: "bg-[#B4E3BD]/20 text-[#B4E3BD] border-[#B4E3BD]/30", bg: "hover:bg-[#B4E3BD]/5" },
+  Intermediate: { badge: "bg-[#f97316]/20 text-[#f97316] border-[#f97316]/30", bg: "hover:bg-[#f97316]/5" },
+  Advanced: { badge: "bg-[#ec4899]/20 text-[#ec4899] border-[#ec4899]/30", bg: "hover:bg-[#ec4899]/5" },
 };
 
 function IconSearch() {
@@ -80,6 +87,9 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editScore, setEditScore] = useState<string>("");
+  const [editTiebreakerType, setEditTiebreakerType] = useState<string>("reps");
+  const [editTiebreakerValue, setEditTiebreakerValue] = useState<string>("");
+  const [unitDropdownOpen, setUnitDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -142,14 +152,22 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
   function startEditScore(entry: AthleteEntry) {
     setEditingId(entry.id);
     setEditScore(entry.score !== null ? String(entry.score) : "");
+    setEditTiebreakerType(entry.tiebreaker_type || "reps");
+    setEditTiebreakerValue(entry.tiebreaker_value !== null ? String(entry.tiebreaker_value) : "");
   }
 
   async function saveScore(entryId: number) {
     setSaving(true);
     try {
       const score = editScore.trim() ? parseInt(editScore, 10) : null;
-      await api.patch(`/competition-athletes/${entryId}`, { score });
-      setEntries((prev) => prev.map((e) => e.id === entryId ? { ...e, score } : e));
+      const tiebreakerType = editTiebreakerType;
+      const tiebreakerValue = editTiebreakerValue.trim() ? parseInt(editTiebreakerValue, 10) : null;
+      await api.patch(`/competition-athletes/${entryId}`, {
+        score,
+        tiebreaker_type: tiebreakerType,
+        tiebreaker_value: tiebreakerValue,
+      });
+      setEntries((prev) => prev.map((e) => e.id === entryId ? { ...e, score, tiebreaker_type: tiebreakerType, tiebreaker_value: tiebreakerValue } : e));
       setEditingId(null);
       onDataChanged();
     } catch (err) {
@@ -277,47 +295,78 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
 
                                 <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
                                   {isEditing ? (
-                                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                                      <input
-                                        type="number"
-                                        inputMode="numeric"
-                                        value={editScore}
-                                        onChange={(e) => setEditScore(e.target.value)}
-                                        placeholder="Score"
-                                        autoFocus
-                                        className="flex-1 sm:w-24 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 sm:py-1.5 text-center text-base sm:text-sm font-bold text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20"
-                                      />
-                                      <button
-                                        type="button"
-                                        onClick={() => saveScore(entry.id)}
-                                        disabled={saving}
-                                        className="rounded-lg bg-[#B4E3BD] px-4 py-2.5 sm:py-1.5 text-sm font-bold text-black transition hover:bg-white disabled:opacity-50 min-w-[60px]"
-                                      >
-                                        {saving ? "..." : "Save"}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => setEditingId(null)}
-                                        className="rounded-lg border border-gray-700 px-3 py-2.5 sm:py-1.5 text-gray-400 transition hover:border-gray-500"
-                                      >
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                                      </button>
+                                    <div className="flex flex-wrap items-center gap-2.5 w-full">
+                                      {/* Unit type dropdown */}
+                                      <div className="relative">
+                                        <button type="button" onClick={() => setUnitDropdownOpen((p) => !p)}
+                                          className="flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900 px-2.5 py-2 sm:py-1.5 text-[11px] font-semibold text-gray-300 transition hover:border-[#B4E3BD]/50"
+                                        >
+                                          <span className="flex items-center gap-1">
+                                            <span>{editTiebreakerType}</span>
+                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform duration-200 ${unitDropdownOpen ? "rotate-180" : ""}`}><path d="M6 9l6 6 6-6"/></svg>
+                                          </span>
+                                        </button>
+                                        {unitDropdownOpen && (
+                                          <div className={`absolute z-50 top-full start-0 mt-1.5 min-w-full overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-xl shadow-black/60 ${isRTL ? "end-0" : ""}`} onClick={(e) => e.stopPropagation()}>
+                                            {["reps", "weight", "time"].map((option) => (
+                                              <button key={option} type="button"
+                                                onClick={() => { setEditTiebreakerType(option); setUnitDropdownOpen(false); }}
+                                                className={`flex w-full items-center gap-2 px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-left transition hover:bg-[#B4E3BD]/10 ${editTiebreakerType === option ? "bg-[#B4E3BD]/15 text-[#B4E3BD]" : "text-gray-400 hover:text-gray-200"}`}
+                                              >
+                                                {editTiebreakerType === option && (
+                                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                                                )}
+                                                <span>{option}</span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <input type="number" inputMode="numeric" value={editTiebreakerValue} onChange={(e) => setEditTiebreakerValue(e.target.value)} placeholder={editTiebreakerType}
+                                        className="w-20 sm:w-24 rounded-lg border border-gray-700 bg-gray-900 px-2.5 py-2 sm:py-1.5 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] placeholder:text-gray-500" />
+                                      <span className="inline-flex items-center justify-center w-5 h-5 shrink-0 text-gray-600/50">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+                                      </span>
+                                      <input type="number" inputMode="numeric" value={editScore} onChange={(e) => setEditScore(e.target.value)} placeholder="Score" autoFocus
+                                        className="w-24 sm:w-28 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 sm:py-1.5 text-center text-base sm:text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-500" />
+                                      <div className="flex items-center gap-2">
+                                        <button type="button" onClick={() => saveScore(entry.id)} disabled={saving}
+                                          className="rounded-lg bg-[#B4E3BD] px-4 py-2.5 sm:py-1.5 text-sm font-bold text-black transition hover:bg-white active:scale-[0.98] disabled:opacity-50 min-w-[65px]"
+                                        >{saving ? "..." : "Save"}</button>
+                                        <button type="button" onClick={() => { setEditingId(null); setUnitDropdownOpen(false); }}
+                                          className="rounded-lg border border-gray-700 px-3 py-2.5 sm:py-1.5 text-xs text-gray-400 transition hover:border-gray-500 hover:text-gray-300"
+                                        ><span className="flex items-center gap-1.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>Discard</span></button>
+                                      </div>
                                     </div>
                                   ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() => startEditScore(entry)}
-                                      className="group flex w-full sm:w-auto items-center justify-center gap-2 rounded-lg border border-gray-700/50 px-4 py-2.5 sm:py-1.5 text-sm font-bold tabular-nums text-gray-300 transition hover:border-[#B4E3BD]/50 hover:text-[#B4E3BD] active:scale-[0.98]"
+                                    <button type="button" onClick={() => startEditScore(entry)}
+                                      className="group flex w-full items-center justify-between gap-2.5 rounded-lg border border-gray-700/50 px-3 py-2.5 sm:py-1.5 whitespace-nowrap transition hover:border-[#B4E3BD]/50 active:scale-[0.98]"
                                     >
-                                      {entry.score !== null ? (
-                                        <span>{entry.score.toLocaleString()}</span>
-                                      ) : (
-                                        <span className="text-gray-600 text-sm font-normal">Add Score</span>
-                                      )}
-                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                      </svg>
+                                      <span className="flex items-center gap-2.5">
+                                        {entry.tiebreaker_type ? (
+                                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#B4E3BD]/12 px-2.5 py-0.5 text-[10px] font-semibold text-[#B4E3BD]">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-80"><path d="M19 7v-7a2 2 0 0 0 2 2M16 3a2 2 0 0 0-2-2M12 19v-3l-8 3 4 3 4"/></svg>
+                                            {entry.tiebreaker_value?.toLocaleString() ?? "—"}
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-gray-600/60 px-2.5 py-0.5 text-[10px] font-medium text-gray-500">
+                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 9l3-3-3-3"/></svg>
+                                            Tie
+                                          </span>
+                                        )}
+                                        <span className="flex items-center gap-1.5 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-gray-400">
+                                          {entry.tiebreaker_type || "—"}
+                                        </span>
+                                      </span>
+                                      <span className="flex items-center gap-2">
+                                        <span className="text-base sm:text-lg font-black tabular-nums text-white">
+                                          {entry.score !== null ? entry.score.toLocaleString() : <span className="text-gray-500 text-sm font-normal">Add Score</span>}
+                                        </span>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500">
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                      </span>
                                     </button>
                                   )}
                                 </div>
