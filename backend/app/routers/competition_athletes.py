@@ -27,7 +27,7 @@ router = APIRouter(prefix="/competition-athletes", tags=["competition-athletes"]
 @router.get("", response_model=CompetitionAthleteList)
 async def get_competition_athletes(
     level: str | None = Query(None, description="Filter by level"),
-    event: int | None = Query(None, ge=1, le=4, description="Filter by event number"),
+    event: int | None = Query(None, ge=1, le=9, description="Filter by event number"),
     name: str | None = Query(None, description="Search by athlete name"),
     db: AsyncSession = Depends(get_db),
 ) -> CompetitionAthleteList:
@@ -91,8 +91,14 @@ async def update_competition_athlete_score(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_coach),
 ) -> CompetitionAthleteRead:
-    """Coach/admin only — update the score for a specific athlete entry."""
-    updated = await update_athlete_score(db, athlete_id, data.score)
+    """Coach/admin only — update the score and tiebreaker for a specific athlete entry."""
+    updated = await update_athlete_score(
+        db,
+        athlete_id,
+        data.score,
+        tiebreaker_type=data.tiebreaker_type,
+        tiebreaker_value=data.tiebreaker_value,
+    )
     if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

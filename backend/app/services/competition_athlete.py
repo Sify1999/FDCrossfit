@@ -22,7 +22,7 @@ async def list_athletes(
     if name is not None:
         stmt = stmt.where(CompetitionAthlete.name.ilike(f"%{name}%"))
 
-    stmt = stmt.order_by(CompetitionAthlete.event, CompetitionAthlete.name)
+    stmt = stmt.order_by(CompetitionAthlete.score.desc().nullslast(), CompetitionAthlete.tiebreaker_value.desc().nullslast(), CompetitionAthlete.event, CompetitionAthlete.name)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -107,12 +107,19 @@ async def update_athlete_score(
     db: AsyncSession,
     athlete_id: int,
     score: int | None,
+    tiebreaker_type: str | None = None,
+    tiebreaker_value: int | None = None,
 ) -> CompetitionAthlete | None:
-    """Update the score of a specific athlete entry."""
+    """Update the score and tiebreaker fields of a specific athlete entry."""
+    values: dict = {"score": score}
+    if tiebreaker_type is not None:
+        values["tiebreaker_type"] = tiebreaker_type
+    if tiebreaker_value is not None:
+        values["tiebreaker_value"] = tiebreaker_value
     stmt = (
         update(CompetitionAthlete)
         .where(CompetitionAthlete.id == athlete_id)
-        .values(score=score)
+        .values(**values)
     )
     await db.execute(stmt)
     await db.flush()

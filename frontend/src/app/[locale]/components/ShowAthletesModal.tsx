@@ -89,7 +89,6 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
   const [editScore, setEditScore] = useState<string>("");
   const [editTiebreakerType, setEditTiebreakerType] = useState<string>("reps");
   const [editTiebreakerValue, setEditTiebreakerValue] = useState<string>("");
-  const [unitDropdownOpen, setUnitDropdownOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -282,96 +281,152 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
                             const isEditing = editingId === entry.id;
 
                             return (
-                              <div key={entry.id} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-800/70 px-4 py-3 sm:py-3 transition ${ec.bg}`}>
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${ec.chip}`}>
-                                    <span className={`h-2 w-2 rounded-full ${ec.dot}`} />
-                                    Event {entry.event}
-                                  </span>
-                                  <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ls.badge}`}>
-                                    {entry.level}
-                                  </span>
-                                </div>
+                              <div
+                                key={entry.id}
+                                className={`overflow-hidden rounded-xl border transition-colors duration-200 ${
+                                  isEditing ? "border-[#B4E3BD]/30 bg-[#B4E3BD]/5" : "border-gray-800/70"
+                                }`}
+                              >
+                                {/* Summary row - tap anywhere to edit the score & tiebreaker */}
+                                <button
+                                  type="button"
+                                  onClick={() => (isEditing ? setEditingId(null) : startEditScore(entry))}
+                                  className={`group flex w-full flex-col gap-2.5 px-4 py-3 text-left transition sm:flex-row sm:items-center sm:justify-between ${ec.bg}`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${ec.chip}`}>
+                                      <span className={`h-2 w-2 rounded-full ${ec.dot}`} />
+                                      Event {entry.event}
+                                    </span>
+                                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ls.badge}`}>
+                                      {entry.level}
+                                    </span>
+                                  </div>
 
-                                <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
-                                  {isEditing ? (
-                                    <div className="flex flex-wrap items-center gap-2.5 w-full">
-                                      {/* Unit type dropdown */}
-                                      <div className="relative">
-                                        <button type="button" onClick={() => setUnitDropdownOpen((p) => !p)}
-                                          className="flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900 px-2.5 py-2 sm:py-1.5 text-[11px] font-semibold text-gray-300 transition hover:border-[#B4E3BD]/50"
-                                        >
-                                          <span className="flex items-center gap-1">
-                                            <span>{editTiebreakerType}</span>
-                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform duration-200 ${unitDropdownOpen ? "rotate-180" : ""}`}><path d="M6 9l6 6 6-6"/></svg>
-                                          </span>
-                                        </button>
-                                        {unitDropdownOpen && (
-                                          <div className={`absolute z-50 top-full start-0 mt-1.5 min-w-full overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-xl shadow-black/60 ${isRTL ? "end-0" : ""}`} onClick={(e) => e.stopPropagation()}>
-                                            {["reps", "weight", "time"].map((option) => (
-                                              <button key={option} type="button"
-                                                onClick={() => { setEditTiebreakerType(option); setUnitDropdownOpen(false); }}
-                                                className={`flex w-full items-center gap-2 px-3 py-2 text-[11px] font-semibold whitespace-nowrap text-left transition hover:bg-[#B4E3BD]/10 ${editTiebreakerType === option ? "bg-[#B4E3BD]/15 text-[#B4E3BD]" : "text-gray-400 hover:text-gray-200"}`}
-                                              >
-                                                {editTiebreakerType === option && (
-                                                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="shrink-0"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                                                )}
-                                                <span>{option}</span>
-                                              </button>
-                                            ))}
-                                          </div>
+                                  <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+                                    <div className="flex min-w-0 items-center gap-2.5">
+                                      <span className="text-base sm:text-lg font-black tabular-nums text-white">
+                                        {entry.score !== null ? (
+                                          entry.score.toLocaleString()
+                                        ) : (
+                                          <span className="text-sm font-medium text-gray-500">Add Score</span>
                                         )}
-                                      </div>
-                                      <input type="number" inputMode="numeric" value={editTiebreakerValue} onChange={(e) => setEditTiebreakerValue(e.target.value)} placeholder={editTiebreakerType}
-                                        className="w-20 sm:w-24 rounded-lg border border-gray-700 bg-gray-900 px-2.5 py-2 sm:py-1.5 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] placeholder:text-gray-500" />
-                                      <span className="inline-flex items-center justify-center w-5 h-5 shrink-0 text-gray-600/50">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
                                       </span>
-                                      <input type="number" inputMode="numeric" value={editScore} onChange={(e) => setEditScore(e.target.value)} placeholder="Score" autoFocus
-                                        className="w-24 sm:w-28 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2.5 sm:py-1.5 text-center text-base sm:text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-500" />
-                                      <div className="flex items-center gap-2">
-                                        <button type="button" onClick={() => saveScore(entry.id)} disabled={saving}
-                                          className="rounded-lg bg-[#B4E3BD] px-4 py-2.5 sm:py-1.5 text-sm font-bold text-black transition hover:bg-white active:scale-[0.98] disabled:opacity-50 min-w-[65px]"
-                                        >{saving ? "..." : "Save"}</button>
-                                        <button type="button" onClick={() => { setEditingId(null); setUnitDropdownOpen(false); }}
-                                          className="rounded-lg border border-gray-700 px-3 py-2.5 sm:py-1.5 text-xs text-gray-400 transition hover:border-gray-500 hover:text-gray-300"
-                                        ><span className="flex items-center gap-1.5"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>Discard</span></button>
+                                      {entry.tiebreaker_value !== null && entry.tiebreaker_type ? (
+                                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#B4E3BD]/12 px-2.5 py-0.5 text-[10px] font-semibold text-[#B4E3BD]">
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                          {entry.tiebreaker_value?.toLocaleString()} {entry.tiebreaker_type}
+                                        </span>
+                                      ) : (
+                                        <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-dashed border-gray-600/60 px-2.5 py-0.5 text-[10px] font-medium text-gray-500 sm:inline-flex">
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                          Tie
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <span
+                                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${
+                                        isEditing
+                                          ? "border-[#B4E3BD]/30 bg-[#B4E3BD]/10 text-[#B4E3BD]"
+                                          : "border-gray-800 bg-gray-900/60 text-gray-500 group-hover:border-[#B4E3BD]/40 group-hover:text-[#B4E3BD]"
+                                      }`}
+                                    >
+                                      {isEditing ? (
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                      ) : (
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                      )}
+                                    </span>
+                                  </div>
+                                </button>
+
+                                {/* Editor panel - expands below the summary so the row never collapses */}
+                                {isEditing && (
+                                  <div className="editor-panel-in border-t border-[#B4E3BD]/15 bg-black/40 px-4 py-4 sm:px-5">
+                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:items-end">
+                                      {/* Unit */}
+                                      <div>
+                                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">Unit</span>
+                                        <div className="relative">
+                                          <select
+                                            value={editTiebreakerType}
+                                            onChange={(e) => setEditTiebreakerType(e.target.value)}
+                                            className={`w-full appearance-none rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-sm font-semibold text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 ${
+                                              isRTL ? "pl-10" : "pr-10"
+                                            }`}
+                                          >
+                                            <option value="reps">Reps</option>
+                                            <option value="weight">Weight</option>
+                                            <option value="time">Time</option>
+                                          </select>
+                                          <span className={`pointer-events-none absolute inset-y-0 flex items-center ${isRTL ? "left-3" : "right-3"} text-gray-500`}>
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="m6 9 6 6 6-6"/></svg>
+                                          </span>
+                                        </div>
+                                      </div>
+                                      {/* Tiebreaker */}
+                                      <div>
+                                        <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                          Tiebreaker
+                                        </span>
+                                        <input
+                                          type="number"
+                                          inputMode="numeric"
+                                          value={editTiebreakerValue}
+                                          onChange={(e) => setEditTiebreakerValue(e.target.value)}
+                                          placeholder={editTiebreakerType}
+                                          className="w-full rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
+                                        />
+                                      </div>
+                                      {/* Score */}
+                                      <div className="col-span-2 sm:col-span-1">
+                                        <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">Score</span>
+                                        <input
+                                          type="number"
+                                          inputMode="numeric"
+                                          value={editScore}
+                                          onChange={(e) => setEditScore(e.target.value)}
+                                          placeholder="0"
+                                          className="w-full rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-center text-sm font-black tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
+                                        />
                                       </div>
                                     </div>
-                                  ) : (
-                                    <button type="button" onClick={() => startEditScore(entry)}
-                                      className="group flex w-full items-center justify-between gap-2.5 rounded-lg border border-gray-700/50 px-3 py-2.5 sm:py-1.5 whitespace-nowrap transition hover:border-[#B4E3BD]/50 active:scale-[0.98]"
-                                    >
-                                      <span className="flex items-center gap-2.5">
-                                        {entry.tiebreaker_type ? (
-                                          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#B4E3BD]/12 px-2.5 py-0.5 text-[10px] font-semibold text-[#B4E3BD]">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-80"><path d="M19 7v-7a2 2 0 0 0 2 2M16 3a2 2 0 0 0-2-2M12 19v-3l-8 3 4 3 4"/></svg>
-                                            {entry.tiebreaker_value?.toLocaleString() ?? "—"}
-                                          </span>
+
+                                    <div className="mt-4 flex items-center justify-end gap-2.5">
+                                      <button
+                                        type="button"
+                                        onClick={() => setEditingId(null)}
+                                        disabled={saving}
+                                        className="rounded-xl border border-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-400 transition hover:border-gray-500 hover:text-gray-200 disabled:opacity-50"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => saveScore(entry.id)}
+                                        disabled={saving}
+                                        className="inline-flex min-w-[86px] items-center justify-center gap-1.5 rounded-xl bg-[#B4E3BD] px-5 py-2.5 text-sm font-bold text-black transition hover:bg-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+                                      >
+                                        {saving ? (
+                                          <>
+                                            <svg width="14" height="14" className="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="9" strokeDasharray="28.3 28.3" strokeDashoffset="8" strokeLinecap="round"/></svg>
+                                            Saving...
+                                          </>
                                         ) : (
-                                          <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-gray-600/60 px-2.5 py-0.5 text-[10px] font-medium text-gray-500">
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 9l3-3-3-3"/></svg>
-                                            Tie
-                                          </span>
+                                          <>
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            Save
+                                          </>
                                         )}
-                                        <span className="flex items-center gap-1.5 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-gray-400">
-                                          {entry.tiebreaker_type || "—"}
-                                        </span>
-                                      </span>
-                                      <span className="flex items-center gap-2">
-                                        <span className="text-base sm:text-lg font-black tabular-nums text-white">
-                                          {entry.score !== null ? entry.score.toLocaleString() : <span className="text-gray-500 text-sm font-normal">Add Score</span>}
-                                        </span>
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500">
-                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
-                                      </span>
-                                    </button>
-                                  )}
-                                </div>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
+
                           })
                         )}
                         {/* Delete button */}

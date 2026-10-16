@@ -24,6 +24,23 @@
       transform: translateY(0);
     }
   }
+
+  /* Slide-down entrance for inline editors (e.g. ShowAthletesModal score editor) */
+  @keyframes editorIn {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .editor-panel-in {
+    animation: editorIn 180ms ease-out both;
+  }
 }
 
 @layer utilities {

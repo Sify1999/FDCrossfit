@@ -14,6 +14,8 @@ class CompetitionAthlete(Base, TimestampMixin):
     level: Mapped[str] = mapped_column(String(50), nullable=False)
     event: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    tiebreaker_type: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
+    tiebreaker_value: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
 
     def __repr__(self) -> str:
         return f"<CompetitionAthlete id={self.id} name={self.name} level={self.level} event={self.event}>"

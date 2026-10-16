@@ -12,7 +12,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.schemas.user import UserCreate
 
 
@@ -60,11 +60,10 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
 
 
 async def list_members(db: AsyncSession, search: str | None = None) -> list[User]:
-    """List member-role users, optionally filtered by a substring match on
-    username, email, or full name. Backs the coach-facing athlete roster —
-    coaches and admins aren't listed here since they aren't "athletes" to
-    browse records for."""
-    stmt = select(User).where(User.role == UserRole.member).order_by(User.username)
+    """List all users (members, coaches, admins), optionally filtered by a
+    substring match on username, email, full name, or phone number. Backs
+    the coach-facing athlete roster in the dashboard."""
+    stmt = select(User).order_by(User.username)
 
     if search and search.strip():
         pattern = f"%{search.strip()}%"
@@ -73,6 +72,7 @@ async def list_members(db: AsyncSession, search: str | None = None) -> list[User
                 User.username.ilike(pattern),
                 User.email.ilike(pattern),
                 User.full_name.ilike(pattern),
+                User.phone.ilike(pattern),
             )
         )
 
