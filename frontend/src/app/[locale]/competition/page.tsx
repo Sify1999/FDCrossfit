@@ -1036,6 +1036,20 @@ export default function CompetitionPage() {
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [showAthletesOpen, setShowAthletesOpen] = useState(false);
+  const [showAthletesReadOnly, setShowAthletesReadOnly] = useState(false);
+  const [showAthletesInitialName, setShowAthletesInitialName] = useState<string | null>(null);
+
+  function openAthleteDetails(name: string) {
+    setShowAthletesInitialName(name);
+    setShowAthletesReadOnly(true);
+    setShowAthletesOpen(true);
+  }
+
+  function closeShowAthletes() {
+    setShowAthletesOpen(false);
+    setShowAthletesReadOnly(false);
+    setShowAthletesInitialName(null);
+  }
 
   // Load leaderboard data from the API
   const loadLeaderboard = useCallback(async () => {
@@ -1099,9 +1113,14 @@ export default function CompetitionPage() {
     .filter((r) => r.level === levelFilter)
     .filter((r) => eventFilter === 0 || r.event === eventFilter)
     .sort((a, b) => {
-        const s = (b.score ?? 0) - (a.score ?? 0);
-        return s !== 0 ? s : ((b.tiebreaker_value ?? 0) - (a.tiebreaker_value ?? 0));
-      })
+      const s = (b.score ?? 0) - (a.score ?? 0);
+      if (s !== 0) return s;
+      // Time tiebreakers rank by LOWEST time; everything else by highest value.
+      const bothTime = a.tiebreaker_type === "time" && b.tiebreaker_type === "time";
+      return bothTime
+        ? (a.tiebreaker_value ?? 0) - (b.tiebreaker_value ?? 0)
+        : (b.tiebreaker_value ?? 0) - (a.tiebreaker_value ?? 0);
+    })
     .map((row, i) => ({ ...row, place: i + 1 }));
 
   // ── Schedule difficulty picker ─────────────────────────────────────
@@ -1345,7 +1364,11 @@ export default function CompetitionPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setShowAthletesOpen(true)}
+                onClick={() => {
+                  setShowAthletesReadOnly(false);
+                  setShowAthletesInitialName(null);
+                  setShowAthletesOpen(true);
+                }}
                 className="inline-flex items-center gap-2 rounded-full border-2 border-[#B4E3BD] px-5 py-2.5 text-sm font-semibold text-[#B4E3BD] transition-all hover:bg-[#B4E3BD] hover:text-black active:scale-[0.98]"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -1442,7 +1465,16 @@ export default function CompetitionPage() {
                             {row.place}
                           </span>
                         </td>
-                        <td className="px-3 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 max-w-[100px] sm:max-w-none truncate">{row.name}</td>
+                        <td className="px-3 sm:px-5 py-3 sm:py-4">
+                          <button
+                            type="button"
+                            onClick={() => openAthleteDetails(row.name)}
+                            title={`View ${row.name}'s results`}
+                            className="block max-w-[100px] truncate text-left text-xs sm:text-sm font-semibold text-gray-900 underline-offset-4 transition hover:text-[#1a6b3d] hover:underline sm:max-w-none"
+                          >
+                            {row.name}
+                          </button>
+                        </td>
                         <td className="px-3 sm:px-5 py-3 sm:py-4"><LevelBadge level={row.level} /></td>
                         <td className="px-3 sm:px-5 py-3 sm:py-4"><EventBadge event={row.event} /></td>
                         <td className="px-3 sm:px-5 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold tabular-nums text-gray-900 last:pr-4 sm:last:pr-6 whitespace-nowrap">
@@ -1472,10 +1504,12 @@ export default function CompetitionPage() {
       />
       <ShowAthletesModal
         open={showAthletesOpen}
-        onClose={() => setShowAthletesOpen(false)}
+        onClose={closeShowAthletes}
         onDataChanged={() => {
           loadLeaderboard();
         }}
+        readOnly={showAthletesReadOnly}
+        initialName={showAthletesInitialName}
       />
     </main>
   );

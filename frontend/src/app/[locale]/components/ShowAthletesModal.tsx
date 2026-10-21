@@ -19,6 +19,10 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onDataChanged: () => void;
+  /** When true, the modal is a read-only view — no score/tiebreaker editing and no delete. */
+  readOnly?: boolean;
+  /** When set, the modal opens with this athlete's entries already expanded. */
+  initialName?: string | null;
 };
 
 const EVENT_COLORS: Record<number, { chip: string; dot: string; bg: string }> = {
@@ -38,6 +42,26 @@ const LEVEL_STYLES: Record<string, { badge: string; bg: string }> = {
   Intermediate: { badge: "bg-[#f97316]/20 text-[#f97316] border-[#f97316]/30", bg: "hover:bg-[#f97316]/5" },
   Advanced: { badge: "bg-[#ec4899]/20 text-[#ec4899] border-[#ec4899]/30", bg: "hover:bg-[#ec4899]/5" },
 };
+
+const TIEBREAKER_LABELS: Record<string, string> = {
+  reps: "Reps",
+  weight: "Weight",
+  time: "Time",
+};
+
+/** Convert total seconds → MM:SS (e.g. 330 → "05:30"). */
+function formatTime(totalSeconds: number): string {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+}
+
+/** Format a stored tiebreaker value for display (time → MM:SS). */
+function formatTiebreaker(type: string | null, value: number | null): string {
+  if (value === null) return "—";
+  if (type === "time") return formatTime(value);
+  return value.toLocaleString();
+}
 
 function IconSearch() {
   return (
@@ -73,7 +97,13 @@ function IconChevronDown({ open }: { open: boolean }) {
   );
 }
 
-export default function ShowAthletesModal({ open, onClose, onDataChanged }: Props) {
+export default function ShowAthletesModal({
+  open,
+  onClose,
+  onDataChanged,
+  readOnly = false,
+  initialName = null,
+}: Props) {
   const locale = useLocale();
   const isRTL = locale === "fa";
   useBodyScrollLock(open);
@@ -89,14 +119,16 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
   const [editScore, setEditScore] = useState<string>("");
   const [editTiebreakerType, setEditTiebreakerType] = useState<string>("reps");
   const [editTiebreakerValue, setEditTiebreakerValue] = useState<string>("");
+  const [editTieMin, setEditTieMin] = useState<string>("");
+  const [editTieSec, setEditTieSec] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setSearchQuery("");
-    setExpandedName(null);
+    setExpandedName(initialName ?? null);
     setEditingId(null);
-  }, [open]);
+  }, [open, initialName]);
 
   useEffect(() => {
     if (!open) return;
@@ -126,6 +158,13 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
     finally { setEntriesLoading(false); }
   }, []);
 
+  // When opened with an initial athlete (read-only detail view), load their entries.
+  useEffect(() => {
+    if (open && initialName) {
+      loadEntries(initialName);
+    }
+  }, [open, initialName, loadEntries]);
+
   function handleToggleExpand(name: string) {
     if (expandedName === name) {
       setExpandedName(null);
@@ -151,8 +190,34 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
   function startEditScore(entry: AthleteEntry) {
     setEditingId(entry.id);
     setEditScore(entry.score !== null ? String(entry.score) : "");
-    setEditTiebreakerType(entry.tiebreaker_type || "reps");
-    setEditTiebreakerValue(entry.tiebreaker_value !== null ? String(entry.tiebreaker_value) : "");
+    const type = entry.tiebreaker_type || "reps";
+    setEditTiebreakerType(type);
+    if (type === "time" && entry.tiebreaker_value !== null) {
+      // Stored as total seconds — split back into MM : SS fields.
+      setEditTiebreakerValue("");
+      setEditTieMin(String(Math.floor(entry.tiebreaker_value / 60)));
+      setEditTieSec(String(entry.tiebreaker_value % 60));
+    } else {
+      setEditTiebreakerValue(entry.tiebreaker_value !== null ? String(entry.tiebreaker_value) : "");
+      setEditTieMin("");
+      setEditTieSec("");
+    }
+  }
+
+  function handleTiebreakerTypeChange(next: string) {
+    setEditTiebreakerType(next);
+    if (next === "time") {
+      // Seed the MM / SS fields from whatever numeric value was entered.
+      const raw = editTiebreakerValue.trim();
+      const n = raw ? parseInt(raw, 10) : NaN;
+      if (!Number.isNaN(n)) {
+        setEditTieMin(String(Math.floor(n / 60)));
+        setEditTieSec(String(n % 60));
+      } else {
+        setEditTieMin("");
+        setEditTieSec("");
+      }
+    }
   }
 
   async function saveScore(entryId: number) {
@@ -160,7 +225,26 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
     try {
       const score = editScore.trim() ? parseInt(editScore, 10) : null;
       const tiebreakerType = editTiebreakerType;
-      const tiebreakerValue = editTiebreakerValue.trim() ? parseInt(editTiebreakerValue, 10) : null;
+
+      // Time tiebreakers are stored as total seconds (MM:SS → seconds),
+      // everything else keeps its raw numeric value.
+      let tiebreakerValue: number | null = null;
+      if (tiebreakerType === "time") {
+        if (editTieMin.trim() || editTieSec.trim()) {
+          const mins = parseInt(editTieMin || "0", 10);
+          const secs = parseInt(editTieSec || "0", 10);
+          if (Number.isNaN(mins) || Number.isNaN(secs) || secs > 59 || mins < 0) {
+            setError("Invalid time — use MM:SS (e.g. 05:30).");
+            return;
+          }
+          tiebreakerValue = mins * 60 + secs;
+        }
+      } else {
+        const raw = editTiebreakerValue.trim();
+        tiebreakerValue = raw ? parseInt(raw, 10) : null;
+        if (raw && Number.isNaN(tiebreakerValue)) tiebreakerValue = null;
+      }
+
       await api.patch(`/competition-athletes/${entryId}`, {
         score,
         tiebreaker_type: tiebreakerType,
@@ -187,14 +271,22 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-              </svg>
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${readOnly ? "bg-[#B4E3BD]/10 text-[#B4E3BD]" : "bg-amber-500/10 text-amber-400"}`}>
+              {readOnly ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              )}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">Athletes</h2>
-              <p className="mt-0.5 text-xs text-gray-500">Manage competition athletes, scores & events</p>
+              <h2 className="text-lg font-bold text-white">{readOnly ? "Athlete details" : "Athletes"}</h2>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {readOnly ? "View scores & tiebreakers — read only" : "Manage competition athletes, scores & events"}
+              </p>
             </div>
           </div>
           <button type="button" onClick={onClose}
@@ -280,51 +372,41 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
                             const ls = LEVEL_STYLES[entry.level] || LEVEL_STYLES["Beginner"];
                             const isEditing = editingId === entry.id;
 
-                            return (
-                              <div
-                                key={entry.id}
-                                className={`overflow-hidden rounded-xl border transition-colors duration-200 ${
-                                  isEditing ? "border-[#B4E3BD]/30 bg-[#B4E3BD]/5" : "border-gray-800/70"
-                                }`}
-                              >
-                                {/* Summary row - tap anywhere to edit the score & tiebreaker */}
-                                <button
-                                  type="button"
-                                  onClick={() => (isEditing ? setEditingId(null) : startEditScore(entry))}
-                                  className={`group flex w-full flex-col gap-2.5 px-4 py-3 text-left transition sm:flex-row sm:items-center sm:justify-between ${ec.bg}`}
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${ec.chip}`}>
-                                      <span className={`h-2 w-2 rounded-full ${ec.dot}`} />
-                                      Event {entry.event}
+                            const summaryContent = (
+                              <>
+                                <div className="flex items-center gap-2.5">
+                                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${ec.chip}`}>
+                                    <span className={`h-2 w-2 rounded-full ${ec.dot}`} />
+                                    Event {entry.event}
+                                  </span>
+                                  <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ls.badge}`}>
+                                    {entry.level}
+                                  </span>
+                                </div>
+
+                                <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
+                                  <div className="flex min-w-0 items-center gap-2.5">
+                                    <span className="text-base sm:text-lg font-black tabular-nums text-white">
+                                      {entry.score !== null ? (
+                                        entry.score.toLocaleString()
+                                      ) : (
+                                        <span className="text-sm font-medium text-gray-500">{readOnly ? "—" : "Add Score"}</span>
+                                      )}
                                     </span>
-                                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${ls.badge}`}>
-                                      {entry.level}
-                                    </span>
+                                    {entry.tiebreaker_value !== null && entry.tiebreaker_type ? (
+                                      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#B4E3BD]/12 px-2.5 py-0.5 text-[10px] font-semibold text-[#B4E3BD]">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                        {formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value)} {TIEBREAKER_LABELS[entry.tiebreaker_type] ?? entry.tiebreaker_type}
+                                      </span>
+                                    ) : (
+                                      <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-dashed border-gray-600/60 px-2.5 py-0.5 text-[10px] font-medium text-gray-500 sm:inline-flex">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
+                                        Tie
+                                      </span>
+                                    )}
                                   </div>
 
-                                  <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
-                                    <div className="flex min-w-0 items-center gap-2.5">
-                                      <span className="text-base sm:text-lg font-black tabular-nums text-white">
-                                        {entry.score !== null ? (
-                                          entry.score.toLocaleString()
-                                        ) : (
-                                          <span className="text-sm font-medium text-gray-500">Add Score</span>
-                                        )}
-                                      </span>
-                                      {entry.tiebreaker_value !== null && entry.tiebreaker_type ? (
-                                        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#B4E3BD]/12 px-2.5 py-0.5 text-[10px] font-semibold text-[#B4E3BD]">
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-90"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
-                                          {entry.tiebreaker_value?.toLocaleString()} {entry.tiebreaker_type}
-                                        </span>
-                                      ) : (
-                                        <span className="hidden shrink-0 items-center gap-1.5 rounded-full border border-dashed border-gray-600/60 px-2.5 py-0.5 text-[10px] font-medium text-gray-500 sm:inline-flex">
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
-                                          Tie
-                                        </span>
-                                      )}
-                                    </div>
-
+                                  {!readOnly && (
                                     <span
                                       className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition ${
                                         isEditing
@@ -338,8 +420,32 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                                       )}
                                     </span>
+                                  )}
+                                </div>
+                              </>
+                            );
+
+                            return (
+                              <div
+                                key={entry.id}
+                                className={`overflow-hidden rounded-xl border transition-colors duration-200 ${
+                                  isEditing ? "border-[#B4E3BD]/30 bg-[#B4E3BD]/5" : "border-gray-800/70"
+                                }`}
+                              >
+                                {/* Summary row - tap anywhere to edit the score & tiebreaker */}
+                                {readOnly ? (
+                                  <div className="flex w-full flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                    {summaryContent}
                                   </div>
-                                </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => (isEditing ? setEditingId(null) : startEditScore(entry))}
+                                    className={`group flex w-full flex-col gap-2.5 px-4 py-3 text-left transition sm:flex-row sm:items-center sm:justify-between ${ec.bg}`}
+                                  >
+                                    {summaryContent}
+                                  </button>
+                                )}
 
                                 {/* Editor panel - expands below the summary so the row never collapses */}
                                 {isEditing && (
@@ -351,7 +457,7 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
                                         <div className="relative">
                                           <select
                                             value={editTiebreakerType}
-                                            onChange={(e) => setEditTiebreakerType(e.target.value)}
+                                            onChange={(e) => handleTiebreakerTypeChange(e.target.value)}
                                             className={`w-full appearance-none rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-sm font-semibold text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 ${
                                               isRTL ? "pl-10" : "pr-10"
                                             }`}
@@ -371,14 +477,40 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
                                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></svg>
                                           Tiebreaker
                                         </span>
-                                        <input
-                                          type="number"
-                                          inputMode="numeric"
-                                          value={editTiebreakerValue}
-                                          onChange={(e) => setEditTiebreakerValue(e.target.value)}
-                                          placeholder={editTiebreakerType}
-                                          className="w-full rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
-                                        />
+                                        {editTiebreakerType === "time" ? (
+                                          <div className="flex items-center gap-1.5" dir="ltr">
+                                            <input
+                                              type="text"
+                                              inputMode="numeric"
+                                              maxLength={2}
+                                              value={editTieMin}
+                                              onChange={(e) => setEditTieMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                                              placeholder="00"
+                                              aria-label="Tiebreaker minutes"
+                                              className="w-full min-w-0 rounded-xl border border-gray-700 bg-gray-900 px-1 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
+                                            />
+                                            <span className="shrink-0 select-none font-black text-gray-500">:</span>
+                                            <input
+                                              type="text"
+                                              inputMode="numeric"
+                                              maxLength={2}
+                                              value={editTieSec}
+                                              onChange={(e) => setEditTieSec(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                                              placeholder="00"
+                                              aria-label="Tiebreaker seconds"
+                                              className="w-full min-w-0 rounded-xl border border-gray-700 bg-gray-900 px-1 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
+                                            />
+                                          </div>
+                                        ) : (
+                                          <input
+                                            type="number"
+                                            inputMode="numeric"
+                                            value={editTiebreakerValue}
+                                            onChange={(e) => setEditTiebreakerValue(e.target.value)}
+                                            placeholder={editTiebreakerType}
+                                            className="w-full rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
+                                          />
+                                        )}
                                       </div>
                                       {/* Score */}
                                       <div className="col-span-2 sm:col-span-1">
@@ -430,16 +562,18 @@ export default function ShowAthletesModal({ open, onClose, onDataChanged }: Prop
                           })
                         )}
                         {/* Delete button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (window.confirm(`Remove "${name}" from all events?`)) handleDelete(name);
-                          }}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-950/30 hover:border-red-500/50"
-                        >
-                          <IconTrash />
-                          Remove athlete
-                        </button>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Remove "${name}" from all events?`)) handleDelete(name);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-950/30 hover:border-red-500/50"
+                          >
+                            <IconTrash />
+                            Remove athlete
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

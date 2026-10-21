@@ -1,6 +1,6 @@
 """Competition athlete service — create & list athletes for the scoreboard."""
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import case, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.competition_athlete import CompetitionAthlete
@@ -22,7 +22,19 @@ async def list_athletes(
     if name is not None:
         stmt = stmt.where(CompetitionAthlete.name.ilike(f"%{name}%"))
 
-    stmt = stmt.order_by(CompetitionAthlete.score.desc().nullslast(), CompetitionAthlete.tiebreaker_value.desc().nullslast(), CompetitionAthlete.event, CompetitionAthlete.name)
+    # Ranking: highest score first. On a tie, time tiebreakers rank by the
+    # LOWEST time (negate → DESC gives ascending time), everything else by the
+    # highest value. NULLs always sink to the bottom.
+    tiebreak_order = case(
+        (CompetitionAthlete.tiebreaker_type == "time", -CompetitionAthlete.tiebreaker_value),
+        else_=CompetitionAthlete.tiebreaker_value,
+    )
+    stmt = stmt.order_by(
+        CompetitionAthlete.score.desc().nullslast(),
+        tiebreak_order.desc().nullslast(),
+        CompetitionAthlete.event,
+        CompetitionAthlete.name,
+    )
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
