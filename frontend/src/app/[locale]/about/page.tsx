@@ -45,7 +45,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
-
+    {false && (
+      <>
       {/* ─── Founding Story ───────────────────────────────────────── */}
       <section className="px-6 py-24 sm:px-12">
         <div className="mx-auto grid max-w-6xl items-center gap-14 md:grid-cols-2">
@@ -143,6 +144,8 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+      </>
+      )}
         {/* ─── Contact + Map ─────────────────────────────────────────── */}
         <ContactMapSection />
 

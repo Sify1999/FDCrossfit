@@ -341,6 +341,7 @@
       "title": "Competition Schedule",
       "description": "Four days of competition — tap any day to explore its events and heats, then plan your day with ease.",
       "day": "Day",
+      "athlete": "Athlete",
       "event": "Event",
       "events": "Events",
       "heat": "Heat",

@@ -67,3 +67,4 @@ def require_roles(*roles: UserRole):
 
 
 require_coach = require_roles(UserRole.coach, UserRole.admin)
+require_admin = require_roles(UserRole.admin)

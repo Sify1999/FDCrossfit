@@ -1,11 +1,15 @@
 "use client";
 
+import { COMPETITION_EVENT_NUMBERS, eventLabel } from "@/lib/competition-events";
+import { dayDateLabel } from "@/lib/competition-days";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api-client";
+import { fetchCurrentUser, type CurrentUser } from "@/lib/auth";
 import AddAthleteModal from "../components/AddAthleteModal";
 import ShowAthletesModal from "../components/ShowAthletesModal";
+import ScheduleManagerModal from "../components/ScheduleManagerModal";
 
 /* ─── Icons (inline, currentColor so they inherit) ─────────────────── */
 function IconSignIn() {
@@ -250,14 +254,16 @@ function LevelTabs({
   );
 }
 
-/* ─── Schedule data — 4 days per level. Each day holds a list of
-   events, and every event holds the heats that run throughout the
-   day (heat number + start time). ───────────────────────────────── */
+/* ─── Schedule types + dynamic builders ─────────────────────────────
+   The schedule now lives in the database (events + heats with times),
+   loaded from /api/competition/schedule and grouped into day cards. */
 type Heat = {
   heat: number;
   time: string;
   /** End time — the heat renders as a compact range, e.g. "8:00-8:12" */
   end: string;
+  /** Athletes registered in this heat (from the dynamic schedule). */
+  athletes?: string[];
 };
 
 type CompetitionEvent = {
@@ -272,357 +278,57 @@ type CompetitionDay = {
   events: CompetitionEvent[];
 };
 
-const SCHEDULE: Record<LevelKey, CompetitionDay[]> = {
-  beginner: [
-    {
-      id: "b-day1",
-      day: 1,
-      date: "Sat, Jun 14",
-      events: [
-        {
-          name: "Fundamentals WOD",
-          heats: [
-            { heat: 1, time: "8:00 AM", end: "8:12 AM" },
-            { heat: 2, time: "8:25 AM", end: "8:38 AM" },
-            { heat: 3, time: "8:50 AM", end: "9:03 AM" },
-          ],
-        },
-        {
-          name: "Max Back Squat",
-          heats: [
-            { heat: 1, time: "10:15 AM", end: "10:28 AM" },
-            { heat: 2, time: "10:40 AM", end: "10:53 AM" },
-          ],
-        },
-        {
-          name: "AMRAP 10",
-          heats: [
-            { heat: 1, time: "1:00 PM", end: "1:12 PM" },
-            { heat: 2, time: "1:25 PM", end: "1:37 PM" },
-            { heat: 3, time: "1:50 PM", end: "2:02 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "b-day2",
-      day: 2,
-      date: "Sun, Jun 15",
-      events: [
-        {
-          name: "Partner Relay",
-          heats: [
-            { heat: 1, time: "9:00 AM", end: "9:14 AM" },
-            { heat: 2, time: "9:25 AM", end: "9:39 AM" },
-          ],
-        },
-        {
-          name: "Deadlift Ladder",
-          heats: [
-            { heat: 1, time: "11:15 AM", end: "11:30 AM" },
-            { heat: 2, time: "11:40 AM", end: "11:55 AM" },
-            { heat: 3, time: "12:05 PM", end: "12:20 PM" },
-          ],
-        },
-        {
-          name: "Row Sprint",
-          heats: [
-            { heat: 1, time: "2:00 PM", end: "2:14 PM" },
-            { heat: 2, time: "2:25 PM", end: "2:39 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "b-day3",
-      day: 3,
-      date: "Mon, Jun 16",
-      events: [
-        {
-          name: "Strength Circuit",
-          heats: [
-            { heat: 1, time: "8:30 AM", end: "8:44 AM" },
-            { heat: 2, time: "8:55 AM", end: "9:09 AM" },
-            { heat: 3, time: "9:20 AM", end: "9:34 AM" },
-          ],
-        },
-        {
-          name: "Burpee Mile",
-          heats: [
-            { heat: 1, time: "11:00 AM", end: "11:14 AM" },
-            { heat: 2, time: "11:25 AM", end: "11:39 AM" },
-          ],
-        },
-        {
-          name: "Team Throwdown",
-          heats: [
-            { heat: 1, time: "1:30 PM", end: "1:42 PM" },
-            { heat: 2, time: "1:55 PM", end: "2:07 PM" },
-            { heat: 3, time: "2:20 PM", end: "2:32 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "b-day4",
-      day: 4,
-      date: "Tue, Jun 17",
-      events: [
-        {
-          name: "Clean & Jerk Test",
-          heats: [
-            { heat: 1, time: "9:15 AM", end: "9:30 AM" },
-            { heat: 2, time: "9:40 AM", end: "9:55 AM" },
-          ],
-        },
-        {
-          name: "Final Showdown",
-          heats: [
-            { heat: 1, time: "12:00 PM", end: "12:14 PM" },
-            { heat: 2, time: "12:25 PM", end: "12:39 PM" },
-            { heat: 3, time: "12:50 PM", end: "1:04 PM" },
-          ],
-        },
-        {
-          name: "Awards Ceremony",
-          heats: [{ heat: 1, time: "4:00 PM", end: "4:45 PM" }],
-        },
-      ],
-    },
-  ],
-  intermediate: [
-    {
-      id: "i-day1",
-      day: 1,
-      date: "Sat, Jun 14",
-      events: [
-        {
-          name: "Opening AMRAP",
-          heats: [
-            { heat: 1, time: "8:30 AM", end: "8:45 AM" },
-            { heat: 2, time: "8:55 AM", end: "9:10 AM" },
-            { heat: 3, time: "9:20 AM", end: "9:35 AM" },
-          ],
-        },
-        {
-          name: "Max Clean & Jerk",
-          heats: [
-            { heat: 1, time: "10:45 AM", end: "10:58 AM" },
-            { heat: 2, time: "11:10 AM", end: "11:23 AM" },
-            { heat: 3, time: "11:35 AM", end: "11:48 AM" },
-          ],
-        },
-        {
-          name: "Chipper 15",
-          heats: [
-            { heat: 1, time: "1:30 PM", end: "1:45 PM" },
-            { heat: 2, time: "1:55 PM", end: "2:10 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "i-day2",
-      day: 2,
-      date: "Sun, Jun 15",
-      events: [
-        {
-          name: "Hero WOD",
-          heats: [
-            { heat: 1, time: "9:30 AM", end: "9:45 AM" },
-            { heat: 2, time: "9:55 AM", end: "10:10 AM" },
-          ],
-        },
-        {
-          name: "Thruster Ladder",
-          heats: [
-            { heat: 1, time: "11:45 AM", end: "12:00 PM" },
-            { heat: 2, time: "12:10 PM", end: "12:25 PM" },
-            { heat: 3, time: "12:35 PM", end: "12:50 PM" },
-          ],
-        },
-        {
-          name: "Sprint Rounds",
-          heats: [
-            { heat: 1, time: "2:30 PM", end: "2:44 PM" },
-            { heat: 2, time: "2:55 PM", end: "3:09 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "i-day3",
-      day: 3,
-      date: "Mon, Jun 16",
-      events: [
-        {
-          name: "Deadlift Superset",
-          heats: [
-            { heat: 1, time: "8:45 AM", end: "9:00 AM" },
-            { heat: 2, time: "9:10 AM", end: "9:25 AM" },
-            { heat: 3, time: "9:35 AM", end: "9:50 AM" },
-          ],
-        },
-        {
-          name: "Double-Under Derby",
-          heats: [
-            { heat: 1, time: "11:15 AM", end: "11:30 AM" },
-            { heat: 2, time: "11:40 AM", end: "11:55 AM" },
-          ],
-        },
-        {
-          name: "Trio Tag-Team",
-          heats: [
-            { heat: 1, time: "1:45 PM", end: "2:00 PM" },
-            { heat: 2, time: "2:10 PM", end: "2:25 PM" },
-            { heat: 3, time: "2:35 PM", end: "2:50 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "i-day4",
-      day: 4,
-      date: "Tue, Jun 17",
-      events: [
-        {
-          name: "Snatch Complex",
-          heats: [
-            { heat: 1, time: "9:30 AM", end: "9:47 AM" },
-            { heat: 2, time: "9:55 AM", end: "10:12 AM" },
-          ],
-        },
-        {
-          name: "Finisher",
-          heats: [
-            { heat: 1, time: "12:15 PM", end: "12:27 PM" },
-            { heat: 2, time: "12:40 PM", end: "12:52 PM" },
-          ],
-        },
-        {
-          name: "Podium & Awards",
-          heats: [{ heat: 1, time: "4:30 PM", end: "5:15 PM" }],
-        },
-      ],
-    },
-  ],
-  advanced: [
-    {
-      id: "a-day1",
-      day: 1,
-      date: "Sat, Jun 14",
-      events: [
-        {
-          name: "Qualifier AMRAP",
-          heats: [
-            { heat: 1, time: "8:15 AM", end: "8:30 AM" },
-            { heat: 2, time: "8:40 AM", end: "8:55 AM" },
-            { heat: 3, time: "9:05 AM", end: "9:20 AM" },
-          ],
-        },
-        {
-          name: "Max Snatch",
-          heats: [
-            { heat: 1, time: "10:30 AM", end: "10:42 AM" },
-            { heat: 2, time: "10:55 AM", end: "11:07 AM" },
-            { heat: 3, time: "11:20 AM", end: "11:32 AM" },
-          ],
-        },
-        {
-          name: "Couplet 20",
-          heats: [
-            { heat: 1, time: "1:15 PM", end: "1:30 PM" },
-            { heat: 2, time: "1:40 PM", end: "1:55 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "a-day2",
-      day: 2,
-      date: "Sun, Jun 15",
-      events: [
-        {
-          name: "International WOD",
-          heats: [
-            { heat: 1, time: "9:15 AM", end: "9:32 AM" },
-            { heat: 2, time: "9:40 AM", end: "9:57 AM" },
-          ],
-        },
-        {
-          name: "Clean Ladder",
-          heats: [
-            { heat: 1, time: "11:30 AM", end: "11:45 AM" },
-            { heat: 2, time: "11:55 AM", end: "12:10 PM" },
-            { heat: 3, time: "12:20 PM", end: "12:35 PM" },
-          ],
-        },
-        {
-          name: "Sprint Finals",
-          heats: [
-            { heat: 1, time: "2:15 PM", end: "2:28 PM" },
-            { heat: 2, time: "2:40 PM", end: "2:53 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "a-day3",
-      day: 3,
-      date: "Mon, Jun 16",
-      events: [
-        {
-          name: "Strength Trial",
-          heats: [
-            { heat: 1, time: "8:20 AM", end: "8:36 AM" },
-            { heat: 2, time: "8:45 AM", end: "9:01 AM" },
-          ],
-        },
-        {
-          name: "Rope & Row",
-          heats: [
-            { heat: 1, time: "10:45 AM", end: "10:58 AM" },
-            { heat: 2, time: "11:10 AM", end: "11:23 AM" },
-            { heat: 3, time: "11:35 AM", end: "11:48 AM" },
-          ],
-        },
-        {
-          name: "Championship Relay",
-          heats: [
-            { heat: 1, time: "1:30 PM", end: "1:44 PM" },
-            { heat: 2, time: "1:55 PM", end: "2:09 PM" },
-            { heat: 3, time: "2:20 PM", end: "2:34 PM" },
-          ],
-        },
-      ],
-    },
-    {
-      id: "a-day4",
-      day: 4,
-      date: "Tue, Jun 17",
-      events: [
-        {
-          name: "Final Event",
-          heats: [
-            { heat: 1, time: "9:45 AM", end: "10:00 AM" },
-            { heat: 2, time: "10:10 AM", end: "10:25 AM" },
-          ],
-        },
-        {
-          name: "Showdown",
-          heats: [
-            { heat: 1, time: "12:30 PM", end: "12:44 PM" },
-            { heat: 2, time: "12:55 PM", end: "1:09 PM" },
-          ],
-        },
-        {
-          name: "Champion Ceremony",
-          heats: [{ heat: 1, time: "5:00 PM", end: "5:45 PM" }],
-        },
-      ],
-    },
-  ],
+type ScheduleHeatApi = {
+  id: number;
+  heat_number: number;
+  start_time: string;
+  end_time: string;
+  athletes: string[];
 };
+
+type ScheduleEventApi = {
+  id: number;
+  level: string;
+  event_number: number;
+  name: string;
+  day: number | null;
+  date: string | null;
+  heats: ScheduleHeatApi[];
+};
+
+/** "08:00" → "8:00 AM" */
+function formatTime12h(value: string): string {
+  const [hhRaw, mmRaw] = value.split(":");
+  const hh = parseInt(hhRaw, 10);
+  const mm = mmRaw ?? "00";
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 || 12;
+  return `${h12}:${mm} ${period}`;
+}
+
+/** Group dynamic schedule events into the day-card shape the UI renders. */
+function buildScheduleDays(events: ScheduleEventApi[]): CompetitionDay[] {
+  const days = new Map<number, CompetitionDay>();
+  for (const e of events) {
+    const dayNum = e.day ?? 1;
+    let day = days.get(dayNum);
+    if (!day) {
+      day = { id: `${e.level}-day-${dayNum}`, day: dayNum, date: e.date ?? "", events: [] };
+      days.set(dayNum, day);
+    }
+    day.events.push({
+      name: e.name,
+      heats: e.heats.map((h) => ({
+        heat: h.heat_number,
+        time: formatTime12h(h.start_time),
+        end: formatTime12h(h.end_time),
+        athletes: h.athletes ?? [],
+      })),
+    });
+  }
+  return [...days.values()].sort((a, b) => a.day - b.day);
+}
+
 /* ─── Leaderboard types ──────────────────────────── */
 type LeaderboardEntry = {
   id: number;
@@ -640,43 +346,46 @@ type AthleteFromApi = {
   level: string;
   event: number;
   score: number | null;
+  reps: number | null;
+  weight: number | null;
+  score_2: number | null;
+  reps_2: number | null;
+  weight_2: number | null;
   tiebreaker_type: string | null;
   tiebreaker_value: number | null;
+  tiebreaker_value_2: number | null;
   created_at: string;
   updated_at: string;
 };
 
+/* Level colors match the difficulty icons: mint / orange / blue. */
 const LEVEL_BADGE_STYLES: Record<string, string> = {
-  Beginner: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  Intermediate: "bg-[#f97316]/35 text-[#7c1d00] border-[#f97316]/50 shadow-sm shadow-[#f97316]/20",
-  Advanced: "bg-[#ec4899]/35 text-[#7b1a3d] border-[#ec4899]/50 shadow-sm shadow-[#ec4899]/20",
+  Beginner: "bg-[#B4E3BD]/10 text-[#B4E3BD] border-[#B4E3BD]/30",
+  Intermediate: "bg-[#ff8c42]/10 text-[#ff8c42] border-[#ff8c42]/30",
+  Advanced: "bg-[#8ab4f8]/10 text-[#8ab4f8] border-[#8ab4f8]/30",
 };
 
-const EVENT_BADGE_STYLES: Record<number, string> = {
-  0: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  1: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  2: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  3: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  4: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  5: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  6: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  7: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  8: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-  9: "bg-[#B4E3BD]/35 text-[#1a6b3d] border-[#B4E3BD]/50 shadow-sm shadow-[#B4E3BD]/20",
-};
+const EVENT_BADGE_STYLE = "bg-white/5 text-gray-300 border-white/10";
 
 function LevelBadge({ level }: { level: string }) {
   return (
-    <span className={`inline-block rounded-full border px-2 sm:px-3 py-0.5 text-[9px] sm:text-[11px] font-semibold uppercase tracking-wider ${LEVEL_BADGE_STYLES[level] || ""}`}>
+    <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider sm:px-3 sm:text-[11px] ${LEVEL_BADGE_STYLES[level] || ""}`}>
       {level}
     </span>
   );
 }
 
 function EventBadge({ event }: { event: number }) {
-  const label = event === 0 ? "Total" : `Ev ${event}`;
+  const label =
+    event === 0
+      ? "Total"
+      : event === 1
+        ? "Event 1"
+        : event === 2
+          ? "Event 2"
+          : eventLabel(event);
   return (
-    <span className={`inline-block rounded-full border px-2 sm:px-3 py-0.5 text-[9px] sm:text-[11px] font-semibold tracking-wider ${EVENT_BADGE_STYLES[event] || ""}`}>
+    <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-wider sm:px-3 sm:text-[11px] ${EVENT_BADGE_STYLE}`}>
       {label}
     </span>
   );
@@ -716,15 +425,18 @@ function DaySchedule({
   index,
   open,
   onToggle,
+  locale,
 }: {
   t: (key: string) => string;
   day: CompetitionDay;
   index: number;
   open: boolean;
   onToggle: () => void;
+  locale: string;
 }) {
   const heatCount = day.events.reduce((sum, e) => sum + e.heats.length, 0);
   const eventCount = day.events.length;
+  const dayLabel = dayDateLabel(day.day, locale as "en" | "fa");
 
   return (
     <div
@@ -761,7 +473,7 @@ function DaySchedule({
           <span className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-gray-400 sm:text-xs">
             <span className="inline-flex items-center gap-1.5 text-[#B4E3BD]/80">
               <IconCalendarSmall />
-              {day.date}
+              {dayLabel}
             </span>
             <span className="text-gray-600">•</span>
             <span>
@@ -789,33 +501,50 @@ function DaySchedule({
       >
         <div id={`${day.id}-panel`} className="min-h-0 overflow-hidden">
           <div dir="ltr" className="border-t border-white/5 bg-black/30 px-3 pb-4 pt-3 sm:px-6 sm:pb-5">
-            <div className="grid grid-cols-[minmax(0,1.7fr)_auto_minmax(0,1fr)] items-center gap-3 px-2 pb-2 sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,1fr)] sm:px-3">
+            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_minmax(0,0.9fr)] items-center gap-2 px-2 pb-2 sm:px-3">
+              <span className="text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.athlete")}</span>
               <span className="text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.event")}</span>
-              <span className="w-16 text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:w-20 sm:text-[11px]">{t("schedule.heat")}</span>
+              <span className="w-14 text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:w-16 sm:text-[11px]">{t("schedule.heat")}</span>
               <span className="text-end text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.time")}</span>
             </div>
 
             {day.events.map((event, ei) =>
-              event.heats.map((heat) => (
-                <div
-                  key={`${day.id}-e${ei}-h${heat.heat}`}
-                  className="grid grid-cols-[minmax(0,1.7fr)_auto_minmax(0,1fr)] items-center gap-3 rounded-lg border-t border-white/5 px-2 py-2 transition-colors duration-200 hover:bg-[#B4E3BD]/[0.06] sm:grid-cols-[minmax(0,2fr)_auto_minmax(0,1fr)] sm:px-3 sm:py-2.5"
-                >
-                  <span className="min-w-0">
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="truncate text-xs font-semibold text-white sm:text-sm">{t("schedule.event")}</span>
-                      <span className="shrink-0 text-base font-black leading-none text-[#B4E3BD] sm:text-lg">{ei + 1}</span>
-                    </span>
-                    <span className="block truncate text-[10px] text-gray-500 sm:text-xs">{event.name}</span>
-                  </span>
+              event.heats.map((heat) => {
+                const athletes = heat.athletes ?? [];
+                // One row per athlete — empty heats get a placeholder row so the
+                // Heat 1..N sequence stays visible.
+                const names: (string | null)[] = athletes.length > 0 ? [...athletes].sort() : [null];
+                return names.map((athleteName, ai) => {
+                  const isFirstOfEvent = ai === 0 && ei !== 0;
+                  return (
+                    <div
+                      key={`${day.id}-e${ei}-h${heat.heat}-a${ai}`}
+                      className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_minmax(0,0.9fr)] items-center gap-2 rounded-lg border-t px-2 py-2 transition-colors duration-200 hover:bg-[#B4E3BD]/[0.06] sm:px-3 sm:py-2.5 ${
+                        isFirstOfEvent ? "mt-1.5 border-[#B4E3BD]/30" : "border-white/5"
+                      }`}
+                    >
+                      {athleteName ? (
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD]/15 text-[9px] font-bold uppercase text-[#B4E3BD]">
+                            {athleteName.slice(0, 2)}
+                          </span>
+                          <span className="truncate text-xs font-semibold text-white sm:text-sm">{athleteName}</span>
+                        </span>
+                      ) : (
+                        <span className="truncate text-[11px] italic text-gray-600">No athletes in this heat</span>
+                      )}
 
-                  <span className="inline-flex w-16 sm:w-20 items-center justify-center rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-2 py-1 text-[10px] sm:text-xs font-semibold whitespace-nowrap text-[#B4E3BD]">
-                    {t("schedule.heat")} {heat.heat}
-                  </span>
+                      <span className="truncate text-[11px] font-medium text-gray-400 sm:text-xs">{event.name}</span>
 
-                  <TimeCell time={heat.time} end={heat.end} />
-                </div>
-              ))
+                      <span className="inline-flex w-14 sm:w-16 items-center justify-center rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-2 py-1 text-[10px] sm:text-xs font-semibold whitespace-nowrap text-[#B4E3BD]">
+                        {t("schedule.heat")} {heat.heat}
+                      </span>
+
+                      <TimeCell time={heat.time} end={heat.end} />
+                    </div>
+                  );
+                });
+              })
             )}
           </div>
         </div>
@@ -831,9 +560,11 @@ function DaySchedule({
 function DayScheduleList({
   t,
   days,
+  locale,
 }: {
   t: (key: string) => string;
   days: CompetitionDay[];
+  locale: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -847,6 +578,7 @@ function DayScheduleList({
           day={day}
           open={openId === day.id}
           onToggle={() => setOpenId((cur) => (cur === day.id ? null : day.id))}
+          locale={locale}
         />
       ))}
     </div>
@@ -871,12 +603,12 @@ function SectionHeader({
       <span className="mb-4 block text-sm font-bold uppercase tracking-[0.2em] text-[#B4E3BD]">
         {eyebrow}
       </span>
-      <h2 className="mb-6 text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">
+      <h2 className="mb-16 text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">
         {title}
       </h2>
-      <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed text-gray-400 sm:mb-12 sm:text-lg">
+      {/* <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed text-gray-400 sm:mb-12 sm:text-lg">
         {description}
-      </p>
+      </p> */}
     </div>
   );
 }
@@ -940,12 +672,16 @@ function FilterDropdown({
         ref={btnRef}
         type="button"
         onClick={() => setOpen((p) => !p)}
-        className={`inline-flex items-center gap-1 rounded-lg px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[10px] sm:text-xs font-bold uppercase tracking-[0.12em] sm:tracking-[0.15em] transition-all duration-200 ${
-          "bg-[#B4E3BD]/10 text-[#B4E3BD]"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] transition-all duration-200 sm:px-3 sm:py-1.5 sm:text-xs sm:tracking-[0.15em] ${
+          open
+            ? "border-[#B4E3BD] bg-[#B4E3BD] text-black"
+            : "border-[#B4E3BD]/30 bg-[#B4E3BD]/10 text-[#B4E3BD] hover:border-[#B4E3BD]/60 hover:bg-[#B4E3BD]/20"
         }`}
       >
         {currentLabel}
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}>
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
@@ -953,33 +689,41 @@ function FilterDropdown({
       {open && position && (
         <div
           ref={dropdownRef}
+          role="listbox"
           style={{
             position: "fixed",
             top: position.top,
             left: position.left,
             zIndex: 9999,
           }}
-          className="min-w-[120px] sm:min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-xl shadow-black/5"
+          className="max-h-72 min-w-[140px] overflow-auto rounded-xl border border-white/10 bg-[#1a1a1a] p-1 shadow-2xl shadow-black/60 sm:min-w-[170px]"
         >
           {options.map((opt) => {
             const isActive = selected === opt.value;
             return (
               <button
                 key={String(opt.value)}
+                type="button"
+                role="option"
+                aria-selected={isActive}
                 onClick={() => {
                   onSelect(opt.value);
                   setOpen(false);
                 }}
-                className={`flex w-full items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-left text-xs sm:text-sm transition-colors ${
-                  isActive ? "bg-[#B4E3BD]/10 font-semibold text-[#B4E3BD]" : "text-gray-600 hover:bg-gray-50"
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs normal-case tracking-normal transition-colors sm:text-sm ${
+                  isActive
+                    ? "bg-[#B4E3BD]/15 font-semibold text-[#B4E3BD]"
+                    : "text-gray-300 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                {isActive && (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="shrink-0 text-[#B4E3BD]">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-                <span className={isActive ? "" : "ml-5 sm:ml-6"}>{opt.label}</span>
+                <span className="flex h-3 w-3 shrink-0 items-center justify-center">
+                  {isActive && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </span>
+                {opt.label}
               </button>
             );
           })}
@@ -1038,6 +782,10 @@ export default function CompetitionPage() {
   const [showAthletesOpen, setShowAthletesOpen] = useState(false);
   const [showAthletesReadOnly, setShowAthletesReadOnly] = useState(false);
   const [showAthletesInitialName, setShowAthletesInitialName] = useState<string | null>(null);
+  // Admin-only controls (Schedule manager / Add Athlete / Show Athletes list).
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+
+  const isAdmin = currentUser?.role === "admin";
 
   function openAthleteDetails(name: string) {
     setShowAthletesInitialName(name);
@@ -1051,27 +799,86 @@ export default function CompetitionPage() {
     setShowAthletesInitialName(null);
   }
 
+  // Athlete whose registration is currently being edited (events/heats).
+  const [editingAthlete, setEditingAthlete] = useState<{
+    name: string;
+    level: string;
+    events: { event: number; heat: number | null }[];
+  } | null>(null);
+
+  function handleEditAthlete(data: {
+    name: string;
+    level: string;
+    events: { event: number; heat: number | null }[];
+  }) {
+    setShowAthletesOpen(false);
+    setEditingAthlete(data);
+    setAddModalOpen(true);
+  }
+
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [scheduleLoading, setScheduleLoading] = useState(true);
+  const [scheduleByLevel, setScheduleByLevel] = useState<Record<LevelKey, CompetitionDay[]>>({
+    beginner: [],
+    intermediate: [],
+    advanced: [],
+  });
+
+  // Load the dynamic schedule (events + heats + times) from the API.
+  const loadSchedule = useCallback(async () => {
+    setScheduleLoading(true);
+    try {
+      const res = await api.get<{ events: ScheduleEventApi[] }>("/competition/schedule");
+      const byLevel: Record<LevelKey, CompetitionDay[]> = { beginner: [], intermediate: [], advanced: [] };
+      for (const key of Object.keys(byLevel) as LevelKey[]) {
+        byLevel[key] = buildScheduleDays(res.events.filter((e) => e.level === key));
+      }
+      setScheduleByLevel(byLevel);
+    } catch {
+      setScheduleByLevel({ beginner: [], intermediate: [], advanced: [] });
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSchedule();
+  }, [loadSchedule]);
+
+  // Load the current user once so admin-only controls can be gated.
+  // Logged-out visitors just get null → no admin controls, ever.
+  useEffect(() => {
+    let cancelled = false;
+    fetchCurrentUser().then((u) => {
+      if (cancelled) return;
+      setCurrentUser(u);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Load leaderboard data from the API
   const loadLeaderboard = useCallback(async () => {
     setLoadingLeaderboard(true);
     try {
       const params = new URLSearchParams();
       params.set("level", levelFilter);
-      if (eventFilter !== 0) params.set("event", String(eventFilter));
+      // Events 1 & 2 are the two scored parts of the combined "Event 1&2" entry —
+      // fetch all the level's entries and split them client-side.
+      if (eventFilter >= 3) params.set("event", String(eventFilter));
       const qs = params.toString();
       const data = await api.get<{ athletes: AthleteFromApi[] }>(
         `/competition-athletes?${qs}`
       );
       if (eventFilter === 0) {
-        // Aggregate: sum every athlete's scores across all events
+        // Aggregate: sum every athlete's scores across all events.
+        // The combined Event 1&2 entry contributes both of its parts.
         const summed = new Map<string, { level: string; score: number }>();
         for (const a of data.athletes) {
-          if (a.score !== null) {
-            const cur = summed.get(a.name) ?? { level: a.level, score: 0 };
-            cur.score += a.score;
-            // level should be consistent; pick whichever we saw first
-            summed.set(a.name, cur);
-          }
+          const cur = summed.get(a.name) ?? { level: a.level, score: 0 };
+          cur.score += (a.score ?? 0) + (a.score_2 ?? 0);
+          summed.set(a.name, cur);
         }
         setLeaderboard(
           Array.from(summed.entries()).map(([name, s]) => ({
@@ -1083,6 +890,22 @@ export default function CompetitionPage() {
             tiebreaker_type: null,
             tiebreaker_value: null,
           }))
+        );
+      } else if (eventFilter === 1 || eventFilter === 2) {
+        // Events 1 & 2 are the two scored parts of the combined "Event 1&2" entry —
+        // split its score into two separate leaderboard rows.
+        setLeaderboard(
+          data.athletes
+            .filter((a) => a.event === 1)
+            .map((a) => ({
+              id: a.id,
+              name: a.name,
+              level: a.level,
+              event: eventFilter,
+              score: eventFilter === 1 ? a.score : a.score_2,
+              tiebreaker_type: "time",
+              tiebreaker_value: eventFilter === 1 ? a.tiebreaker_value : a.tiebreaker_value_2,
+            }))
         );
       } else {
         setLeaderboard(
@@ -1112,8 +935,11 @@ export default function CompetitionPage() {
   const filtered = leaderboard
     .filter((r) => r.level === levelFilter)
     .filter((r) => eventFilter === 0 || r.event === eventFilter)
+    // Hide athletes with 0 points (and athletes who haven't scored yet).
+    .filter((r) => (r.score ?? 0) > 0)
     .sort((a, b) => {
-      const s = (b.score ?? 0) - (a.score ?? 0);
+      // Ascending points — the LOWEST score ranks #1 (e.g. #1 has 1 point, #2 has 3).
+      const s = (a.score ?? 0) - (b.score ?? 0);
       if (s !== 0) return s;
       // Time tiebreakers rank by LOWEST time; everything else by highest value.
       const bothTime = a.tiebreaker_type === "time" && b.tiebreaker_type === "time";
@@ -1249,15 +1075,16 @@ export default function CompetitionPage() {
                 icon={<IconScores />}
                 label={t("hero.btnScores")}
                 desc="Live rankings"
+                highlight
                 onClick={() => scrollTo("section-scores")}
               />
-              <ActionButton
+              {/* <ActionButton
                 icon={<IconSignIn />}
                 label={t("hero.btnSignIn")}
                 desc="Register to compete"
                 highlight
                 onClick={() => scrollTo("section-signIn")}
-              />
+              /> */}
             </div>
 
             {/* Scroll hint */}
@@ -1274,7 +1101,7 @@ export default function CompetitionPage() {
       {/* ════════════════════════════════════════════════════════════════
           SIGN IN SECTION (ثبت نام)
       ════════════════════════════════════════════════════════════════ */}
-      <section id="section-signIn" className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-black px-6 py-24 sm:px-12">
+      {/* <section id="section-signIn" className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-black px-6 py-24 sm:px-12">
         <div aria-hidden className="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/50 to-transparent" />
         <div aria-hidden className="pointer-events-none absolute left-1/2 top-24 -z-0 h-80 w-80 -translate-x-1/2 rounded-full bg-[#B4E3BD]/10 blur-3xl" />
         <div className="relative z-10">
@@ -1288,7 +1115,7 @@ export default function CompetitionPage() {
             <BackToTop onClick={() => scrollTo("hero")} />
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ════════════════════════════════════════════════════════════════
           SCHEDULE SECTION (زمان بندی)
@@ -1319,7 +1146,31 @@ export default function CompetitionPage() {
 
           {/* Day accordions. `key` remounts the list on level change so
               the staggered fade-in replays. */}
-          <DayScheduleList key={activeLevel} t={t} days={SCHEDULE[activeLevel]} />
+          {scheduleLoading ? (
+            <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
+              <p className="py-8 text-center text-sm text-gray-500">Loading schedule…</p>
+            </div>
+          ) : (scheduleByLevel[activeLevel] ?? []).length === 0 ? (
+            <div className="mx-auto w-full max-w-3xl rounded-2xl border border-dashed border-gray-700/60 py-12 text-center">
+              <p className="text-sm font-semibold text-gray-300">No events scheduled yet</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {isAdmin
+                  ? "Add events, heats & times from the Schedule manager."
+                  : "Events and their heats will appear here once they're scheduled."}
+              </p>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setScheduleOpen(true)}
+                  className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#B4E3BD]/60 px-5 py-2 text-sm font-semibold text-[#B4E3BD] transition hover:bg-[#B4E3BD]/10"
+                >
+                  Manage schedule
+                </button>
+              )}
+            </div>
+          ) : (
+            <DayScheduleList key={activeLevel} t={t} days={scheduleByLevel[activeLevel] ?? []} locale={locale} />
+          )}
 
           <div className="mt-10 flex justify-center sm:mt-12">
             <BackToTop onClick={() => scrollTo("hero")} />
@@ -1330,38 +1181,39 @@ export default function CompetitionPage() {
       {/* ════════════════════════════════════════════════════════════════
           SCORES SECTION (جدول امتیازات)
       ════════════════════════════════════════════════════════════════ */}
-      <section id="section-scores" className="relative overflow-hidden min-h-screen w-full bg-gradient-to-br from-gray-50 via-white to-gray-100 px-6 py-24 sm:px-12">
-        {/* Decorative blur blobs */}
-        <div aria-hidden className="pointer-events-none absolute -left-40 -top-40 h-96 w-96 rounded-full bg-[#B4E3BD]/10 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[#B4E3BD]/5 blur-3xl" />
+      <section id="section-scores" className="relative min-h-screen w-full overflow-hidden bg-black px-4 py-20 sm:px-12 sm:py-24">
+        <div aria-hidden className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-[#B4E3BD]/[0.06] blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[#B4E3BD]/[0.04] blur-3xl" />
 
         <div className="relative z-10 mx-auto max-w-5xl">
-          {/* Header */}
-          <div className="mb-14 text-center">
-            <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center rounded-2xl border border-[#B4E3BD]/30 bg-white text-[#B4E3BD] shadow-lg shadow-[#B4E3BD]/10 ring-1 ring-[#B4E3BD]/10">
-              <div className="flex h-10 w-10 items-center justify-center text-[#B4E3BD] [&_svg]:h-full [&_svg]:w-full">
-                <IconScores />
-              </div>
-            </div>
-            <span className="mb-4 block text-sm font-bold uppercase tracking-[0.2em] text-[#B4E3BD]">
-              {t("hero.btnScores")}
-            </span>
-            <h2 className="mb-6 text-3xl font-black uppercase tracking-tight text-gray-900 sm:text-5xl">
-              {t("scores.title")}
-            </h2>
-            <p className="mx-auto max-w-xl text-lg leading-relaxed text-gray-500">
-              {t("scores.description")}
-            </p>
-          </div>
+          <SectionHeader
+            icon={<IconScores />}
+            eyebrow={t("hero.btnScores")}
+            title={t("scores.title")}
+            description={t("scores.description")}
+          />
 
-          {/* Add Athlete button bar */}
-          <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
-            <div>
+          {/* Action bar — pinned LTR so RTL/FA mode keeps the same layout */}
+          <div dir="ltr" className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div className="min-h-[20px]">
               {loadingLeaderboard && (
-                <span className="text-sm text-gray-400">Loading…</span>
+                <span className="inline-flex items-center gap-2 text-sm text-gray-500">
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-[#B4E3BD]/30 border-t-[#B4E3BD]" />
+                  Loading…
+                </span>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            {isAdmin && (
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setScheduleOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-gray-300 transition-all hover:border-white/30 hover:bg-white/[0.07] hover:text-white active:scale-[0.98] sm:px-5"
+              >
+                <IconCalendarSmall />
+                Schedule
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -1369,7 +1221,7 @@ export default function CompetitionPage() {
                   setShowAthletesInitialName(null);
                   setShowAthletesOpen(true);
                 }}
-                className="inline-flex items-center gap-2 rounded-full border-2 border-[#B4E3BD] px-5 py-2.5 text-sm font-semibold text-[#B4E3BD] transition-all hover:bg-[#B4E3BD] hover:text-black active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-full border border-[#B4E3BD]/50 px-4 py-2.5 text-sm font-semibold text-[#B4E3BD] transition-all hover:bg-[#B4E3BD]/10 active:scale-[0.98] sm:px-5"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
@@ -1379,7 +1231,7 @@ export default function CompetitionPage() {
               <button
                 type="button"
                 onClick={() => setAddModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-[#B4E3BD] px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-[#a3dcae] active:scale-[0.98]"
+                className="inline-flex items-center gap-2 rounded-full bg-[#B4E3BD] px-4 py-2.5 text-sm font-semibold text-black shadow-lg shadow-[#B4E3BD]/20 transition-all hover:bg-[#a3dcae] hover:shadow-[#B4E3BD]/30 active:scale-[0.98] sm:px-5"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="12" y1="5" x2="12" y2="19" />
@@ -1387,105 +1239,120 @@ export default function CompetitionPage() {
                 </svg>
                 Add Athlete
               </button>
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Leaderboard Table */}
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-xl shadow-gray-200/80">
-            <table className="w-full min-w-[480px] sm:min-w-0">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50/80">
-                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500 first:pl-4 sm:first:pl-6">#</th>
-                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500">Name</th>
-                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500">
-                    <FilterDropdown
-                      label="Level"
-                      options={[
-                        { value: "Beginner", label: "Beginner" },
-                        { value: "Intermediate", label: "Intermediate" },
-                        { value: "Advanced", label: "Advanced" },
-                      ]}
-                      selected={levelFilter}
-                      onSelect={(v) => setLevelFilter(v as string)}
-                    />
-                  </th>
-                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-left text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500">
-                    <FilterDropdown
-                      label="Event"
-                      options={[
-                        { value: 0, label: "Total" },
-                        { value: 1, label: "Event 1" },
-                        { value: 2, label: "Event 2" },
-                        { value: 3, label: "Event 3" },
-                        { value: 4, label: "Event 4" },
-                        { value: 5, label: "Event 5" },
-                        { value: 6, label: "Event 6" },
-                        { value: 7, label: "Event 7" },
-                        { value: 8, label: "Event 8" },
-                        { value: 9, label: "Event 9" },
-                      ]}
-                      selected={eventFilter}
-                      onSelect={(v) => setEventFilter(v as number)}
-                    />
-                  </th>
-                  <th className="px-3 sm:px-5 py-3 sm:py-4 text-right text-[10px] sm:text-xs font-bold uppercase tracking-[0.15em] text-gray-500 last:pr-4 sm:last:pr-6">Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
+          {/* Leaderboard card — pinned LTR so FA mode never flips/breaks it */}
+          <div dir="ltr" className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#121212] shadow-xl shadow-black/50">
+            <span aria-hidden className="block h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent" />
+            <div className="max-h-[65vh] overflow-auto [scrollbar-color:#333_transparent] [scrollbar-width:thin]">
+              <table className="w-full min-w-[480px] sm:min-w-0">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="px-4 sm:px-6 py-10 sm:py-12 text-center text-sm text-gray-400">
-                      No results match your filters.
-                    </td>
+                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
+                      #
+                    </th>
+                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
+                      Name
+                    </th>
+                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-2 text-left sm:px-5">
+                      <FilterDropdown
+                        label="Level"
+                        options={[
+                          { value: "Beginner", label: "Beginner" },
+                          { value: "Intermediate", label: "Intermediate" },
+                          { value: "Advanced", label: "Advanced" },
+                        ]}
+                        selected={levelFilter}
+                        onSelect={(v) => setLevelFilter(v as string)}
+                      />
+                    </th>
+                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-2 text-left sm:px-5">
+                      <FilterDropdown
+                        label="Event"
+                        options={[
+                          { value: 0, label: "Total" },
+                          { value: 1, label: "Event 1" },
+                          { value: 2, label: "Event 2" },
+                          ...COMPETITION_EVENT_NUMBERS.filter((n) => n > 2).map((n) => ({
+                            value: n,
+                            label: eventLabel(n),
+                          })),
+                        ]}
+                        selected={eventFilter}
+                        onSelect={(v) => setEventFilter(v as number)}
+                      />
+                    </th>
+                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
+                      Score
+                    </th>
                   </tr>
-                ) : (
-                  filtered.map((row) => {
-                    const badge =
-                      row.place === 1
-                        ? "bg-[#FFD700]/35 text-[#8B6914] border-[#FFD700]/50 shadow-sm shadow-[#FFD700]/30"
-                        : row.place === 2
-                          ? "bg-[#C0C0C0]/35 text-[#4A4A4A] border-[#C0C0C0]/50 shadow-sm shadow-[#C0C0C0]/30"
-                          : row.place === 3
-                            ? "bg-[#CD7F32]/35 text-[#5C3317] border-[#CD7F32]/50 shadow-sm shadow-[#CD7F32]/30"
-                            : "text-gray-500";
+                </thead>
+                <tbody>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-14 text-center sm:px-6">
+                        <p className="text-sm font-semibold text-gray-300">No results match your filters.</p>
+                        <p className="mt-1 text-xs text-gray-500">Try a different level or event.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((row) => {
+                      const podium =
+                        row.place === 1
+                          ? {
+                              badge: "bg-[#FFD700]/15 text-[#FFD700] border-[#FFD700]/40",
+                              row: "bg-[#FFD700]/[0.05] hover:bg-[#FFD700]/[0.09] shadow-[inset_3px_0_0_0_#FFD700]",
+                              score: "text-[#FFD700]",
+                            }
+                          : row.place === 2
+                            ? {
+                                badge: "bg-[#C0C0C0]/15 text-[#D4D4D4] border-[#C0C0C0]/40",
+                                row: "bg-[#C0C0C0]/[0.04] hover:bg-[#C0C0C0]/[0.08] shadow-[inset_3px_0_0_0_#C0C0C0]",
+                                score: "text-[#D4D4D4]",
+                              }
+                            : row.place === 3
+                              ? {
+                                  badge: "bg-[#CD7F32]/15 text-[#E09A5A] border-[#CD7F32]/40",
+                                  row: "bg-[#CD7F32]/[0.05] hover:bg-[#CD7F32]/[0.09] shadow-[inset_3px_0_0_0_#CD7F32]",
+                                  score: "text-[#E09A5A]",
+                                }
+                              : {
+                                  badge: "border-transparent text-gray-500",
+                                  row: "hover:bg-white/[0.04]",
+                                  score: "text-white",
+                                };
 
-                    const rowBg =
-                      row.place === 1
-                        ? "bg-[#FFD700]/[0.08] hover:bg-[#FFD700]/[0.12]"
-                        : row.place === 2
-                          ? "bg-[#C0C0C0]/[0.08] hover:bg-[#C0C0C0]/[0.12]"
-                          : row.place === 3
-                            ? "bg-[#CD7F32]/[0.08] hover:bg-[#CD7F32]/[0.12]"
-                            : "hover:bg-[#B4E3BD]/5";
-
-                    return (
-                      <tr key={`${row.name}-${row.event}`} className={`border-b border-gray-100 transition-colors duration-200 last:border-0 ${rowBg}`}>
-                        <td className="px-3 sm:px-5 py-3 sm:py-4 first:pl-4 sm:first:pl-6">
-                          <span className={`inline-flex items-center justify-center rounded-lg px-2 sm:px-2.5 py-0.5 sm:py-1 text-xs sm:text-sm font-black tabular-nums ${badge}`}>
-                            {row.place}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-5 py-3 sm:py-4">
-                          <button
-                            type="button"
-                            onClick={() => openAthleteDetails(row.name)}
-                            title={`View ${row.name}'s results`}
-                            className="block max-w-[100px] truncate text-left text-xs sm:text-sm font-semibold text-gray-900 underline-offset-4 transition hover:text-[#1a6b3d] hover:underline sm:max-w-none"
-                          >
-                            {row.name}
-                          </button>
-                        </td>
-                        <td className="px-3 sm:px-5 py-3 sm:py-4"><LevelBadge level={row.level} /></td>
-                        <td className="px-3 sm:px-5 py-3 sm:py-4"><EventBadge event={row.event} /></td>
-                        <td className="px-3 sm:px-5 py-3 sm:py-4 text-right text-xs sm:text-sm font-bold tabular-nums text-gray-900 last:pr-4 sm:last:pr-6 whitespace-nowrap">
-                          {row.score !== null ? row.score.toLocaleString() : <span className="text-gray-300">—</span>}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                      return (
+                        <tr key={`${row.name}-${row.event}`} className={`border-b border-white/5 transition-colors duration-200 last:border-0 ${podium.row}`}>
+                          <td className="px-3 py-3 sm:px-5 sm:py-4">
+                            <span className={`inline-flex min-w-[28px] items-center justify-center rounded-lg border px-2 py-0.5 text-xs font-black tabular-nums sm:min-w-[32px] sm:py-1 sm:text-sm ${podium.badge}`}>
+                              {row.place}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 sm:px-5 sm:py-4">
+                            <button
+                              type="button"
+                              onClick={() => openAthleteDetails(row.name)}
+                              title={`View ${row.name}'s results`}
+                              className="block max-w-[100px] truncate text-left text-xs font-semibold text-white underline-offset-4 transition hover:text-[#B4E3BD] hover:underline sm:max-w-none sm:text-sm"
+                            >
+                              {row.name}
+                            </button>
+                          </td>
+                          <td className="px-3 py-3 sm:px-5 sm:py-4"><LevelBadge level={row.level} /></td>
+                          <td className="px-3 py-3 sm:px-5 sm:py-4"><EventBadge event={row.event} /></td>
+                          <td className={`whitespace-nowrap px-3 py-3 text-right text-sm font-black tabular-nums sm:px-5 sm:py-4 sm:text-base ${podium.score}`}>
+                            {row.score !== null ? row.score.toLocaleString() : <span className="text-gray-600">—</span>}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Back to top */}
@@ -1497,10 +1364,14 @@ export default function CompetitionPage() {
 
       <AddAthleteModal
         open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
+        onClose={() => {
+          setAddModalOpen(false);
+          setEditingAthlete(null);
+        }}
         onSaved={() => {
           loadLeaderboard();
         }}
+        editingAthlete={editingAthlete}
       />
       <ShowAthletesModal
         open={showAthletesOpen}
@@ -1510,6 +1381,16 @@ export default function CompetitionPage() {
         }}
         readOnly={showAthletesReadOnly}
         initialName={showAthletesInitialName}
+        hideList={showAthletesReadOnly}
+        onEditAthlete={handleEditAthlete}
+      />
+      <ScheduleManagerModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        onDataChanged={() => {
+          loadSchedule();
+          loadLeaderboard();
+        }}
       />
     </main>
   );

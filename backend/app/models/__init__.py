@@ -9,8 +9,10 @@ from app.models.complex import Complex  # noqa: F401, E402
 from app.models.section_template import SectionTemplate  # noqa: F401, E402
 from app.models.workout_log import WorkoutLog  # noqa: F401, E402
 from app.models.competition_athlete import CompetitionAthlete  # noqa: F401, E402
+from app.models.competition_event import CompetitionEvent  # noqa: F401, E402
+from app.models.competition_heat import CompetitionHeat  # noqa: F401, E402
 
 __all__ = [
     "User", "Workout", "AthleteRecord", "Comment", "Movement", "Complex",
-    "SectionTemplate", "WorkoutLog", "CompetitionAthlete",
+    "SectionTemplate", "WorkoutLog", "CompetitionAthlete", "CompetitionEvent", "CompetitionHeat",
 ]

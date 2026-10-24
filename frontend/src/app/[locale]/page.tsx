@@ -100,7 +100,7 @@ export default function HomePage() {
         </div>
       </section>
         <CoachSpotlight />
-        <SuccessStories />
+        {/* <SuccessStories /> */}
         <GymGallery />
 
 

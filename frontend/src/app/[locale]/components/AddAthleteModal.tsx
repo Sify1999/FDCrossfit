@@ -1,22 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, getErrorMessage } from "@/lib/api-client";
 import { useBodyScrollLock } from "./useScrollLock";
+import { eventLabel } from "@/lib/competition-events";
 
-function IconX() {
+function IconX({ size = 18 }: { size?: number }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M18 6L6 18M6 6l12 12" />
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
 }
 
-function IconAthlete() {
+function IconCheck() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m5 12 4 4L19 6" />
     </svg>
   );
 }
@@ -25,145 +45,347 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
+  /** When set, the modal edits this athlete's registration (events/heats) instead of adding a new one. */
+  editingAthlete?: {
+    name: string;
+    level: string;
+    events: { event: number; heat: number | null }[];
+  } | null;
 };
 
-const ALL_EVENTS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
-const LEVELS = ["Beginner", "Intermediate", "Advanced"] as const;
-
-const EVENT_COLORS: Record<number, { bg: string; border: string; text: string }> = {
-  1: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  2: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  3: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  4: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  5: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  6: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  7: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  8: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  9: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
+type ScheduleHeatItem = {
+  id: number;
+  heat_number: number;
+  start_time: string;
+  end_time: string;
+  athletes: string[];
 };
 
-const LEVEL_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  Beginner: { bg: "bg-[#B4E3BD]/20", border: "border-[#B4E3BD]/40", text: "text-[#B4E3BD]" },
-  Intermediate: { bg: "bg-[#f97316]/20", border: "border-[#f97316]/40", text: "text-[#f97316]" },
-  Advanced: { bg: "bg-[#ec4899]/20", border: "border-[#ec4899]/40", text: "text-[#ec4899]" },
+type ScheduleEventItem = {
+  id: number;
+  level: string;
+  event_number: number;
+  name: string;
+  day: number | null;
+  date: string | null;
+  heats: ScheduleHeatItem[];
 };
 
-export default function AddAthleteModal({ open, onClose, onSaved }: Props) {
+const LEVELS = ["Advanced", "Intermediate", "Beginner"] as const;
+const labelClass =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#A5B4D0]";
+
+/** "08:25" → "8:25 AM" — used to show the heat time in the summary. */
+function fmtTime(value: string | undefined): string {
+  if (!value) return "";
+  const [hhRaw, mmRaw] = value.split(":");
+  const hh = parseInt(hhRaw, 10);
+  const mm = mmRaw ?? "00";
+  const period = hh >= 12 ? "PM" : "AM";
+  const h12 = hh % 12 || 12;
+  return `${h12}:${mm} ${period}`;
+}
+
+export default function AddAthleteModal({
+  open,
+  onClose,
+  onSaved,
+  editingAthlete = null,
+}: Props) {
   useBodyScrollLock(open);
 
   const [name, setName] = useState("");
   const [level, setLevel] = useState<string>("Beginner");
-  const [selectedEvents, setSelectedEvents] = useState<number[]>([1, 2, 3, 4, 5, 6, 7, 8]);
+  const [selectedEvents, setSelectedEvents] = useState<number[]>([]);
+  const [heatSel, setHeatSel] = useState<Record<number, number | "">>({});
+  const [openHeatMenu, setOpenHeatMenu] = useState<number | null>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const heatBtnRef = useRef<HTMLButtonElement | null>(null);
+  const heatMenuRef = useRef<HTMLDivElement | null>(null);
+  const [scheduleEvents, setScheduleEvents] = useState<ScheduleEventItem[]>([]);
+  const [scheduleLoading, setScheduleLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const loadSchedule = useCallback(async () => {
+    setScheduleLoading(true);
+    try {
+      const res = await api.get<{ events: ScheduleEventItem[] }>(
+        "/competition/schedule"
+      );
+      setScheduleEvents(
+        res.events
+          .filter((e) => e.level === level.toLowerCase())
+          .sort((a, b) => a.event_number - b.event_number)
+      );
+    } catch {
+      setScheduleEvents([]);
+    } finally {
+      setScheduleLoading(false);
+    }
+  }, [level]);
+
+  useEffect(() => {
+    if (open) loadSchedule();
+  }, [open, loadSchedule]);
+
+  // Pre-fill the form when editing an athlete's registration.
+  useEffect(() => {
+    if (!open) return;
+    if (editingAthlete) {
+      setName(editingAthlete.name);
+      setLevel(editingAthlete.level);
+      setSelectedEvents(
+        editingAthlete.events.map((e) => e.event).sort((a, b) => a - b)
+      );
+      const sel: Record<number, number | ""> = {};
+      for (const e of editingAthlete.events) sel[e.event] = e.heat ?? "";
+      setHeatSel(sel);
+    } else {
+      setName("");
+      setLevel("Beginner");
+      setSelectedEvents([]);
+      setHeatSel({});
+    }
+    setOpenHeatMenu(null);
+    setMenuPos(null);
+    setError(null);
+  }, [open, editingAthlete]);
+
+  function closeHeatMenu() {
+    setOpenHeatMenu(null);
+    setMenuPos(null);
+  }
+
+  function toggleHeatMenu(evNum: number, btn: HTMLButtonElement) {
+    if (openHeatMenu === evNum) {
+      closeHeatMenu();
+      return;
+    }
+    const rect = btn.getBoundingClientRect();
+    setMenuPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    setOpenHeatMenu(evNum);
+  }
+
+  // Close the heat menu when clicking anywhere outside the trigger/menu.
+  useEffect(() => {
+    if (openHeatMenu === null) return;
+    function onDocMouseDown(e: MouseEvent) {
+      const t = e.target as Node;
+      if (
+        (heatBtnRef.current && heatBtnRef.current.contains(t)) ||
+        (heatMenuRef.current && heatMenuRef.current.contains(t))
+      ) {
+        return;
+      }
+      setOpenHeatMenu(null);
+      setMenuPos(null);
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [openHeatMenu]);
+
   if (!open) return null;
 
-  function toggleEvent(ev: number) {
+  function handleLevelChange(next: string) {
+    setLevel(next);
+    setSelectedEvents([]);
+    setHeatSel({});
+    closeHeatMenu();
+    setError(null);
+  }
+
+  function toggleEvent(evNum: number) {
+    const isSelected = selectedEvents.includes(evNum);
+
     setSelectedEvents((prev) =>
-      prev.includes(ev) ? prev.filter((e) => e !== ev) : [...prev, ev].sort()
+      isSelected
+        ? prev.filter((e) => e !== evNum)
+        : [...prev, evNum].sort((a, b) => a - b)
     );
+
+    if (isSelected) {
+      setHeatSel((prev) => {
+        if (!(evNum in prev)) return prev;
+        const updated = { ...prev };
+        delete updated[evNum];
+        return updated;
+      });
+    }
+
+    setOpenHeatMenu(null);
+    setMenuPos(null);
+    setError(null);
+  }
+
+  function handleHeatPick(evNum: number, heatNumber: number | "") {
+    setHeatSel((prev) => ({ ...prev, [evNum]: heatNumber }));
+    // Choosing a heat also selects the event.
+    setSelectedEvents((prev) =>
+      prev.includes(evNum) ? prev : [...prev, evNum].sort((a, b) => a - b)
+    );
+    closeHeatMenu();
+    setError(null);
+  }
+
+  function clearAllEvents() {
+    setSelectedEvents([]);
+    setHeatSel({});
+    closeHeatMenu();
+    setError(null);
   }
 
   async function handleSave() {
+    if (saving) return;
+
     const trimmed = name.trim();
+
     if (!trimmed) {
       setError("Athlete name is required.");
       return;
     }
+
     if (selectedEvents.length === 0) {
       setError("Select at least one event.");
       return;
+    }
+
+    const heatsPayload: Record<number, number> = {};
+
+    for (const evNum of selectedEvents) {
+      const hn = heatSel[evNum];
+      if (typeof hn === "number") heatsPayload[evNum] = hn;
     }
 
     setSaving(true);
     setError(null);
 
     try {
-      await api.post("/competition-athletes/bulk", {
-        name: trimmed,
-        level,
-        events: selectedEvents,
-      });
+      if (editingAthlete) {
+        // Reconcile the existing athlete's registration — keeps scores on events that stay.
+        await api.put(
+          `/competition-athletes/${encodeURIComponent(editingAthlete.name)}`,
+          {
+            level,
+            events: [...selectedEvents].sort((a, b) => a - b),
+            heats: heatsPayload,
+          }
+        );
+      } else {
+        await api.post("/competition-athletes/bulk", {
+          name: trimmed,
+          level,
+          events: [...selectedEvents].sort((a, b) => a - b),
+          heats: heatsPayload,
+        });
+      }
+
       onSaved();
       onClose();
+
       setName("");
       setLevel("Beginner");
-      setSelectedEvents([1, 2, 3, 4, 5, 6, 7, 8]);
+      setSelectedEvents([]);
+      setHeatSel({});
+      closeHeatMenu();
+      setError(null);
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to add athlete. Please try again."));
+      setError(
+        getErrorMessage(err, "Failed to add athlete. Please try again.")
+      );
     } finally {
       setSaving(false);
     }
   }
 
-  function handleBackdropClick(e: React.MouseEvent) {
-    if (e.target === e.currentTarget) onClose();
+  function handleBackdropClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget && !saving) onClose();
   }
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-gray-800 bg-gradient-to-b from-[#0d0d0d] to-[#111111] shadow-2xl shadow-black/60">
-        {/* Top accent bar */}
-        <div aria-hidden className="h-px bg-gradient-to-r from-transparent via-[#B4E3BD]/50 to-transparent" />
-
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-athlete-title"
+        className="flex max-h-[90dvh] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-[#29374E] bg-gradient-to-b from-[#0A0D12] to-[#070A0F] shadow-[0_20px_70px_rgba(0,0,0,0.6)]"
+        dir="ltr"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#B4E3BD]/10 text-[#B4E3BD]">
-              <IconAthlete />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-white">Add Athlete</h2>
-              <p className="mt-0.5 text-xs text-gray-500">Register a new athlete for the competition</p>
-            </div>
+        <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-5">
+          <div>
+            <h2
+              id="add-athlete-title"
+              className="text-xl font-bold tracking-tight text-[#F5F6F8]"
+            >
+              {editingAthlete ? "Edit Athlete" : "Add Athlete"}
+            </h2>
+            <p className="mt-0.5 text-xs text-[#8193B5]">
+              {editingAthlete
+                ? "Change the athlete's events & heats"
+                : "Register a new athlete for the competition"}
+            </p>
           </div>
-          <button type="button" onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 transition hover:bg-gray-800 hover:text-white">
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            aria-label="Close Add Athlete modal"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#8193B5] transition hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79E8B8] disabled:opacity-50"
+          >
             <IconX />
           </button>
         </div>
 
-        <div className="space-y-5 px-6 pb-6">
+        {/* Form */}
+        <div className="coach-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-4">
           {/* Name */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-              <span className="inline-flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                Athlete Name
-              </span>
+            <label htmlFor="add-athlete-name" className={labelClass}>
+              Athlete Name
             </label>
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Doe" autoFocus
-              className="w-full rounded-xl border border-gray-800 bg-[#141414] px-4 py-3 text-sm text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD] focus:bg-gray-900 focus:ring-1 focus:ring-[#B4E3BD]/20"
+            <input
+              id="add-athlete-name"
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+              }}
+              placeholder="e.g. John Doe"
+              autoFocus
+              disabled={saving}
+              readOnly={!!editingAthlete}
+              className="w-full rounded-xl border border-[#34465D] bg-[#0B0F15] px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-[#71819F] focus:border-[#79E8B8] focus:ring-1 focus:ring-[#79E8B8]/20 disabled:opacity-60"
             />
           </div>
 
-          {/* Level — bright option buttons */}
+          {/* Level */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-              <span className="inline-flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 22V8h4v14"/></svg>
-                Level
-              </span>
-            </label>
+            <span className={labelClass}>Level</span>
             <div className="grid grid-cols-3 gap-2">
               {LEVELS.map((lvl) => {
-                const colors = LEVEL_COLORS[lvl];
                 const isActive = level === lvl;
                 return (
-                  <button key={lvl} type="button" onClick={() => setLevel(lvl)}
-                    className={`relative overflow-hidden rounded-xl border px-3 py-3 text-center text-sm font-semibold transition-all ${
+                  <button
+                    key={lvl}
+                    type="button"
+                    onClick={() => handleLevelChange(lvl)}
+                    disabled={saving}
+                    aria-pressed={isActive}
+                    className={`rounded-xl border px-2 py-2 text-center text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79E8B8] sm:text-sm ${
                       isActive
-                        ? `${colors.border} ${colors.bg} ${colors.text} shadow-sm`
-                        : "border-gray-800 bg-[#141414] text-gray-400 hover:border-gray-600 hover:text-gray-200"
-                    }`}
+                        ? "border-[#79E8B8] bg-[#79E8B8]/[0.09] text-[#91F0C8]"
+                        : "border-[#344157] text-[#B1BED5] hover:border-[#52647E] hover:text-white"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
                   >
-                    {isActive && (
-                      <span className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent opacity-50" />
-                    )}
                     {lvl}
                   </button>
                 );
@@ -171,78 +393,250 @@ export default function AddAthleteModal({ open, onClose, onSaved }: Props) {
             </div>
           </div>
 
-          {/* Events — multi-select with scoreboard-like bright chips */}
+          {/* Events & heats */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-gray-400">
-              <span className="inline-flex items-center gap-1.5">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                Events <span className="text-gray-600">(select one or more)</span>
+            <div className="mb-1.5 flex items-center justify-between">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#A5B4D0]">
+                Events &amp; Heats
+                <span className="ml-2 rounded-full bg-[#79E8B8]/10 px-1.5 py-0.5 text-[10px] text-[#79E8B8]">
+                  {selectedEvents.length}
+                </span>
               </span>
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {ALL_EVENTS.map((ev) => {
-                const isSelected = selectedEvents.includes(ev);
-                const colors = EVENT_COLORS[ev];
-                return (
-                  <button key={ev} type="button" onClick={() => toggleEvent(ev)}
-                    className={`relative overflow-hidden rounded-xl border px-3 py-3 text-center text-sm font-bold transition-all duration-200 ${
-                      isSelected
-                        ? `${colors.border} ${colors.bg} ${colors.text} shadow-sm`
-                        : "border-gray-800 bg-[#141414] text-gray-500 hover:border-gray-600 hover:text-gray-300"
-                    }`}
-                  >
-                    {isSelected && (
-                      <span className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-current to-transparent`} />
-                    )}
-                    <span className="relative inline-flex items-center justify-center gap-1">
-                      {isSelected && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                      )}
-                      Ev {ev}
-                    </span>
-                  </button>
-                );
-              })}
+
+              {selectedEvents.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAllEvents}
+                  disabled={saving}
+                  className="text-[11px] font-medium text-[#8193B5] transition hover:text-[#91F0C8] disabled:opacity-50"
+                >
+                  Clear all
+                </button>
+              )}
             </div>
-            {/* Selected event chips */}
-            {selectedEvents.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {selectedEvents.map((ev) => {
-                  const colors = EVENT_COLORS[ev];
+
+            {scheduleLoading ? (
+              <p className="rounded-lg border border-dashed border-[#344157] py-6 text-center text-xs text-[#71819F]">
+                Loading events…
+              </p>
+            ) : scheduleEvents.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-[#344157] py-6 text-center text-xs text-[#71819F]">
+                No events available for this level yet — add heats from the Schedule manager.
+              </p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {scheduleEvents.map((ev) => {
+                  const isSelected = selectedEvents.includes(ev.event_number);
+
                   return (
-                    <span key={ev} className={`inline-flex items-center gap-1 rounded-full ${colors.bg} ${colors.text} ${colors.border} border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider`}>
-                      Event {ev}
-                      <button type="button" onClick={() => toggleEvent(ev)} className="hover:opacity-70">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    <div
+                      key={ev.id}
+                      className={`relative flex aspect-square flex-col justify-between rounded-xl border p-2 transition-colors ${
+                        isSelected
+                          ? "border-[#79E8B8] bg-[#79E8B8]/[0.08]"
+                          : "border-[#344157] bg-[#0B0F15] hover:border-[#52647E]"
+                      }`}
+                    >
+                      {/* Select / deselect circle, pinned to the top right */}
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${
+                          isSelected
+                            ? "border-[#79E8B8] bg-[#79E8B8] text-[#07110D]"
+                            : "border-[#52647E] text-transparent"
+                        }`}
+                      >
+                        {isSelected && <IconCheck />}
+                      </span>
+
+                      {/* Clickable area: event label + number */}
+                      <button
+                        type="button"
+                        onClick={() => toggleEvent(ev.event_number)}
+                        disabled={saving}
+                        aria-pressed={isSelected}
+                        aria-label={`${isSelected ? "Deselect" : "Select"} ${eventLabel(ev.event_number)}`}
+                        className={`flex flex-1 flex-col rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79E8B8] ${
+                          isSelected ? "text-[#91F0C8]" : "text-[#A5B4D0] hover:text-white"
+                        }`}
+                      >
+                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em]">
+                          {eventLabel(ev.event_number)}
+                        </span>
+
+                        <span className="flex flex-1 items-center justify-center text-3xl font-bold leading-none">
+                          {ev.event_number === 1 ? "1&2" : ev.event_number}
+                        </span>
                       </button>
-                    </span>
+
+                      </div>
                   );
                 })}
               </div>
             )}
-          </div>
 
-          {/* Info note */}
-          <div className="rounded-xl border border-dashed border-gray-800 bg-gradient-to-r from-[#141414]/80 to-[#141414]/30 px-4 py-3 text-xs text-gray-500">
-            <span className="flex items-center gap-2">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              Score starts empty — it can be added later per event after the athlete competes.
-            </span>
-          </div>
+            {selectedEvents.length > 0 && (
+              <div className="mt-2.5 rounded-lg border border-[#29374E] bg-[#0B0F15]/60 p-2.5">
+                <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8193B5]">
+                  Assign heats ({selectedEvents.length})
+                </span>
+                <div className="space-y-2">
+                  {selectedEvents.map((evNum) => {
+                    const ev = scheduleEvents.find((e) => e.event_number === evNum);
+                    if (!ev) return null;
+                    const heatValue = heatSel[evNum] ?? "";
+                    const hasHeats = ev.heats.length > 0;
+                    const selectedHeat =
+                      typeof heatValue === "number"
+                        ? ev.heats.find((h) => h.heat_number === heatValue)
+                        : undefined;
+                    const selectedHeatLabel = hasHeats
+                      ? selectedHeat
+                        ? `Heat ${selectedHeat.heat_number} · ${fmtTime(selectedHeat.start_time)}`
+                        : "No heat"
+                      : "No heats added";
+                    return (
+                      <div key={evNum} className="flex items-center gap-2">
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[#344157] bg-[#0B0F15] px-2 py-1.5 text-[10px] font-bold text-[#A5B4D0]">
+                          {eventLabel(evNum)}
+                        </span>
+                        <div className="relative min-w-0 flex-1">
+                          <button
+                            type="button"
+                            ref={openHeatMenu === evNum ? heatBtnRef : null}
+                            onClick={(e) => toggleHeatMenu(evNum, e.currentTarget)}
+                            disabled={saving || !hasHeats}
+                            aria-haspopup="listbox"
+                            aria-expanded={openHeatMenu === evNum}
+                            aria-label={`Heat for ${eventLabel(evNum)}`}
+                            className={`flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-xs font-semibold outline-none transition focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 ${
+                              openHeatMenu === evNum
+                                ? "border-[#79E8B8] bg-[#0A1513] text-white"
+                                : "border-[#344157] bg-[#0B0F15] text-white hover:border-[#52647E]"
+                            }`}
+                          >
+                            <span className="truncate">{selectedHeatLabel}</span>
+                            <svg
+                              width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                              className={`shrink-0 text-[#71819F] transition-transform duration-200 ${openHeatMenu === evNum ? "rotate-180" : ""}`}
+                            >
+                              <path d="m6 9 6 6 6-6" />
+                            </svg>
+                          </button>
 
+                          {openHeatMenu === evNum && menuPos && (
+                            <div
+                              ref={heatMenuRef}
+                              role="listbox"
+                              style={{
+                                position: "fixed",
+                                top: menuPos.top,
+                                left: menuPos.left,
+                                minWidth: menuPos.width,
+                                zIndex: 9999,
+                              }}
+                              className="coach-scroll max-h-56 overflow-y-auto rounded-lg border border-[#344157] bg-[#0B0F15] py-1 shadow-xl shadow-black/60"
+                            >
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={heatValue === ""}
+                                  onClick={() => handleHeatPick(evNum, "")}
+                                  className={`flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs font-medium transition ${
+                                    heatValue === ""
+                                      ? "bg-[#79E8B8]/10 text-[#79E8B8]"
+                                      : "text-[#B1BED5] hover:bg-white/5 hover:text-white"
+                                  }`}
+                                >
+                                  {heatValue === "" && (
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
+                                  )}
+                                  <span className={heatValue === "" ? "" : "pl-4"}>
+                                    {hasHeats ? "No heat" : "No heats added"}
+                                  </span>
+                                </button>
+                                {ev.heats.map((h) => {
+                                  const isSel = heatValue === h.heat_number;
+                                  return (
+                                    <button
+                                      key={h.id}
+                                      type="button"
+                                      role="option"
+                                      aria-selected={isSel}
+                                      onClick={() => handleHeatPick(evNum, h.heat_number)}
+                                      className={`flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition ${
+                                        isSel
+                                          ? "bg-[#79E8B8]/10 text-[#79E8B8]"
+                                          : "text-[#B1BED5] hover:bg-white/5 hover:text-white"
+                                      }`}
+                                    >
+                                      <span className="flex min-w-0 items-center gap-2">
+                                        {isSel && (
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
+                                        )}
+                                        <span className={`truncate ${isSel ? "" : "pl-4"}`}>
+                                          Heat {h.heat_number}
+                                        </span>
+                                      </span>
+                                      <span className="shrink-0 text-[10px] tabular-nums text-[#71819F]">
+                                        {fmtTime(h.start_time)} – {fmtTime(h.end_time)}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleEvent(evNum)}
+                          disabled={saving}
+                          title={`Remove ${eventLabel(evNum)}`}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#344157] text-[#8193B5] transition hover:border-red-500/40 hover:text-red-400 disabled:opacity-50"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <p className="mt-2 text-[11px] leading-4 text-[#8193B5]">
+              Pick the events you want, then assign a heat to each one below. An
+              athlete can be in one heat per event.
+            </p>
+          </div>
           {error && (
-            <div className="rounded-xl border border-red-900/50 bg-red-950/30 px-4 py-2.5 text-sm text-red-400">{error}</div>
+            <div
+              role="alert"
+              className="rounded-lg border border-red-500/30 bg-red-950/30 px-3 py-2 text-xs text-red-400"
+            >
+              {error}
+            </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-gray-800 px-6 py-4">
-          <button type="button" onClick={onClose}
-            className="rounded-full border border-gray-800 px-5 py-2 text-sm font-semibold text-gray-300 transition hover:border-gray-600"
-          >Cancel</button>
-          <button type="button" onClick={handleSave} disabled={saving}
-            className="rounded-full bg-[#B4E3BD] px-6 py-2.5 text-sm font-semibold text-black transition-all hover:bg-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          >{saving ? "Adding..." : "Add Athlete"}</button>
+        <div className="flex shrink-0 justify-end gap-2 border-t border-[#29374E] px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="rounded-full border border-[#344157] px-5 py-2 text-sm font-semibold text-[#B1BED5] transition hover:border-[#52647E] hover:bg-white/[0.03] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-full bg-[#79E8B8] px-6 py-2 text-sm font-bold text-[#07110D] transition hover:bg-[#91F0C8] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79E8B8] focus-visible:ring-offset-2 focus-visible:ring-offset-[#080B10] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "Saving..." : editingAthlete ? "Save Changes" : "Add Athlete"}
+          </button>
         </div>
       </div>
     </div>

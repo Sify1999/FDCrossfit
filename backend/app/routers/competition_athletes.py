@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.dependencies import get_current_user, require_coach
+from app.core.dependencies import require_admin
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.competition_athlete import (
@@ -10,6 +10,7 @@ from app.schemas.competition_athlete import (
     CompetitionAthleteList,
     CompetitionAthleteRead,
     CompetitionAthleteUpdate,
+    CompetitionAthleteUpdateRegistration,
 )
 from app.services.competition_athlete import (
     create_athlete,
@@ -18,6 +19,7 @@ from app.services.competition_athlete import (
     get_athlete_entries,
     list_athletes,
     list_distinct_names,
+    update_athlete_registration,
     update_athlete_score,
 )
 
@@ -64,9 +66,9 @@ async def get_single_athlete_entries(
 async def add_competition_athlete(
     data: CompetitionAthleteCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_coach),
+    current_user: User = Depends(require_admin),
 ) -> CompetitionAthleteRead:
-    """Coach/admin only — register a new athlete for a single event."""
+    """Admin only — register a new athlete for a single event."""
     athlete = await create_athlete(db, data)
     return CompetitionAthleteRead.model_validate(athlete)
 
@@ -75,9 +77,9 @@ async def add_competition_athlete(
 async def add_competition_athlete_bulk(
     data: CompetitionAthleteBulkCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_coach),
+    current_user: User = Depends(require_admin),
 ) -> CompetitionAthleteList:
-    """Coach/admin only — register an athlete for multiple events at once."""
+    """Admin only — register an athlete for multiple events at once."""
     athletes = await create_athlete_bulk(db, data)
     return CompetitionAthleteList(
         athletes=[CompetitionAthleteRead.model_validate(a) for a in athletes]
@@ -89,15 +91,21 @@ async def update_competition_athlete_score(
     athlete_id: int,
     data: CompetitionAthleteUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_coach),
+    current_user: User = Depends(require_admin),
 ) -> CompetitionAthleteRead:
-    """Coach/admin only — update the score and tiebreaker for a specific athlete entry."""
+    """Admin only — update the score and tiebreaker for a specific athlete entry."""
     updated = await update_athlete_score(
         db,
         athlete_id,
         data.score,
         tiebreaker_type=data.tiebreaker_type,
         tiebreaker_value=data.tiebreaker_value,
+        reps=data.reps,
+        weight=data.weight,
+        score_2=data.score_2,
+        reps_2=data.reps_2,
+        weight_2=data.weight_2,
+        tiebreaker_value_2=data.tiebreaker_value_2,
     )
     if not updated:
         raise HTTPException(
@@ -107,13 +115,34 @@ async def update_competition_athlete_score(
     return CompetitionAthleteRead.model_validate(updated)
 
 
+@router.put("/{name}", response_model=CompetitionAthleteList)
+async def update_competition_athlete_registration(
+    name: str,
+    data: CompetitionAthleteUpdateRegistration,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin),
+) -> CompetitionAthleteList:
+    """Admin only — update an athlete's registered events & heats.
+    Keeps scores on events that remain registered."""
+    existing = await get_athlete_entries(db, name)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No athlete found with name '{name}'",
+        )
+    athletes = await update_athlete_registration(db, name, data)
+    return CompetitionAthleteList(
+        athletes=[CompetitionAthleteRead.model_validate(a) for a in athletes]
+    )
+
+
 @router.delete("/{name}", status_code=204)
 async def delete_competition_athlete(
     name: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_coach),
+    current_user: User = Depends(require_admin),
 ) -> None:
-    """Coach/admin only — delete all entries for an athlete by name."""
+    """Admin only — delete all entries for an athlete by name."""
     deleted_count = await delete_athlete_entries(db, name)
     if deleted_count == 0:
         raise HTTPException(
