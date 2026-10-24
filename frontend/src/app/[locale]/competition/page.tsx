@@ -391,14 +391,10 @@ function EventBadge({ event }: { event: number }) {
   );
 }
 
-/* ─── Time display — every heat shows a compact start-end range
-   ("8:00-8:12") built from its start and end times, keeping the rows
-   tidy at every width. Hovering a range reveals the full times. ───── */
+/* ─── Time display — every heat shows the full start–end range with
+   AM/PM labels so the schedule is always unambiguous ("8:00 AM – 8:12 AM"). */
 function formatHeatRange(time: string, end: string): string {
-  const [t, m] = time.split(" ");
-  const [e, em] = end.split(" ");
-  // Same meridiem (or missing) → compact "8:00-8:12". Otherwise spell both out.
-  return m == null || m === em || em == null ? `${t}-${e}` : `${t} ${m} – ${e} ${em}`;
+  return `${time} – ${end}`;
 }
 
 function TimeCell({ time, end }: { time: string; end: string }) {
