@@ -1,15 +1,17 @@
 "use client";
 
-import { COMPETITION_EVENT_NUMBERS, eventLabel } from "@/lib/competition-events";
+import { COMPETITION_EVENT_NUMBERS, COMPETITION_DAY_EVENT_GROUPS, eventLabel } from "@/lib/competition-events";
 import { dayDateLabel } from "@/lib/competition-days";
 import { useLocale, useTranslations } from "next-intl";
-import { useCallback, useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { api } from "@/lib/api-client";
 import { fetchCurrentUser, type CurrentUser } from "@/lib/auth";
 import AddAthleteModal from "../components/AddAthleteModal";
 import ShowAthletesModal from "../components/ShowAthletesModal";
 import ScheduleManagerModal from "../components/ScheduleManagerModal";
+import RuleBookModal from "../components/RuleBookModal";
+import { useCallback, useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 /* ─── Icons (inline, currentColor so they inherit) ─────────────────── */
 function IconSignIn() {
@@ -57,6 +59,16 @@ function IconCalendarSmall() {
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+
+/* ─── Open-book icon (Rule Book section header & day cards) ──────── */
+function IconBook() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
     </svg>
   );
 }
@@ -391,19 +403,24 @@ function EventBadge({ event }: { event: number }) {
   );
 }
 
-/* ─── Time display — every heat shows the full start–end range with
-   AM/PM labels so the schedule is always unambiguous ("8:00 AM – 8:12 AM"). */
+/* ─── Time display — compact range. When start and end share AM/PM it is
+   shown once ("10:00 – 10:30 AM"); otherwise both are spelled out
+   ("11:30 AM – 12:00 PM"). Thin spaces keep it tight. */
 function formatHeatRange(time: string, end: string): string {
-  return `${time} – ${end}`;
+  const [t1, m1] = time.split(" ");
+  const [t2, m2] = end.split(" ");
+  const sep = "\u2009–\u2009";
+  if (!m1 || !m2 || m1 === m2) return `${t1}${sep}${t2}${m2 ? ` ${m2}` : ""}`;
+  return `${t1} ${m1}${sep}${t2} ${m2}`;
 }
 
 function TimeCell({ time, end }: { time: string; end: string }) {
   return (
     <span
-      className="flex items-center justify-end gap-1.5 text-xs font-bold tabular-nums text-white sm:text-sm"
+      className="flex items-center justify-end gap-1.5 whitespace-nowrap text-[11px] font-bold tabular-nums text-white sm:text-sm"
       title={`${time} – ${end}`}
     >
-      <span className="text-[#B4E3BD]">
+      <span className="hidden text-[#B4E3BD] sm:inline-flex">
         <IconClock />
       </span>
       {formatHeatRange(time, end)}
@@ -411,10 +428,15 @@ function TimeCell({ time, end }: { time: string; end: string }) {
   );
 }
 
+
 /* ─── Day accordion — each DAY is the main row. Clicking a day expands
-   it and reveals every event and heat, one row per heat (event · heat ·
-   start time). The header follows the page direction; the expanded table
-   is pinned to LTR so columns read in the same order in EN and FA. ─── */
+   it and reveals every event and heat, one row per athlete.
+   The table uses FIXED-width heat/time columns (identical in the header
+   and every row) so longer times like "10:00 – 10:30 AM" can never push
+   the layout around. On phones the event name moves under the athlete. */
+const SCHEDULE_GRID =
+  "grid grid-cols-[minmax(0,1fr)_3.25rem_7.25rem] items-center gap-2 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_4rem_10rem] sm:gap-3";
+
 function DaySchedule({
   t,
   day,
@@ -497,11 +519,20 @@ function DaySchedule({
       >
         <div id={`${day.id}-panel`} className="min-h-0 overflow-hidden">
           <div dir="ltr" className="border-t border-white/5 bg-black/30 px-3 pb-4 pt-3 sm:px-6 sm:pb-5">
-            <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_minmax(0,0.9fr)] items-center gap-2 px-2 pb-2 sm:px-3">
-              <span className="text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.athlete")}</span>
-              <span className="text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.event")}</span>
-              <span className="w-14 text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:w-16 sm:text-[11px]">{t("schedule.heat")}</span>
-              <span className="text-end text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">{t("schedule.time")}</span>
+            {/* Header row — same grid as the data rows */}
+            <div className={`${SCHEDULE_GRID} px-2 pb-2 sm:px-3`}>
+              <span className="text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+                {t("schedule.athlete")}
+              </span>
+              <span className="hidden text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:block sm:text-[11px]">
+                {t("schedule.event")}
+              </span>
+              <span className="text-center text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+                {t("schedule.heat")}
+              </span>
+              <span className="text-end text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+                {t("schedule.time")}
+              </span>
             </div>
 
             {day.events.map((event, ei) =>
@@ -515,27 +546,36 @@ function DaySchedule({
                   return (
                     <div
                       key={`${day.id}-e${ei}-h${heat.heat}-a${ai}`}
-                      className={`grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_minmax(0,0.9fr)] items-center gap-2 rounded-lg border-t px-2 py-2 transition-colors duration-200 hover:bg-[#B4E3BD]/[0.06] sm:px-3 sm:py-2.5 ${
+                      className={`${SCHEDULE_GRID} rounded-lg border-t px-2 py-2 transition-colors duration-200 hover:bg-[#B4E3BD]/[0.06] sm:px-3 sm:py-2.5 ${
                         isFirstOfEvent ? "mt-1.5 border-[#B4E3BD]/30" : "border-white/5"
                       }`}
                     >
-                      {athleteName ? (
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD]/15 text-[9px] font-bold uppercase text-[#B4E3BD]">
-                            {athleteName.slice(0, 2)}
+                      {/* Athlete (+ event subtitle on phones) */}
+                      <span className="min-w-0">
+                        {athleteName ? (
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD]/15 text-[9px] font-bold uppercase text-[#B4E3BD]">
+                              {athleteName.slice(0, 2)}
+                            </span>
+                            <span className="truncate text-xs font-semibold text-white sm:text-sm">{athleteName}</span>
                           </span>
-                          <span className="truncate text-xs font-semibold text-white sm:text-sm">{athleteName}</span>
+                        ) : (
+                          <span className="block truncate text-[11px] italic text-gray-600">No athletes in this heat</span>
+                        )}
+                        <span className="mt-0.5 block truncate text-[10px] font-medium text-gray-500 sm:hidden">
+                          {event.name}
                         </span>
-                      ) : (
-                        <span className="truncate text-[11px] italic text-gray-600">No athletes in this heat</span>
-                      )}
+                      </span>
 
-                      <span className="truncate text-[11px] font-medium text-gray-400 sm:text-xs">{event.name}</span>
+                      {/* Event (desktop column) */}
+                      <span className="hidden truncate text-xs font-medium text-gray-400 sm:block">{event.name}</span>
 
-                      <span className="inline-flex w-14 sm:w-16 items-center justify-center rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-2 py-1 text-[10px] sm:text-xs font-semibold whitespace-nowrap text-[#B4E3BD]">
+                      {/* Heat badge */}
+                      <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-1 py-1 text-[10px] font-semibold text-[#B4E3BD] sm:px-2 sm:text-xs">
                         {t("schedule.heat")} {heat.heat}
                       </span>
 
+                      {/* Time */}
                       <TimeCell time={heat.time} end={heat.end} />
                     </div>
                   );
@@ -602,9 +642,9 @@ function SectionHeader({
       <h2 className="mb-16 text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">
         {title}
       </h2>
-      {/* <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed text-gray-400 sm:mb-12 sm:text-lg">
+      <p className="mx-auto mb-10 max-w-xl text-base leading-relaxed text-gray-400 sm:mb-12 sm:text-lg">
         {description}
-      </p> */}
+      </p>
     </div>
   );
 }
@@ -624,7 +664,79 @@ function BackToTop({ onClick }: { onClick: () => void }) {
   );
 }
 
+/* ─── Rule Book day cards — one card per competition day. Clicking a
+   card opens the Rule Book popup already scrolled to that day's chapter. */
+function RuleBookDayCard({
+  t,
+  day,
+  locale,
+  onOpen,
+}: {
+  t: (key: string) => string;
+  day: number;
+  locale: string;
+  onOpen: (day: number) => void;
+}) {
+  const dateLabel = dayDateLabel(day, locale as "en" | "fa");
+  const dayEvents = COMPETITION_DAY_EVENT_GROUPS[day] ?? [];
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(day)}
+      aria-label={`${t("schedule.day")} ${day} — ${dateLabel}`}
+      className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#121212] p-5 text-start shadow-lg shadow-black/40 transition-all duration-300 hover:-translate-y-1 hover:border-[#B4E3BD]/50 hover:shadow-xl hover:shadow-[#B4E3BD]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#B4E3BD]/60 sm:p-6"
+    >
+      <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#B4E3BD]/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 text-lg font-black text-[#B4E3BD] transition-all duration-300 group-hover:border-[#B4E3BD] group-hover:bg-[#B4E3BD] group-hover:text-black sm:h-14 sm:w-14 sm:text-xl">
+          {day}
+        </span>
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">
+          {t("schedule.day")}
+        </span>
+      </div>
+
+      <div className="mt-5">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-gray-400">{dateLabel}</p>
+        <h3 className="mt-1 text-xl font-black uppercase tracking-tight text-white sm:text-2xl">
+          {t("schedule.day")} {day}
+        </h3>
+        <p className="mt-2 text-xs leading-relaxed text-gray-500">{t("ruleBook.card.tagline")}</p>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-1.5">
+        {dayEvents.map((ev) => (
+          <span
+            key={ev}
+            className="rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-2.5 py-1 text-[10px] font-semibold text-[#B4E3BD] sm:text-[11px]"
+          >
+            {eventLabel(ev)}
+          </span>
+        ))}
+      </div>
+
+      <span className="mt-5 inline-flex items-center gap-1.5 border-t border-white/10 pt-4 text-xs font-semibold text-[#B4E3BD] transition-colors duration-300 group-hover:text-[#a3dcae]">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+        </svg>
+        {t("ruleBook.card.open")}
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="rtl:-scale-x-100 transition-transform duration-300 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5">
+          <path d="M5 12h14M12 5l7 7-7 7" />
+        </svg>
+      </span>
+    </button>
+  );
+}
+
 /* ─── Filter dropdown for the scores table headers ────────────────── */
+/* ─── Filter dropdown for the scores table headers ──────────────────
+   The menu is rendered in a portal on <body>, so it can never be clipped
+   by the scoreboard's overflow containers. It opens downward by default,
+   flips upward when there isn't room below, and caps its height to the
+   space that is actually available. */
 function FilterDropdown({
   label,
   options,
@@ -639,25 +751,80 @@ function FilterDropdown({
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties | null>(null);
+
+  const place = useCallback(() => {
+    const btn = btnRef.current;
+    if (!btn) return;
+
+    const rect = btn.getBoundingClientRect();
+    const margin = 8; // keep clear of the viewport edge
+    const gap = 4; // space between button and menu
+    const desiredMax = 288;
+    const menuWidth = 170;
+
+    const spaceBelow = window.innerHeight - rect.bottom - margin - gap;
+    const spaceAbove = rect.top - margin - gap;
+    const naturalHeight = Math.min(desiredMax, options.length * 40 + 8);
+
+    // Flip up only when it doesn't fit below AND there's more room above.
+    const openUp = spaceBelow < naturalHeight && spaceAbove > spaceBelow;
+    const available = openUp ? spaceAbove : spaceBelow;
+    const maxHeight = Math.max(120, Math.min(desiredMax, available));
+
+    const left = Math.max(margin, Math.min(rect.left, window.innerWidth - menuWidth - margin));
+
+    setMenuStyle({
+      position: "fixed",
+      left,
+      maxHeight,
+      zIndex: 9999,
+      ...(openUp
+        ? { bottom: window.innerHeight - rect.top + gap }
+        : { top: rect.bottom + gap }),
+    });
+  }, [options.length]);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      const target = e.target as Node;
-      const isOutside =
-        btnRef.current && !btnRef.current.contains(target) &&
-        dropdownRef.current && !dropdownRef.current.contains(target);
-      if (isOutside) setOpen(false);
-    };
-    if (open) {
-      document.addEventListener("mousedown", handler);
-      if (btnRef.current) {
-        const rect = btnRef.current.getBoundingClientRect();
-        setPosition({ top: rect.bottom + 4, left: Math.max(4, rect.left) });
-      }
+    if (!open) {
+      setMenuStyle(null);
+      return;
     }
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+
+    place();
+
+    function onMouseDown(e: MouseEvent) {
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target) || dropdownRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+
+    // A fixed menu would drift away from its button if the page scrolled,
+    // so close it — but ignore scrolling inside the menu itself.
+    function onScroll(e: Event) {
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
+
+    function onResize() {
+      setOpen(false);
+    }
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+
+    document.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, place]);
 
   const currentLabel =
     options.find((o) => o.value === selected)?.label ?? label;
@@ -682,49 +849,48 @@ function FilterDropdown({
         </svg>
       </button>
 
-      {open && position && (
-        <div
-          ref={dropdownRef}
-          role="listbox"
-          style={{
-            position: "fixed",
-            top: position.top,
-            left: position.left,
-            zIndex: 9999,
-          }}
-          className="max-h-72 min-w-[140px] overflow-auto rounded-xl border border-white/10 bg-[#1a1a1a] p-1 shadow-2xl shadow-black/60 sm:min-w-[170px]"
-        >
-          {options.map((opt) => {
-            const isActive = selected === opt.value;
-            return (
-              <button
-                key={String(opt.value)}
-                type="button"
-                role="option"
-                aria-selected={isActive}
-                onClick={() => {
-                  onSelect(opt.value);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs normal-case tracking-normal transition-colors sm:text-sm ${
-                  isActive
-                    ? "bg-[#B4E3BD]/15 font-semibold text-[#B4E3BD]"
-                    : "text-gray-300 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <span className="flex h-3 w-3 shrink-0 items-center justify-center">
-                  {isActive && (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  )}
-                </span>
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {open &&
+        menuStyle &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            dir="ltr"
+            role="listbox"
+            style={menuStyle}
+            className="coach-scroll min-w-[140px] overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-[#1a1a1a] p-1 shadow-2xl shadow-black/60 [scrollbar-width:thin] sm:min-w-[170px]"
+          >
+            {options.map((opt) => {
+              const isActive = selected === opt.value;
+              return (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  onClick={() => {
+                    onSelect(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs normal-case tracking-normal transition-colors sm:text-sm ${
+                    isActive
+                      ? "bg-[#B4E3BD]/15 font-semibold text-[#B4E3BD]"
+                      : "text-gray-300 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <span className="flex h-3 w-3 shrink-0 items-center justify-center">
+                    {isActive && (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </span>
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -813,6 +979,15 @@ export default function CompetitionPage() {
   }
 
   const [scheduleOpen, setScheduleOpen] = useState(false);
+
+  // Rule Book popup — targetDay decides which chapter is scrolled into view.
+  const [ruleBookOpen, setRuleBookOpen] = useState(false);
+  const [ruleBookTargetDay, setRuleBookTargetDay] = useState(1);
+
+  function openRuleBook(day: number) {
+    setRuleBookTargetDay(day);
+    setRuleBookOpen(true);
+  }
   const [scheduleLoading, setScheduleLoading] = useState(true);
   const [scheduleByLevel, setScheduleByLevel] = useState<Record<LevelKey, CompetitionDay[]>>({
     beginner: [],
@@ -1071,7 +1246,6 @@ export default function CompetitionPage() {
                 icon={<IconScores />}
                 label={t("hero.btnScores")}
                 desc="Live rankings"
-                highlight
                 onClick={() => scrollTo("section-scores")}
               />
               {/* <ActionButton
@@ -1081,6 +1255,13 @@ export default function CompetitionPage() {
                 highlight
                 onClick={() => scrollTo("section-signIn")}
               /> */}
+              <ActionButton
+                icon={<IconSignIn />}
+                label={t("hero.ruleBook")}
+                desc="Rule Book"
+                highlight
+                onClick={() => scrollTo("section-ruleBook")}
+              />
             </div>
 
             {/* Scroll hint */}
@@ -1112,6 +1293,33 @@ export default function CompetitionPage() {
           </div>
         </div>
       </section> */}
+      {/* ════════════════════════════════════════════════════════════════
+          RULE BOOK SECTION (قوانین)
+          Four day cards — tapping a card opens the Rule Book popup and
+          scrolls it straight to that day's chapter.
+      ════════════════════════════════════════════════════════════════ */}
+      <section id="section-ruleBook" className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-black px-6 py-24 sm:px-12">
+        <div aria-hidden className="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/50 to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute left-1/2 top-24 -z-0 h-80 w-80 -translate-x-1/2 rounded-full bg-[#B4E3BD]/10 blur-3xl" />
+        <div className="relative z-10 w-full">
+          <SectionHeader
+            icon={<IconBook />}
+            eyebrow={t("hero.btnRuleBook")}
+            title={t("ruleBook.title")}
+            description={t("ruleBook.description")}
+          />
+
+          <div className="mx-auto grid w-full max-w-5xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((day) => (
+              <RuleBookDayCard key={day} t={t} day={day} locale={locale} onOpen={openRuleBook} />
+            ))}
+          </div>
+
+          <div className="mt-12 flex justify-center">
+            <BackToTop onClick={() => scrollTo("hero")} />
+          </div>
+        </div>
+      </section>
 
       {/* ════════════════════════════════════════════════════════════════
           SCHEDULE SECTION (زمان بندی)
@@ -1387,6 +1595,11 @@ export default function CompetitionPage() {
           loadSchedule();
           loadLeaderboard();
         }}
+      />
+      <RuleBookModal
+        open={ruleBookOpen}
+        onClose={() => setRuleBookOpen(false)}
+        targetDay={ruleBookTargetDay}
       />
     </main>
   );

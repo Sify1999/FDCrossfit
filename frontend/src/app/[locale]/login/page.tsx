@@ -32,7 +32,7 @@ export default function LoginPage() {
       );
       localStorage.setItem("access_token", res.access_token);
       localStorage.setItem("refresh_token", res.refresh_token);
-      router.push("/dashboard");
+      router.push("/");
     } catch (err) {
       setError(getErrorMessage(err, t("genericError")));
     } finally {

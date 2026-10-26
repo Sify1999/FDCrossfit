@@ -12,10 +12,12 @@ type Coach = {
 };
 
 const COACHES: Coach[] = [
-  { id: "ali", name: "Ali Ghasemi", role: "Head Coach", image: "/images/coaches/ali.jpg" },
-  { id: "ahmad", name: "Ahmad", role: "Coach", image: "/images/coaches/ahmad.jpg" },
-  { id: "arsalan", name: "Arsalan", role: "Coach", image: "/images/coaches/arsalan.jpg" },
-  { id: "arvin", name: "Arvin", role: "Coach", image: "/images/coaches/arvin.jpg" },
+  { id: "ali", name: "Ali", role: "Coach", image: "/images/coaches/ali.png" },
+  { id: "ahmad", name: "Ahmad", role: "Coach", image: "/images/coaches/ahmad.png" },
+  { id: "arsalan", name: "Arsalan", role: "Coach", image: "/images/coaches/arsalan.png" },
+  { id: "arvin", name: "Arvin", role: "Coach", image: "/images/coaches/arvin.png" },
+  { id: "behnood", name: "Behnood", role: "Coach", image: "/images/coaches/behnood.png" },
+  { id: "kimia", name: "Kimia", role: "Coach", image: "/images/coaches/kimia.png" },
 ];
 
 const AUTO_ADVANCE_MS = 4000;
@@ -206,9 +208,9 @@ export default function CoachSpotlight() {
                   <Image
                     src={coach.image}
                     alt={coach.name}
-                    width={200}
-                    height={200}
-                    className="h-full w-full object-cover"
+                    width={180}
+                    height={180}
+                    className="object-cover"
                   />
 
                 </div>
@@ -379,10 +381,10 @@ function PeekCircle({
 
       <Image
         src={coach.image}
-        alt=""
-        width={120}
-        height={120}
-        className="h-full w-full object-cover"
+        alt="test"
+        width={80}
+        height={80}
+        className="object-cover"
       />
 
     </button>

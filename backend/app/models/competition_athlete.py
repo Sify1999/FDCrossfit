@@ -16,11 +16,14 @@ class CompetitionAthlete(Base, TimestampMixin):
     score: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     reps: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     weight: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
-    # Second part of the combined "Event 1&2" — Event 1 uses score/reps/weight,
+    # Raw result for time-based events (total seconds) — independent of `score`.
+    time_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    # Second part of the combined "Event 1&2" — Event 1 uses score/reps/weight/time_seconds,
     # Event 2 uses the _2 variants so the scoreboard can separate them.
     score_2: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     reps_2: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     weight_2: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    time_seconds_2: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     tiebreaker_type: Mapped[str | None] = mapped_column(String(10), nullable=True, default=None)
     tiebreaker_value: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     tiebreaker_value_2: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)

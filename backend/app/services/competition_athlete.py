@@ -205,37 +205,57 @@ async def delete_athlete_entries(
     return result.rowcount
 
 
+# Sentinel for "the caller didn't pass this argument at all".
+# Distinguishes "not provided" from "explicitly set to None".
+_UNSET = object()
+
 async def update_athlete_score(
     db: AsyncSession,
     athlete_id: int,
-    score: int | None,
-    tiebreaker_type: str | None = None,
-    tiebreaker_value: int | None = None,
-    reps: int | None = None,
-    weight: int | None = None,
-    score_2: int | None = None,
-    reps_2: int | None = None,
-    weight_2: int | None = None,
-    tiebreaker_value_2: int | None = None,
+    score: int | None | object = _UNSET,
+    tiebreaker_type: str | None = _UNSET,
+    tiebreaker_value: int | None = _UNSET,
+    reps: int | None = _UNSET,
+    weight: int | None = _UNSET,
+    time_seconds: int | None = _UNSET,
+    score_2: int | None = _UNSET,
+    reps_2: int | None = _UNSET,
+    weight_2: int | None = _UNSET,
+    time_seconds_2: int | None = _UNSET,
+    tiebreaker_value_2: int | None = _UNSET,
 ) -> CompetitionAthlete | None:
-    """Update the score, reps/weight and tiebreaker fields of a specific athlete entry."""
-    values: dict = {"score": score}
-    if tiebreaker_type is not None:
+    """Update score, reps/weight, time-seconds and tiebreaker fields.
+
+    Each optional field uses a sentinel default (``_UNSET``) so that
+    ``None`` is treated as *explicitly clear the column*.  Callers
+    that only want to set a few fields pass keyword arguments for the
+    ones they care about.
+    """
+    values: dict = {}
+    if score is not _UNSET:
+        values["score"] = score
+    if tiebreaker_type is not _UNSET:
         values["tiebreaker_type"] = tiebreaker_type
-    if tiebreaker_value is not None:
+    if tiebreaker_value is not _UNSET:
         values["tiebreaker_value"] = tiebreaker_value
-    if reps is not None:
+    if reps is not _UNSET:
         values["reps"] = reps
-    if weight is not None:
+    if weight is not _UNSET:
         values["weight"] = weight
-    if score_2 is not None:
+    if time_seconds is not _UNSET:
+        values["time_seconds"] = time_seconds
+    if score_2 is not _UNSET:
         values["score_2"] = score_2
-    if reps_2 is not None:
+    if reps_2 is not _UNSET:
         values["reps_2"] = reps_2
-    if weight_2 is not None:
+    if weight_2 is not _UNSET:
         values["weight_2"] = weight_2
-    if tiebreaker_value_2 is not None:
+    if time_seconds_2 is not _UNSET:
+        values["time_seconds_2"] = time_seconds_2
+    if tiebreaker_value_2 is not _UNSET:
         values["tiebreaker_value_2"] = tiebreaker_value_2
+    if not values:
+        return None
     stmt = (
         update(CompetitionAthlete)
         .where(CompetitionAthlete.id == athlete_id)

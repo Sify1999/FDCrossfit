@@ -7,6 +7,18 @@
  */
 export const COMPETITION_EVENT_NUMBERS = [1, 3, 4, 5, 6, 7, 8, 9] as const;
 
+/**
+ * Which event groups are held on each of the four competition days
+ * (two event entries per day, matching the seeded competition schedule).
+ * Day 1 holds the combined "Event 1&2" session plus Event 3, and so on.
+ */
+export const COMPETITION_DAY_EVENT_GROUPS: Record<number, number[]> = {
+  1: [1, 3],
+  2: [4, 5],
+  3: [6, 7],
+  4: [8, 9],
+};
+
 export const COMPETITION_EVENT_LABELS: Record<number, string> = {
   1: "Event 1&2",
   3: "Event 3",

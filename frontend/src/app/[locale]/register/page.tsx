@@ -76,7 +76,7 @@ export default function RegisterPage() {
       );
       localStorage.setItem("access_token", tokens.access_token);
       localStorage.setItem("refresh_token", tokens.refresh_token);
-      router.push("/dashboard");
+      router.push("/");
     } catch (err) {
       setError(getErrorMessage(err, t("genericError")));
     } finally {

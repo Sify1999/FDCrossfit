@@ -44,7 +44,9 @@
         "ali": "\"Technique before load, every single time.\"",
         "ahmad": "\"Mobility isn't optional — it's the foundation.\"",
         "arsalan": "\"Consistency beats intensity in the long run.\"",
-        "arvin": "\"Every athlete starts somewhere. I meet you there.\""
+        "arvin": "\"Every athlete starts somewhere. I meet you there.\"",
+        "behnood": "\"Every athlete starts somewhere. I meet you there.\"",
+        "kimia": "\"Every athlete starts somewhere. I meet you there.\""
       }
     },
     "gymGallery": {
@@ -331,11 +333,109 @@
       "subtitle": "Push your boundaries, compete at your best. Sign up now and show what you're made of.",
       "btnSignIn": "Sign Up",
       "btnSchedule": "Schedule",
-      "btnScores": "Scoreboard"
+      "btnScores": "Scoreboard",
+      "btnRuleBook": "Rule Book",
+      "ruleBook" : "Rules"
     },
     "signIn": {
       "title": "Sign Up for the Competition",
       "description": "Register now to compete in the FD Crossfit Championship. Limited spots available — secure yours today."
+    },
+    "ruleBook": {
+      "title": "Competition Rules",
+      "description": "Four days of competition, four dedicated rule chapters — tap any day to open its rule book.",
+      "card": {
+        "tagline": "Rules for the events held on this day.",
+        "open": "Open rule book"
+      },
+      "modal": {
+        "title": "Rule Book",
+        "subtitle": "Rules, standards & regulations for every day of the FD Crossfit Championship."
+      },
+      "jumpTo": "Jump to",
+      "chapters": {
+        "general": {
+          "title": "General Rules & Athlete Conduct",
+          "body": [
+            "All athletes must check in at the registration desk at least 30 minutes before their first event of the day.",
+            "Athletes must wear their official competition wristband for the entire event — without it, results are not recorded.",
+            "Appropriate athletic attire is required. Cleats are only allowed where the event brief explicitly permits them.",
+            "The head judge's decision is final. Disputes must be raised immediately after the event, before leaving the competition floor.",
+            "Unsportsmanlike conduct may result in disqualification from the entire competition.",
+            "Every athlete is responsible for knowing and following the rules of each event they register for."
+          ]
+        },
+        "day1": {
+          "title": "Day 1 — 12 Aban",
+          "body": [
+            "Day 1 opens with the combined Events 1 & 2 session, followed by Event 3.",
+            "Events 1 & 2 run as one continuous session — complete Event 1 and then Event 2 back-to-back. The combined result counts as a single leaderboard entry.",
+            "A 5-minute transition is allowed between the two parts of the combined session. Going over forfeits the second part.",
+            "Event 3 is a For-Time workout with a fixed time cap. Any unfinished work is recorded at the moment the cap is reached.",
+            "Athletes must be standing at their assigned lane 10 minutes before the scheduled heat start."
+          ]
+        },
+        "day2": {
+          "title": "Day 2 — 13 Aban",
+          "body": [
+            "Day 2 features Events 4 and 5, separated by the scheduled break.",
+            "Event 4 is scored by maximum repetitions within the time cap. Only fully completed reps count.",
+            "Event 5 is a weighted event with a fixed load per division. Attempts that miss the required standard are recorded as no-reps.",
+            "Athletes may rest and re-rack as needed during weighted events, as long as the bar is under control at all times.",
+            "Confirm your score sheet with the judge before signing it at the end of each heat."
+          ]
+        },
+        "day3": {
+          "title": "Day 3 — 14 Aban",
+          "body": [
+            "Day 3 features Events 6 and 7.",
+            "Event 6 is an AMRAP format. Your score is total completed rounds plus the reps of the last partial round.",
+            "The clock starts with the judge's '3, 2, 1… GO' call and stops exactly at the time cap.",
+            "Event 7 requires alternating between two movements. Every rep must be completed in the prescribed order.",
+            "No extra credit is given for unfinished reps when the cap is reached — the score stands as recorded."
+          ]
+        },
+        "day4": {
+          "title": "Day 4 — 15 Aban",
+          "body": [
+            "Day 4 features Events 8 and 9 — the final day of the championship.",
+            "Event 8 is scored on accuracy and control. Points are awarded only for clean, deliberate repetitions.",
+            "Event 9 is the championship finale and closes the leaderboard after the last heat.",
+            "Podium results are announced at the closing ceremony. Only athletes present receive their awards.",
+            "Top-three finishers must be available for final results confirmation within 30 minutes of their event."
+          ]
+        },
+        "scoring": {
+          "title": "Scoring & Rankings",
+          "body": [
+            "Each event awards points based on placement within your division — 1st place receives the highest points.",
+            "The overall leaderboard is the sum of every athlete's points across all events, updated live as results are posted.",
+            "For-Time events rank the lowest time highest; AMRAP and max-rep events rank the highest score highest.",
+            "Tiebreakers follow the event brief — where times are equal, the earlier recorded time-break wins.",
+            "Results are provisional for 30 minutes after posting. Appeals are accepted during this window only."
+          ]
+        },
+        "judging": {
+          "title": "Judging & Movement Standards",
+          "body": [
+            "Every heat is judged by certified head judges with full authority over rep counts and no-reps.",
+            "Movement standards follow official CrossFit standards unless the event brief states otherwise.",
+            "No-reps are called audibly and immediately. The movement must be corrected before it can count.",
+            "Judges do not coach athletes during live events. One coach or teammate may give tactical cues only during paused rest periods.",
+            "Video review is available for the top 5 finishers of every scored event upon request within 30 minutes."
+          ]
+        },
+        "safety": {
+          "title": "Equipment & Safety",
+          "body": [
+            "All barbells, plates, rigs and pull-up bars are inspected every morning before the first heat.",
+            "Chalk, grips and lifting belts are permitted. Straps are only allowed where the event brief allows them.",
+            "Knee sleeves, wrist wraps and appropriate footwear are mandatory in all weightlifting events.",
+            "If you feel unwell, dizzy or injured, stop immediately and alert the event medic.",
+            "AEDs, medical staff and water stations are available at every venue for the entire competition."
+          ]
+        }
+      }
     },
     "schedule": {
       "title": "Competition Schedule",

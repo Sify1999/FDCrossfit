@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, getErrorMessage } from "@/lib/api-client";
 import { useBodyScrollLock } from "./useScrollLock";
 import { useLocale } from "next-intl";
@@ -14,9 +14,12 @@ type AthleteEntry = {
   score: number | null;
   reps: number | null;
   weight: number | null;
+  /** Raw performance time (total seconds) for time-based events — independent of `score`. */
+  time_seconds?: number | null;
   score_2: number | null;
   reps_2: number | null;
   weight_2: number | null;
+  time_seconds_2?: number | null;
   tiebreaker_type: string | null;
   tiebreaker_value: number | null;
   tiebreaker_value_2: number | null;
@@ -59,6 +62,79 @@ const LEVEL_STYLES: Record<string, { badge: string; bg: string }> = {
   Advanced: { badge: "bg-[#ec4899]/20 text-[#ec4899] border-[#ec4899]/30", bg: "hover:bg-[#ec4899]/5" },
 };
 
+// ─── Units ────────────────────────────────────────────────────────────
+
+type Unit = "reps" | "weight" | "time";
+
+const UNIT_META: Record<Unit, { label: string; hint: string; placeholder: string; short: string }> = {
+  reps: { label: "Reps", hint: "Number of repetitions", placeholder: "Enter reps", short: "Reps" },
+  weight: { label: "Weight", hint: "Load in kilograms", placeholder: "Enter weight (kg)", short: "Wt" },
+  time: { label: "Time", hint: "Minutes : seconds", placeholder: "", short: "Time" },
+};
+
+const UNIT_ORDER: Unit[] = ["reps", "weight", "time"];
+
+// ─── Draft helpers ────────────────────────────────────────────────────
+// Everything the coach types is kept as a plain STRING and only converted
+// to numbers on save — that's what keeps every input typeable.
+
+type TimeDraft = { min: string; sec: string };
+
+type PartDraft = {
+  points: string;
+  unit: Unit;
+  num: string; // reps / weight value
+  min: string; // time minutes
+  sec: string; // time seconds
+};
+
+const emptyPart = (): PartDraft => ({ points: "", unit: "reps", num: "", min: "", sec: "" });
+const emptyTime = (): TimeDraft => ({ min: "", sec: "" });
+
+const numToStr = (n: number | null | undefined) => (n === null || n === undefined ? "" : String(n));
+const strToNum = (s: string): number | null => (s.trim() === "" ? null : parseInt(s, 10));
+const pad2 = (s: string) => (s === "" ? "" : s.padStart(2, "0"));
+
+function secondsToTimeDraft(total: number | null | undefined): TimeDraft {
+  if (total === null || total === undefined) return emptyTime();
+  return { min: String(Math.floor(total / 60)), sec: String(total % 60) };
+}
+
+function timeDraftToSeconds(t: TimeDraft): number | null {
+  if (t.min.trim() === "" && t.sec.trim() === "") return null;
+  return parseInt(t.min || "0", 10) * 60 + parseInt(t.sec || "0", 10);
+}
+
+/** Rebuild an editor draft from what is stored on the entry. */
+function partFromStored(
+  score: number | null,
+  reps: number | null,
+  weight: number | null,
+  time_seconds: number | null | undefined,
+): PartDraft {
+  const base = { ...emptyPart(), points: numToStr(score) };
+  if (reps !== null) return { ...base, unit: "reps", num: String(reps) };
+  if (weight !== null) return { ...base, unit: "weight", num: String(weight) };
+  if (time_seconds !== null && time_seconds !== undefined) {
+    const t = secondsToTimeDraft(time_seconds);
+    return { ...base, unit: "time", min: t.min, sec: t.sec };
+  }
+  return base;
+}
+
+/** Turn a draft into the stored fields.
+    - Score → `score` (leaderboard points) for all units
+    - Reps / Weight → `reps` / `weight` from the Result value
+    - Time → `time_seconds` holds the raw performance (total seconds) */
+function partToPayload(d: PartDraft) {
+  return {
+    score: strToNum(d.points),
+    reps: d.unit === "reps" ? strToNum(d.num) : null,
+    weight: d.unit === "weight" ? strToNum(d.num) : null,
+    time_seconds: d.unit === "time" ? timeDraftToSeconds({ min: d.min, sec: d.sec }) : null,
+  };
+}
+
 /** Convert total seconds → MM:SS (e.g. 330 → "05:30"). */
 function formatTime(totalSeconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
@@ -69,9 +145,23 @@ function formatTime(totalSeconds: number): string {
 /** Format a stored tiebreaker value for display (time → MM:SS). */
 function formatTiebreaker(type: string | null, value: number | null): string {
   if (value === null) return "—";
-  if (type === "time") return formatTime(value);
+  if (type === "time" || type === null) return formatTime(value);
   return value.toLocaleString();
 }
+
+/** One-line result for the summary row, e.g. "Reps 12", "Wt 40 kg", "Time 05:30". */
+function resultText(
+  reps: number | null,
+  weight: number | null,
+  time_seconds: number | null | undefined,
+): string {
+  if (reps !== null) return `Reps ${reps}`;
+  if (weight !== null) return `Wt ${weight} kg`;
+  if (time_seconds !== null && time_seconds !== undefined) return `Time ${formatTime(time_seconds)}`;
+  return "—";
+}
+
+// ─── Icons ────────────────────────────────────────────────────────────
 
 function IconSearch() {
   return (
@@ -107,87 +197,291 @@ function IconChevronDown({ open }: { open: boolean }) {
   );
 }
 
-/* Reusable numeric editor field (score / reps / weight). */
-function NumField({
-  label,
+// ─── Shared input styling ─────────────────────────────────────────────
+
+const FIELD_LABEL = "mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500";
+
+const FIELD_INPUT =
+  "w-full min-w-0 rounded-xl border border-gray-700 bg-gray-900 px-3 py-3 text-center text-sm font-bold tabular-nums text-white " +
+  "outline-none transition placeholder:font-medium placeholder:text-gray-500 " +
+  "focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20";
+
+// ─── Unit dropdown (Reps / Weight / Time) ─────────────────────────────
+
+function UnitDropdown({
   value,
   onChange,
-  placeholder = "",
+}: {
+  value: Unit;
+  onChange: (u: Unit) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((p) => !p)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Result unit"
+        className={`flex h-full min-h-[46px] items-center gap-2 rounded-xl border bg-gray-900 px-3 text-sm font-semibold transition ${
+          open
+            ? "border-[#B4E3BD] text-[#B4E3BD] ring-1 ring-[#B4E3BD]/20"
+            : "border-gray-700 text-gray-200 hover:border-[#B4E3BD]/50"
+        }`}
+      >
+        <span>{UNIT_META[value].label}</span>
+        <IconChevronDown open={open} />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute start-0 top-full z-50 mt-1.5 w-52 animate-[fadeIn_0.15s_ease-out] overflow-hidden rounded-xl border border-gray-700 bg-gray-900 p-1 shadow-xl shadow-black/60"
+        >
+          {UNIT_ORDER.map((u) => {
+            const active = u === value;
+            return (
+              <button
+                key={u}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  if (u !== value) onChange(u);
+                  setOpen(false);
+                }}
+                className={`flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-start transition ${
+                  active ? "bg-[#B4E3BD]/10" : "hover:bg-white/5"
+                }`}
+              >
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center text-[#B4E3BD]">
+                  {active && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+                  )}
+                </span>
+                <span className="min-w-0">
+                  <span className={`block text-sm font-semibold ${active ? "text-[#B4E3BD]" : "text-white"}`}>
+                    {UNIT_META[u].label}
+                  </span>
+                  <span className="block text-[11px] text-gray-500">{UNIT_META[u].hint}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Inputs ───────────────────────────────────────────────────────────
+
+/** Digits-only numeric input. */
+function NumInput({
+  value,
+  onChange,
+  placeholder,
   ariaLabel,
+  suffix,
   accent = false,
 }: {
-  label: string;
   value: string;
-  onChange: (raw: string) => void;
-  placeholder?: string;
+  onChange: (v: string) => void;
+  placeholder: string;
   ariaLabel: string;
+  suffix?: string;
   accent?: boolean;
 }) {
   return (
-    <div>
-      <span className="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-gray-500">{label}</span>
+    <div className="relative" dir="ltr">
       <input
-        type="number"
+        type="text"
         inputMode="numeric"
-        min={0}
+        autoComplete="off"
+        maxLength={6}
         value={value}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
         placeholder={placeholder}
         aria-label={ariaLabel}
-        className={`w-full rounded-xl border border-gray-700 bg-gray-900 px-3.5 py-3 text-center text-sm tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600 ${
-          accent ? "font-black" : "font-bold"
-        }`}
+        className={`${FIELD_INPUT} ${accent ? "text-base" : ""} ${suffix ? "pe-9" : ""}`}
+      />
+      {suffix && value !== "" && (
+        <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-[10px] font-bold uppercase text-gray-500">
+          {suffix}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** MM : SS — each box keeps its own text, so typing/deleting works normally. */
+function TimeInput({
+  value,
+  onChange,
+  ariaPrefix,
+}: {
+  value: TimeDraft;
+  onChange: (v: TimeDraft) => void;
+  ariaPrefix: string;
+}) {
+  const minRef = useRef<HTMLInputElement>(null);
+  const secRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="flex items-center gap-1.5" dir="ltr">
+      <input
+        ref={minRef}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={2}
+        value={value.min}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+          onChange({ ...value, min: digits });
+          if (digits.length === 2) secRef.current?.focus();
+        }}
+        onBlur={() => {}}
+        placeholder="MM"
+        aria-label={`${ariaPrefix} minutes`}
+        className={FIELD_INPUT}
+      />
+      <span className="shrink-0 select-none font-black text-gray-500">:</span>
+      <input
+        ref={secRef}
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={2}
+        value={value.sec}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => {
+          let digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+          if (digits !== "" && parseInt(digits, 10) > 59) digits = "59";
+          onChange({ ...value, sec: digits });
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Backspace" && value.sec === "") minRef.current?.focus();
+        }}
+        onBlur={() => {}}
+        placeholder="SS"
+        aria-label={`${ariaPrefix} seconds`}
+        className={FIELD_INPUT}
       />
     </div>
   );
 }
 
-/* Time (tiebreaker) field — always the MM : SS split input. */
-function TimeField({
-  label = "Time",
-  min,
-  sec,
-  onMin,
-  onSec,
+/** Tie breaker — unchanged behaviour: always MM : SS time. */
+function TieBreakerField({
+  label = "Tie Breaker",
+  value,
+  onChange,
 }: {
   label?: string;
-  min: string;
-  sec: string;
-  onMin: (v: string) => void;
-  onSec: (v: string) => void;
+  value: TimeDraft;
+  onChange: (v: TimeDraft) => void;
 }) {
   return (
     <div>
-      <span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span className={`${FIELD_LABEL} flex items-center gap-1.5`}>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
         {label}
       </span>
-      <div className="flex items-center gap-1.5" dir="ltr">
-        <input
-          type="text"
-          inputMode="numeric"
-          maxLength={2}
-          value={min}
-          onChange={(e) => onMin(e.target.value.replace(/\D/g, "").slice(0, 2))}
-          placeholder="00"
-          aria-label="Time minutes"
-          className="w-full min-w-0 rounded-xl border border-gray-700 bg-gray-900 px-1 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
+      <TimeInput value={value} onChange={onChange} ariaPrefix={label} />
+    </div>
+  );
+}
+
+/** Points + Result (unit dropdown + value) for one part of an event. */
+function PartEditor({
+  value,
+  onChange,
+  ariaPrefix,
+}: {
+  value: PartDraft;
+  onChange: (v: PartDraft) => void;
+  ariaPrefix: string;
+}) {
+  const meta = UNIT_META[value.unit];
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+      {/* Score */}
+      <div className="min-w-0">
+        <span className={FIELD_LABEL}>Score</span>
+        <NumInput
+          value={value.points}
+          onChange={(v) => onChange({ ...value, points: v })}
+          placeholder="Score"
+          ariaLabel={`${ariaPrefix} score`}
+          accent
         />
-        <span className="shrink-0 select-none font-black text-gray-500">:</span>
-        <input
-          type="text"
-          inputMode="numeric"
-          maxLength={2}
-          value={sec}
-          onChange={(e) => onSec(e.target.value.replace(/\D/g, "").slice(0, 2))}
-          placeholder="00"
-          aria-label="Time seconds"
-          className="w-full min-w-0 rounded-xl border border-gray-700 bg-gray-900 px-1 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20 placeholder:text-gray-600"
-        />
+      </div>
+
+      {/* Result — unit dropdown + value that follows the unit */}
+      <div className="min-w-0">
+        <span className={FIELD_LABEL}>Result</span>
+        <div className="flex items-stretch gap-2">
+          <UnitDropdown
+            value={value.unit}
+            // Switching unit starts clean so reps never turn into kilograms.
+            onChange={(u) => onChange({ ...value, unit: u, num: "", min: "", sec: "" })}
+          />
+          <div className="min-w-0 flex-1">
+            {value.unit === "time" ? (
+              <TimeInput
+                value={{ min: value.min, sec: value.sec }}
+                onChange={(t) => onChange({ ...value, min: t.min, sec: t.sec })}
+                ariaPrefix={`${ariaPrefix} result`}
+              />
+            ) : (
+              <NumInput
+                value={value.num}
+                onChange={(v) => onChange({ ...value, num: v })}
+                placeholder={meta.placeholder}
+                ariaLabel={`${ariaPrefix} ${meta.label}`}
+                suffix={value.unit === "weight" ? "kg" : undefined}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+function PartTitle({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return (
+    <span className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#B4E3BD]">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+      {children}
+      {hint && <span className="font-medium normal-case text-gray-500">- {hint}</span>}
+    </span>
+  );
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────
 
 export default function ShowAthletesModal({
   open,
@@ -209,24 +503,22 @@ export default function ShowAthletesModal({
   const [expandedName, setExpandedName] = useState<string | null>(null);
   const [entries, setEntries] = useState<AthleteEntry[]>([]);
   const [entriesLoading, setEntriesLoading] = useState(false);
+
+  // Editor state (all strings)
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editScore, setEditScore] = useState<string>("");
-  const [editReps, setEditReps] = useState<string>("");
-  const [editWeight, setEditWeight] = useState<string>("");
-  const [editScore2, setEditScore2] = useState<string>("");
-  const [editReps2, setEditReps2] = useState<string>("");
-  const [editWeight2, setEditWeight2] = useState<string>("");
-  const [editTieMin, setEditTieMin] = useState<string>("");
-  const [editTieSec, setEditTieSec] = useState<string>("");
-  const [editTieMin2, setEditTieMin2] = useState<string>("");
-  const [editTieSec2, setEditTieSec2] = useState<string>("");
+  const [part1, setPart1] = useState<PartDraft>(emptyPart());
+  const [part2, setPart2] = useState<PartDraft>(emptyPart());
+  const [tie1, setTie1] = useState<TimeDraft>(emptyTime());
+  const [tie2, setTie2] = useState<TimeDraft>(emptyTime());
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSearchQuery("");
     setExpandedName(initialName ?? null);
     setEditingId(null);
+    setSaveError(null);
   }, [open, initialName]);
 
   useEffect(() => {
@@ -246,7 +538,7 @@ export default function ShowAthletesModal({
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [open, searchQuery]);
+  }, [open, searchQuery, hideList]);
 
   const loadEntries = useCallback(async (name: string) => {
     setEntriesLoading(true);
@@ -271,6 +563,7 @@ export default function ShowAthletesModal({
     } else {
       setExpandedName(name);
       setEditingId(null);
+      setSaveError(null);
       loadEntries(name);
     }
   }
@@ -288,100 +581,65 @@ export default function ShowAthletesModal({
 
   function startEditScore(entry: AthleteEntry) {
     setEditingId(entry.id);
-    setEditScore(entry.score !== null ? String(entry.score) : "");
-    setEditReps(entry.reps !== null ? String(entry.reps) : "");
-    setEditWeight(entry.weight !== null ? String(entry.weight) : "");
-    // Second part of the combined "Event 1&2".
-    setEditScore2(entry.score_2 !== null ? String(entry.score_2) : "");
-    setEditReps2(entry.reps_2 !== null ? String(entry.reps_2) : "");
-    setEditWeight2(entry.weight_2 !== null ? String(entry.weight_2) : "");
-    // Tiebreaker is always time — stored as total seconds, split into MM : SS.
-    // Event 1 time (part one) and Event 2 time (part two) are kept separately.
-    if (entry.tiebreaker_value !== null) {
-      setEditTieMin(String(Math.floor(entry.tiebreaker_value / 60)));
-      setEditTieSec(String(entry.tiebreaker_value % 60));
-    } else {
-      setEditTieMin("");
-      setEditTieSec("");
-    }
-    if (entry.tiebreaker_value_2 !== null) {
-      setEditTieMin2(String(Math.floor(entry.tiebreaker_value_2 / 60)));
-      setEditTieSec2(String(entry.tiebreaker_value_2 % 60));
-    } else {
-      setEditTieMin2("");
-      setEditTieSec2("");
-    }
+    setSaveError(null);
+    setPart1(partFromStored(entry.score, entry.reps, entry.weight, entry.time_seconds));
+    setPart2(partFromStored(entry.score_2, entry.reps_2, entry.weight_2, entry.time_seconds_2));
+    setTie1(secondsToTimeDraft(entry.tiebreaker_value));
+    setTie2(secondsToTimeDraft(entry.tiebreaker_value_2));
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setSaveError(null);
   }
 
   async function saveScore(entryId: number) {
+    setSaveError(null);
+
+    const p1 = partToPayload(part1);
+    const p2 = partToPayload(part2);
+
+    const payload = {
+      score: p1.score,
+      reps: p1.reps,
+      weight: p1.weight,
+      time_seconds: p1.time_seconds,
+      score_2: p2.score,
+      reps_2: p2.reps,
+      weight_2: p2.weight,
+      time_seconds_2: p2.time_seconds,
+      tiebreaker_type: "time",
+      tiebreaker_value: timeDraftToSeconds(tie1),
+      tiebreaker_value_2: timeDraftToSeconds(tie2),
+    };
+
     setSaving(true);
     try {
-      const score = editScore.trim() ? parseInt(editScore, 10) : null;
-      const reps = editReps.trim() ? parseInt(editReps, 10) : null;
-      const weight = editWeight.trim() ? parseInt(editWeight, 10) : null;
-      // Second part of the combined "Event 1&2".
-      const score2 = editScore2.trim() ? parseInt(editScore2, 10) : null;
-      const reps2 = editReps2.trim() ? parseInt(editReps2, 10) : null;
-      const weight2 = editWeight2.trim() ? parseInt(editWeight2, 10) : null;
-
-      // Tiebreaker is always time — stored as total seconds (MM:SS → seconds).
-      // Event 1 and Event 2 keep separate times.
-      let tiebreakerValue: number | null = null;
-      if (editTieMin.trim() || editTieSec.trim()) {
-        const mins = parseInt(editTieMin || "0", 10);
-        const secs = parseInt(editTieSec || "0", 10);
-        if (Number.isNaN(mins) || Number.isNaN(secs) || secs > 59 || mins < 0) {
-          setError("Invalid time — use MM:SS (e.g. 05:30).");
-          return;
-        }
-        tiebreakerValue = mins * 60 + secs;
-      }
-      let tiebreakerValue2: number | null = null;
-      if (editTieMin2.trim() || editTieSec2.trim()) {
-        const mins2 = parseInt(editTieMin2 || "0", 10);
-        const secs2 = parseInt(editTieSec2 || "0", 10);
-        if (Number.isNaN(mins2) || Number.isNaN(secs2) || secs2 > 59 || mins2 < 0) {
-          setError("Invalid time — use MM:SS (e.g. 05:30).");
-          return;
-        }
-        tiebreakerValue2 = mins2 * 60 + secs2;
-      }
-
-      await api.patch(`/competition-athletes/${entryId}`, {
-        score,
-        reps,
-        weight,
-        score_2: score2,
-        reps_2: reps2,
-        weight_2: weight2,
-        tiebreaker_type: "time",
-        tiebreaker_value: tiebreakerValue,
-        tiebreaker_value_2: tiebreakerValue2,
-      });
-      setEntries((prev) => prev.map((e) =>
-        e.id === entryId
-          ? { ...e, score, reps, weight, score_2: score2, reps_2: reps2, weight_2: weight2, tiebreaker_type: "time", tiebreaker_value: tiebreakerValue, tiebreaker_value_2: tiebreakerValue2 }
-          : e
-      ));
+      await api.patch(`/competition-athletes/${entryId}`, payload);
+      setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...payload } : e)));
       setEditingId(null);
       onDataChanged();
     } catch (err) {
-      setError(getErrorMessage(err, "Failed to save score"));
-    } finally { setSaving(false); }
+      setSaveError(getErrorMessage(err, "Failed to save score"));
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (!open) return null;
 
+  const visibleNames = hideList && initialName ? [initialName] : athleteNames;
+
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div dir="ltr" className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-3xl border border-gray-800 bg-gradient-to-b from-[#0d0d0d] to-[#111111] shadow-2xl shadow-black/60">
+      <div dir="ltr" className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-gray-800 bg-gradient-to-b from-[#0d0d0d] to-[#111111] shadow-2xl shadow-black/60">
         <div aria-hidden className="h-px bg-gradient-to-r from-transparent via-[#B4E3BD]/50 to-transparent" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3">
+        <div className="flex items-center justify-between px-6 pb-3 pt-5">
           <div className="flex items-center gap-3">
             <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${readOnly ? "bg-[#B4E3BD]/10 text-[#B4E3BD]" : "bg-amber-500/10 text-amber-400"}`}>
               {readOnly ? (
@@ -406,35 +664,37 @@ export default function ShowAthletesModal({
             <IconX />
           </button>
         </div>
+
         {/* Search bar */}
         {!hideList && (
-        <div className="px-6 pb-3">
-          <div className="relative">
-            <span className={`absolute inset-y-0 flex items-center ${isRTL ? "right-3" : "left-3"} text-gray-500 pointer-events-none`}>
-              <IconSearch />
-            </span>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search athletes by name..."
-              className={`w-full rounded-xl border border-gray-800 bg-[#141414] px-4 py-2.5 text-sm text-white placeholder:text-gray-600 outline-none transition focus:border-[#B4E3BD] focus:bg-gray-900 focus:ring-1 focus:ring-[#B4E3BD]/20 ${isRTL ? "pr-10" : "pl-10"}`}
-            />
-            {searchQuery && (
-              <button type="button" onClick={() => setSearchQuery("")}
-                className={`absolute inset-y-0 flex items-center ${isRTL ? "left-3" : "right-3"} text-gray-500/50 transition hover:text-gray-300`}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" /></svg>
-              </button>
-            )}
+          <div className="px-6 pb-3">
+            <div className="relative">
+              <span className={`pointer-events-none absolute inset-y-0 flex items-center text-gray-500 ${isRTL ? "right-3" : "left-3"}`}>
+                <IconSearch />
+              </span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search athletes by name..."
+                className={`w-full rounded-xl border border-gray-800 bg-[#141414] px-4 py-2.5 text-sm text-white outline-none transition placeholder:text-gray-600 focus:border-[#B4E3BD] focus:bg-gray-900 focus:ring-1 focus:ring-[#B4E3BD]/20 ${isRTL ? "pr-10" : "pl-10"}`}
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery("")}
+                  className={`absolute inset-y-0 flex items-center text-gray-500/50 transition hover:text-gray-300 ${isRTL ? "left-3" : "right-3"}`}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12" strokeLinecap="round" /></svg>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
         )}
+
         {/* Athlete list */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4 coach-scroll">
+        <div className="coach-scroll min-h-0 flex-1 overflow-y-auto px-6 pb-4">
           {!hideList && loading && (
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-3 text-sm text-gray-500">
-                <svg width="18" height="18" className="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeDasharray="31.4 31.4" strokeDashoffset="6" strokeLinecap="round"/></svg>
+                <svg width="18" height="18" className="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" strokeDasharray="31.4 31.4" strokeDashoffset="6" strokeLinecap="round" /></svg>
                 Loading athletes...
               </div>
             </div>
@@ -453,21 +713,19 @@ export default function ShowAthletesModal({
             </div>
           )}
 
-          {(() => {
-            const visibleNames = hideList && initialName ? [initialName] : athleteNames;
-            return visibleNames.length > 0 ? (
-              <div className="space-y-2">
-                {visibleNames.map((name) => {
+          {visibleNames.length > 0 && (
+            <div className="space-y-2">
+              {visibleNames.map((name) => {
                 const isExpanded = expandedName === name;
                 return (
-                  <div key={name} className="rounded-2xl border border-gray-800 bg-[#141414]/60 overflow-hidden transition-all duration-200">
+                  <div key={name} className="overflow-hidden rounded-2xl border border-gray-800 bg-[#141414]/60 transition-all duration-200">
                     {/* Collapsed row */}
                     <button
                       type="button"
                       onClick={() => handleToggleExpand(name)}
                       className="flex w-full items-center justify-between px-4 py-3.5 text-left transition hover:bg-white/[0.03]"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex min-w-0 items-center gap-3">
                         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD]/10 text-sm font-bold text-[#B4E3BD]">
                           {name.slice(0, 2).toUpperCase()}
                         </span>
@@ -475,18 +733,20 @@ export default function ShowAthletesModal({
                       </div>
                       <IconChevronDown open={isExpanded} />
                     </button>
+
                     {/* Expanded detail */}
                     {isExpanded && (
-                      <div className="border-t border-gray-800/60 px-4 py-4 space-y-3">
+                      <div className="space-y-3 border-t border-gray-800/60 px-4 py-4">
                         {entriesLoading ? (
-                          <p className="text-center text-sm text-gray-500 py-4">Loading entries...</p>
+                          <p className="py-4 text-center text-sm text-gray-500">Loading entries...</p>
                         ) : entries.length === 0 ? (
-                          <p className="text-center text-sm text-gray-500 py-4">No entries found.</p>
+                          <p className="py-4 text-center text-sm text-gray-500">No entries found.</p>
                         ) : (
                           entries.map((entry) => {
-                            const ec = EVENT_COLORS[entry.event];
+                            const ec = EVENT_COLORS[entry.event] ?? EVENT_COLORS[1];
                             const ls = LEVEL_STYLES[entry.level] || LEVEL_STYLES["Beginner"];
                             const isEditing = editingId === entry.id;
+                            const isCombined = entry.event === 1;
 
                             const summaryContent = (
                               <>
@@ -508,52 +768,46 @@ export default function ShowAthletesModal({
 
                                 <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
                                   <div className="flex min-w-0 flex-col items-start gap-1 sm:items-end">
-                                    {/* Per-event metrics: Reps · Weight · Time (+ Event 2 part for the combined event) */}
+                                    {/* Result (reps / weight / time) + tie breaker */}
                                     <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] font-medium text-gray-500">
-                                      {entry.event === 1 ? (
+                                      {isCombined ? (
                                         <>
-                                          <span>Ev1 Reps <b className="font-bold text-gray-400">{entry.reps ?? "—"}</b> · Wt <b className="font-bold text-gray-400">{entry.weight !== null ? `${entry.weight} kg` : "—"}</b></span>
+                                          <span>Ev1 <b className="font-bold text-gray-400">{resultText(entry.reps, entry.weight, entry.time_seconds)}</b></span>
                                           <span className="text-gray-700">•</span>
-                                          <span>Ev2 Reps <b className="font-bold text-gray-400">{entry.reps_2 ?? "—"}</b> · Wt <b className="font-bold text-gray-400">{entry.weight_2 !== null ? `${entry.weight_2} kg` : "—"}</b></span>
+                                          <span>Ev2 <b className="font-bold text-gray-400">{resultText(entry.reps_2, entry.weight_2, entry.time_seconds_2)}</b></span>
                                           <span className="text-gray-700">•</span>
+                                          <span>
+                                            Ev1 Tie <b className="font-bold tabular-nums text-gray-400">{formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value)}</b>
+                                            <span className="text-gray-700"> • </span>
+                                            Ev2 Tie <b className="font-bold tabular-nums text-gray-400">{formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value_2)}</b>
+                                          </span>
                                         </>
                                       ) : (
                                         <>
-                                          <span>Reps <b className="font-bold text-gray-400">{entry.reps ?? "—"}</b></span>
+                                          <span><b className="font-bold text-gray-400">{resultText(entry.reps, entry.weight, entry.time_seconds)}</b></span>
                                           <span className="text-gray-700">•</span>
-                                          <span>Wt <b className="font-bold text-gray-400">{entry.weight !== null ? `${entry.weight} kg` : "—"}</b></span>
-                                          <span className="text-gray-700">•</span>
+                                          <span>Tie <b className="font-bold tabular-nums text-gray-400">{formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value)}</b></span>
                                         </>
                                       )}
-                                      <span>
-                                      {entry.event === 1 ? (
-                                        <>
-                                          Ev1 Time <b className="font-bold text-gray-400 tabular-nums">{formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value)}</b>
-                                          <span className="text-gray-700"> • </span>
-                                          Ev2 Time <b className="font-bold text-gray-400 tabular-nums">{formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value_2)}</b>
-                                        </>
-                                      ) : (
-                                        <>Time <b className="font-bold text-gray-400 tabular-nums">{formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value)}</b></>
-                                      )}
                                     </span>
-                                    </span>
-                                    {entry.event === 1 ? (
+
+                                    {isCombined ? (
                                       <span className="flex flex-wrap items-center gap-1.5">
                                         <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Event 1</span>
-                                          <span className="text-sm sm:text-base font-black tabular-nums leading-none text-white">
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
                                             {entry.score !== null ? entry.score.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
                                           </span>
                                         </span>
                                         <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Event 2</span>
-                                          <span className="text-sm sm:text-base font-black tabular-nums leading-none text-white">
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
                                             {entry.score_2 !== null ? entry.score_2.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
                                           </span>
                                         </span>
                                       </span>
                                     ) : (
-                                      <span className="text-base sm:text-lg font-black tabular-nums text-white">
+                                      <span className="text-base font-black tabular-nums text-white sm:text-lg">
                                         {entry.score !== null ? (
                                           entry.score.toLocaleString()
                                         ) : (
@@ -572,9 +826,9 @@ export default function ShowAthletesModal({
                                       }`}
                                     >
                                       {isEditing ? (
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
                                       ) : (
-                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                                       )}
                                     </span>
                                   )}
@@ -585,11 +839,12 @@ export default function ShowAthletesModal({
                             return (
                               <div
                                 key={entry.id}
-                                className={`overflow-hidden rounded-xl border transition-colors duration-200 ${
-                                  isEditing ? "border-[#B4E3BD]/30 bg-[#B4E3BD]/5" : "border-gray-800/70"
+                                // overflow stays visible while editing so the unit dropdown can open over the card edge
+                                className={`rounded-xl border transition-colors duration-200 ${
+                                  isEditing ? "border-[#B4E3BD]/30 bg-[#B4E3BD]/5" : "overflow-hidden border-gray-800/70"
                                 }`}
                               >
-                                {/* Summary row - tap anywhere to edit the score & tiebreaker */}
+                                {/* Summary row — tap anywhere to edit */}
                                 {readOnly ? (
                                   <div className="flex w-full flex-col gap-2.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                                     {summaryContent}
@@ -597,96 +852,86 @@ export default function ShowAthletesModal({
                                 ) : (
                                   <button
                                     type="button"
-                                    onClick={() => (isEditing ? setEditingId(null) : startEditScore(entry))}
-                                    className={`group flex w-full flex-col gap-2.5 px-4 py-3 text-left transition sm:flex-row sm:items-center sm:justify-between ${ec.bg}`}
+                                    onClick={() => (isEditing ? cancelEdit() : startEditScore(entry))}
+                                    className={`group flex w-full flex-col gap-2.5 px-4 py-3 text-left transition sm:flex-row sm:items-center sm:justify-between ${isEditing ? "rounded-t-xl" : "rounded-xl"} ${ec.bg}`}
                                   >
                                     {summaryContent}
                                   </button>
                                 )}
 
-                                {/* Editor panel - expands below the summary so the row never collapses */}
+                                {/* Editor panel */}
                                 {isEditing && (
-                                  <div className="editor-panel-in border-t border-[#B4E3BD]/15 bg-black/40 px-4 py-4 sm:px-5">
-                                    {entry.event === 1 ? (
-                                                                          <>
-                                                                            {/* Event 1 - first part */}
-                                                                            <div>
-                                                                              <span className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#B4E3BD]">
-                                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                                                                                Event 1 <span className="font-medium normal-case text-gray-500">- first part</span>
-                                                                              </span>
-                                                                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:items-end">
-                                                                                <NumField label="Reps" value={editReps} onChange={setEditReps} placeholder="Reps" ariaLabel="Reps (Event 1)" />
-                                                                                <NumField label="Weight" value={editWeight} onChange={setEditWeight} placeholder="kg" ariaLabel="Weight (Event 1)" />
-                                                                                <NumField label="Score" value={editScore} onChange={setEditScore} placeholder="0" ariaLabel="Score (Event 1)" accent />
-                                                                              </div>
-                                                                            </div>
+                                  <form
+                                    onSubmit={(e) => { e.preventDefault(); saveScore(entry.id); }}
+                                    className="animate-[fadeIn_0.3s_ease-out] rounded-b-xl border-t border-[#B4E3BD]/15 bg-black/40 px-4 py-4 sm:px-5"
+                                  >
+                                    {isCombined ? (
+                                      <>
+                                        <div>
+                                          <PartTitle hint="first part">Event 1</PartTitle>
+                                          <PartEditor value={part1} onChange={setPart1} ariaPrefix="Event 1" />
+                                        </div>
 
-                                                                            {/* Event 2 - second part */}
-                                                                            <div className="mt-4 border-t border-gray-800 pt-4">
-                                                                              <span className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#B4E3BD]">
-                                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                                                                                Event 2 <span className="font-medium normal-case text-gray-500">- second part</span>
-                                                                              </span>
-                                                                              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:items-end">
-                                                                                <NumField label="Reps" value={editReps2} onChange={setEditReps2} placeholder="Reps" ariaLabel="Reps (Event 2)" />
-                                                                                <NumField label="Weight" value={editWeight2} onChange={setEditWeight2} placeholder="kg" ariaLabel="Weight (Event 2)" />
-                                                                                <NumField label="Score" value={editScore2} onChange={setEditScore2} placeholder="0" ariaLabel="Score (Event 2)" accent />
-                                                                              </div>
-                                                                            </div>
+                                        <div className="mt-4 border-t border-gray-800 pt-4">
+                                          <PartTitle hint="second part">Event 2</PartTitle>
+                                          <PartEditor value={part2} onChange={setPart2} ariaPrefix="Event 2" />
+                                        </div>
 
-                                                                            {/* Time - separate for each part */}
-                                                                            <div className="mt-4 border-t border-gray-800 pt-4">
-                                                                              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-end">
-                                                                                <TimeField label="Event 1 · Time" min={editTieMin} sec={editTieSec} onMin={setEditTieMin} onSec={setEditTieSec} />
-                                                                                <TimeField label="Event 2 · Time" min={editTieMin2} sec={editTieSec2} onMin={setEditTieMin2} onSec={setEditTieSec2} />
-                                                                              </div>
-                                                                            </div>
-                                                                          </>
-                                                                        ) : (
-                                                                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:items-end">
-                                                                            <NumField label="Reps" value={editReps} onChange={setEditReps} placeholder="Reps" ariaLabel="Reps" />
-                                                                            <NumField label="Weight" value={editWeight} onChange={setEditWeight} placeholder="kg" ariaLabel="Weight" />
-                                                                            <TimeField min={editTieMin} sec={editTieSec} onMin={setEditTieMin} onSec={setEditTieSec} />
-                                                                            <NumField label="Score" value={editScore} onChange={setEditScore} placeholder="0" ariaLabel="Score" accent />
-                                                                          </div>
-                                                                        )}
+                                        <div className="mt-4 grid grid-cols-1 gap-3 border-t border-gray-800 pt-4 sm:grid-cols-2">
+                                          <TieBreakerField label="Event 1 · Tie Breaker" value={tie1} onChange={setTie1} />
+                                          <TieBreakerField label="Event 2 · Tie Breaker" value={tie2} onChange={setTie2} />
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <PartEditor value={part1} onChange={setPart1} ariaPrefix="Score" />
+                                        <div className="mt-4 max-w-[220px] border-t border-gray-800 pt-4">
+                                          <TieBreakerField label="Tie Breaker" value={tie1} onChange={setTie1} />
+                                        </div>
+                                      </>
+                                    )}
+
+                                    {saveError && (
+                                      <p className="mt-4 rounded-lg border border-red-900/50 bg-red-950/30 px-3 py-2 text-sm text-red-400">
+                                        {saveError}
+                                      </p>
+                                    )}
+
                                     <div className="mt-4 flex items-center justify-end gap-2.5">
                                       <button
                                         type="button"
-                                        onClick={() => setEditingId(null)}
+                                        onClick={cancelEdit}
                                         disabled={saving}
                                         className="rounded-xl border border-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-400 transition hover:border-gray-500 hover:text-gray-200 disabled:opacity-50"
                                       >
                                         Cancel
                                       </button>
                                       <button
-                                        type="button"
-                                        onClick={() => saveScore(entry.id)}
+                                        type="submit"
                                         disabled={saving}
                                         className="inline-flex min-w-[86px] items-center justify-center gap-1.5 rounded-xl bg-[#B4E3BD] px-5 py-2.5 text-sm font-bold text-black transition hover:bg-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                                       >
                                         {saving ? (
                                           <>
-                                            <svg width="14" height="14" className="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="9" strokeDasharray="28.3 28.3" strokeDashoffset="8" strokeLinecap="round"/></svg>
+                                            <svg width="14" height="14" className="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="9" strokeDasharray="28.3 28.3" strokeDashoffset="8" strokeLinecap="round" /></svg>
                                             Saving...
                                           </>
                                         ) : (
                                           <>
-                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
                                             Save
                                           </>
                                         )}
                                       </button>
                                     </div>
-                                  </div>
+                                  </form>
                                 )}
                               </div>
                             );
-
                           })
                         )}
-                        {/* Edit / Delete buttons */}
+
+                        {/* Edit / Delete athlete */}
                         {!readOnly && (
                           <div className="flex flex-wrap items-center gap-2">
                             <button
@@ -700,7 +945,7 @@ export default function ShowAthletesModal({
                               }
                               className="inline-flex items-center gap-1.5 rounded-lg border border-[#B4E3BD]/40 px-3 py-1.5 text-xs font-semibold text-[#B4E3BD] transition hover:bg-[#B4E3BD]/10"
                             >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
                               Edit athlete
                             </button>
                             <button
@@ -708,7 +953,7 @@ export default function ShowAthletesModal({
                               onClick={() => {
                                 if (window.confirm(`Remove "${name}" from all events?`)) handleDelete(name);
                               }}
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:bg-red-950/30 hover:border-red-500/50"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-400 transition hover:border-red-500/50 hover:bg-red-950/30"
                             >
                               <IconTrash />
                               Remove athlete
@@ -720,10 +965,10 @@ export default function ShowAthletesModal({
                   </div>
                 );
               })}
-              </div>
-            ) : null;
-          })()}
+            </div>
+          )}
         </div>
+
         {/* Footer */}
         <div className="flex items-center justify-end border-t border-gray-800 px-6 py-4">
           <button type="button" onClick={onClose}

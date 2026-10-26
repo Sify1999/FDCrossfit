@@ -102,9 +102,11 @@ async def update_competition_athlete_score(
         tiebreaker_value=data.tiebreaker_value,
         reps=data.reps,
         weight=data.weight,
+        time_seconds=data.time_seconds,
         score_2=data.score_2,
         reps_2=data.reps_2,
         weight_2=data.weight_2,
+        time_seconds_2=data.time_seconds_2,
         tiebreaker_value_2=data.tiebreaker_value_2,
     )
     if not updated:

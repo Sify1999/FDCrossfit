@@ -54,17 +54,19 @@ class CompetitionAthleteUpdateRegistration(BaseModel):
 
 
 class CompetitionAthleteUpdate(BaseModel):
-    """Update score, reps/weight and tiebreaker for an athlete/event combo.
+    """Update score, reps/weight, time-seconds and tiebreaker for an athlete/event combo.
 
-    The combined "Event 1&2" entry stores Event 1's data in score/reps/weight
-    and Event 2's data in score_2/reps_2/weight_2.
+    The combined "Event 1&2" entry stores Event 1's data in score/reps/weight/time_seconds
+    and Event 2's data in the corresponding _2 fields.
     """
-    score: int | None = Field(None, ge=0, description="Athlete's score for the event (Event 1 for 1&2)")
+    score: int | None = Field(None, ge=0, description="Athlete's score / leaderboard points for the event (Event 1 for 1&2)")
     reps: int | None = Field(None, ge=0, description="Repetitions completed in the event (Event 1 for 1&2)")
     weight: int | None = Field(None, ge=0, description="Weight lifted (kg) in the event (Event 1 for 1&2)")
+    time_seconds: int | None = Field(None, ge=0, description="Raw performance time (total seconds) — for time-based events (Event 1 for 1&2)")
     score_2: int | None = Field(None, ge=0, description="Event 2 score for the combined Event 1&2")
     reps_2: int | None = Field(None, ge=0, description="Event 2 repetitions for the combined Event 1&2")
     weight_2: int | None = Field(None, ge=0, description="Event 2 weight (kg) for the combined Event 1&2")
+    time_seconds_2: int | None = Field(None, ge=0, description="Event 2 raw performance time (total seconds)")
     tiebreaker_type: str | None = Field(None, description="Tiebreaker type — always 'time' in the UI")
     tiebreaker_value: int | None = Field(None, ge=0, description="Tiebreaker value (seconds for time)")
     tiebreaker_value_2: int | None = Field(None, ge=0, description="Event 2 tiebreaker value (seconds for time)")
@@ -78,9 +80,11 @@ class CompetitionAthleteRead(BaseModel):
     score: int | None = None
     reps: int | None = None
     weight: int | None = None
+    time_seconds: int | None = None
     score_2: int | None = None
     reps_2: int | None = None
     weight_2: int | None = None
+    time_seconds_2: int | None = None
     tiebreaker_type: str | None = None
     tiebreaker_value: int | None = None
     tiebreaker_value_2: int | None = None

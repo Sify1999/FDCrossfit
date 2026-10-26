@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 
-type CoachId = "ali" | "ahmad" | "arsalan" | "arvin";
+type CoachId = "ali" | "ahmad" | "arsalan" | "arvin" | "kimia" | "behnood";
 
 const COACHES: {
   id: CoachId;
@@ -16,30 +16,44 @@ const COACHES: {
   {
     id: "ali",
     name: "Ali Ghasemi",
-    role: "Head Coach",
+    role: "Coach",
     specialties: ["Olympic Lifting", "Programming"],
-    image: "/images/coaches/ali.jpg",
+    image: "/images/coaches/ali.png",
   },
   {
     id: "arsalan",
     name: "Arsalan",
     role: "Coach",
     specialties: ["Endurance", "Nutrition"],
-    image: "/images/coaches/arsalan.jpg",
+    image: "/images/coaches/arsalan.png",
   },
   {
     id: "ahmad",
     name: "Ahmad",
     role: "Coach",
     specialties: ["Gymnastics", "Mobility"],
-    image: "/images/coaches/ahmad.jpg",
+    image: "/images/coaches/ahmad.png",
   },
   {
     id: "arvin",
     name: "Arvin",
     role: "Coach",
     specialties: ["Beginner Training", "Rehab"],
-    image: "/images/coaches/arvin.jpg",
+    image: "/images/coaches/arvin.png",
+  },
+  {
+    id: "behnood",
+    name: "Behnood",
+    role: "Coach",
+    specialties: ["Training"],
+    image: "/images/coaches/behnood.png",
+  },
+  {
+    id: "kimia",
+    name: "Kimia",
+    role: "Coach",
+    specialties: ["Gymnastics"],
+    image: "/images/coaches/kimia.png",
   },
 ];
 
