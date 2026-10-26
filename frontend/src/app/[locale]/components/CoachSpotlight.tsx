@@ -12,12 +12,12 @@ type Coach = {
 };
 
 const COACHES: Coach[] = [
-  { id: "ali", name: "Ali", role: "Coach", image: "/images/coaches/ali.png" },
-  { id: "ahmad", name: "Ahmad", role: "Coach", image: "/images/coaches/ahmad.png" },
-  { id: "arsalan", name: "Arsalan", role: "Coach", image: "/images/coaches/arsalan.png" },
-  { id: "arvin", name: "Arvin", role: "Coach", image: "/images/coaches/arvin.png" },
-  { id: "behnood", name: "Behnood", role: "Coach", image: "/images/coaches/behnood.png" },
-  { id: "kimia", name: "Kimia", role: "Coach", image: "/images/coaches/kimia.png" },
+  { id: "ali", name: "Ali", role: "Coach", image: "/images/coaches/ali.PNG" },
+  { id: "ahmad", name: "Ahmad", role: "Coach", image: "/images/coaches/ahmad.PNG" },
+  { id: "arsalan", name: "Arsalan", role: "Coach", image: "/images/coaches/arsalan.PNG" },
+  { id: "arvin", name: "Arvin", role: "Coach", image: "/images/coaches/arvin.PNG" },
+  { id: "behnood", name: "Behnood", role: "Coach", image: "/images/coaches/behnood.PNG" },
+  { id: "kimia", name: "Kimia", role: "Coach", image: "/images/coaches/kimia.PNG" },
 ];
 
 const AUTO_ADVANCE_MS = 4000;
