@@ -10,6 +10,7 @@ from app.schemas.competition_schedule import (
     CompetitionEventCreate,
     CompetitionEventRead,
     CompetitionEventUpdate,
+    CompetitionHeatAthlete,
     CompetitionHeatCreate,
     CompetitionHeatRead,
     CompetitionHeatUpdate,
@@ -112,7 +113,10 @@ def serialize_heat(heat: CompetitionHeat) -> CompetitionHeatRead:
         heat_number=heat.heat_number,
         start_time=heat.start_time,
         end_time=heat.end_time,
-        athletes=sorted({a.name for a in heat.athletes}),
+        athletes=sorted(
+            (CompetitionHeatAthlete(name=a.name, line=a.line) for a in heat.athletes),
+            key=lambda x: (x.name or "").lower(),
+        ),
     )
 
 

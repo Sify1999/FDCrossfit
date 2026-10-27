@@ -274,8 +274,8 @@ type Heat = {
   time: string;
   /** End time — the heat renders as a compact range, e.g. "8:00-8:12" */
   end: string;
-  /** Athletes registered in this heat (from the dynamic schedule). */
-  athletes?: string[];
+  /** Athletes registered in this heat, with their optional line (from the dynamic schedule). */
+  athletes?: { name: string; line: number | null }[];
 };
 
 type CompetitionEvent = {
@@ -295,7 +295,7 @@ type ScheduleHeatApi = {
   heat_number: number;
   start_time: string;
   end_time: string;
-  athletes: string[];
+  athletes: { name: string; line: number | null }[];
 };
 
 type ScheduleEventApi = {
@@ -334,7 +334,9 @@ function buildScheduleDays(events: ScheduleEventApi[]): CompetitionDay[] {
         heat: h.heat_number,
         time: formatTime12h(h.start_time),
         end: formatTime12h(h.end_time),
-        athletes: h.athletes ?? [],
+        athletes: (h.athletes ?? [])
+          .map((a) => ({ name: a.name, line: a.line ?? null }))
+          .sort((a, b) => a.name.localeCompare(b.name)),
       })),
     });
   }
@@ -431,11 +433,11 @@ function TimeCell({ time, end }: { time: string; end: string }) {
 
 /* ─── Day accordion — each DAY is the main row. Clicking a day expands
    it and reveals every event and heat, one row per athlete.
-   The table uses FIXED-width heat/time columns (identical in the header
+   The table uses FIXED-width heat/line/time columns (identical in the header
    and every row) so longer times like "10:00 – 10:30 AM" can never push
    the layout around. On phones the event name moves under the athlete. */
 const SCHEDULE_GRID =
-  "grid grid-cols-[minmax(0,1fr)_3.25rem_7.25rem] items-center gap-2 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_4rem_10rem] sm:gap-3";
+  "grid grid-cols-[minmax(0,1fr)_3.25rem_2.75rem_6.75rem] items-center gap-1.5 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_4rem_3rem_10rem] sm:gap-3";
 
 function DaySchedule({
   t,
@@ -530,6 +532,9 @@ function DaySchedule({
               <span className="text-center text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
                 {t("schedule.heat")}
               </span>
+              <span className="text-center text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+                {t("schedule.line")}
+              </span>
               <span className="text-end text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
                 {t("schedule.time")}
               </span>
@@ -540,8 +545,11 @@ function DaySchedule({
                 const athletes = heat.athletes ?? [];
                 // One row per athlete — empty heats get a placeholder row so the
                 // Heat 1..N sequence stays visible.
-                const names: (string | null)[] = athletes.length > 0 ? [...athletes].sort() : [null];
-                return names.map((athleteName, ai) => {
+                const rows: ({ name: string; line: number | null } | null)[] =
+                  athletes.length > 0 ? [...athletes] : [null];
+                return rows.map((athlete, ai) => {
+                  const athleteName = athlete?.name ?? null;
+                  const athleteLine = athlete?.line ?? null;
                   const isFirstOfEvent = ai === 0 && ei !== 0;
                   return (
                     <div
@@ -573,6 +581,11 @@ function DaySchedule({
                       {/* Heat badge */}
                       <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-1 py-1 text-[10px] font-semibold text-[#B4E3BD] sm:px-2 sm:text-xs">
                         {t("schedule.heat")} {heat.heat}
+                      </span>
+
+                      {/* Line (lane) badge */}
+                      <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.04] px-1 py-1 text-[10px] font-semibold text-gray-200 sm:px-2 sm:text-xs">
+                        {athleteLine ?? "—"}
                       </span>
 
                       {/* Time */}
@@ -965,13 +978,13 @@ export default function CompetitionPage() {
   const [editingAthlete, setEditingAthlete] = useState<{
     name: string;
     level: string;
-    events: { event: number; heat: number | null }[];
+    events: { event: number; heat: number | null; line: number | null }[];
   } | null>(null);
 
   function handleEditAthlete(data: {
     name: string;
     level: string;
-    events: { event: number; heat: number | null }[];
+    events: { event: number; heat: number | null; line: number | null }[];
   }) {
     setShowAthletesOpen(false);
     setEditingAthlete(data);

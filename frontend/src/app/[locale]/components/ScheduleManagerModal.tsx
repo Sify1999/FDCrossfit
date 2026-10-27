@@ -11,7 +11,7 @@ type HeatItem = {
   heat_number: number;
   start_time: string;
   end_time: string;
-  athletes: string[];
+  athletes: { name: string; line: number | null }[];
 };
 
 type EventItem = {

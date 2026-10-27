@@ -24,6 +24,7 @@ type AthleteEntry = {
   tiebreaker_value: number | null;
   tiebreaker_value_2: number | null;
   heat: number | null;
+  line: number | null;
 };
 
 type Props = {
@@ -40,7 +41,7 @@ type Props = {
   onEditAthlete?: (athlete: {
     name: string;
     level: string;
-    events: { event: number; heat: number | null }[];
+    events: { event: number; heat: number | null; line: number | null }[];
   }) => void;
 };
 
@@ -764,6 +765,12 @@ export default function ShowAthletesModal({
                                       Heat {entry.heat}
                                     </span>
                                   ) : null}
+                                  {entry.line ? (
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-300">
+                                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" /><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" /></svg>
+                                      Line {entry.line}
+                                    </span>
+                                  ) : null}
                                 </div>
 
                                 <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end">
@@ -940,7 +947,11 @@ export default function ShowAthletesModal({
                                 onEditAthlete?.({
                                   name,
                                   level: entries[0]?.level ?? name,
-                                  events: entries.map((e) => ({ event: e.event, heat: e.heat })),
+                                  events: entries.map((e) => ({
+                                    event: e.event,
+                                    heat: e.heat,
+                                    line: e.line,
+                                  })),
                                 })
                               }
                               className="inline-flex items-center gap-1.5 rounded-lg border border-[#B4E3BD]/40 px-3 py-1.5 text-xs font-semibold text-[#B4E3BD] transition hover:bg-[#B4E3BD]/10"

@@ -49,7 +49,7 @@ type Props = {
   editingAthlete?: {
     name: string;
     level: string;
-    events: { event: number; heat: number | null }[];
+    events: { event: number; heat: number | null; line: number | null }[];
   } | null;
 };
 
@@ -58,7 +58,7 @@ type ScheduleHeatItem = {
   heat_number: number;
   start_time: string;
   end_time: string;
-  athletes: string[];
+  athletes: { name: string; line: number | null }[];
 };
 
 type ScheduleEventItem = {
@@ -98,6 +98,8 @@ export default function AddAthleteModal({
   const [level, setLevel] = useState<string>("Beginner");
   const [selectedEvents, setSelectedEvents] = useState<number[]>([]);
   const [heatSel, setHeatSel] = useState<Record<number, number | "">>({});
+  // Optional line (lane) number per event — rendered next to the heat picker.
+  const [lineSel, setLineSel] = useState<Record<number, string>>({});
   const [openHeatMenu, setOpenHeatMenu] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const heatBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -139,13 +141,19 @@ export default function AddAthleteModal({
         editingAthlete.events.map((e) => e.event).sort((a, b) => a - b)
       );
       const sel: Record<number, number | ""> = {};
-      for (const e of editingAthlete.events) sel[e.event] = e.heat ?? "";
+      const lines: Record<number, string> = {};
+      for (const e of editingAthlete.events) {
+        sel[e.event] = e.heat ?? "";
+        lines[e.event] = e.line?.toString() ?? "";
+      }
       setHeatSel(sel);
+      setLineSel(lines);
     } else {
       setName("");
       setLevel("Beginner");
       setSelectedEvents([]);
       setHeatSel({});
+      setLineSel({});
     }
     setOpenHeatMenu(null);
     setMenuPos(null);
@@ -191,6 +199,7 @@ export default function AddAthleteModal({
     setLevel(next);
     setSelectedEvents([]);
     setHeatSel({});
+    setLineSel({});
     closeHeatMenu();
     setError(null);
   }
@@ -206,6 +215,12 @@ export default function AddAthleteModal({
 
     if (isSelected) {
       setHeatSel((prev) => {
+        if (!(evNum in prev)) return prev;
+        const updated = { ...prev };
+        delete updated[evNum];
+        return updated;
+      });
+      setLineSel((prev) => {
         if (!(evNum in prev)) return prev;
         const updated = { ...prev };
         delete updated[evNum];
@@ -228,9 +243,15 @@ export default function AddAthleteModal({
     setError(null);
   }
 
+  function handleLineChange(evNum: number, value: string) {
+    setLineSel((prev) => ({ ...prev, [evNum]: value }));
+    setError(null);
+  }
+
   function clearAllEvents() {
     setSelectedEvents([]);
     setHeatSel({});
+    setLineSel({});
     closeHeatMenu();
     setError(null);
   }
@@ -251,10 +272,18 @@ export default function AddAthleteModal({
     }
 
     const heatsPayload: Record<number, number> = {};
+    const linesPayload: Record<number, number> = {};
 
     for (const evNum of selectedEvents) {
       const hn = heatSel[evNum];
       if (typeof hn === "number") heatsPayload[evNum] = hn;
+
+      // Optional line (lane) number — a positive integer.
+      const rawLine = lineSel[evNum]?.trim() ?? "";
+      if (rawLine !== "") {
+        const ln = Number(rawLine);
+        if (Number.isInteger(ln) && ln > 0) linesPayload[evNum] = ln;
+      }
     }
 
     setSaving(true);
@@ -269,6 +298,7 @@ export default function AddAthleteModal({
             level,
             events: [...selectedEvents].sort((a, b) => a - b),
             heats: heatsPayload,
+            lines: linesPayload,
           }
         );
       } else {
@@ -277,6 +307,7 @@ export default function AddAthleteModal({
           level,
           events: [...selectedEvents].sort((a, b) => a - b),
           heats: heatsPayload,
+          lines: linesPayload,
         });
       }
 
@@ -287,6 +318,7 @@ export default function AddAthleteModal({
       setLevel("Beginner");
       setSelectedEvents([]);
       setHeatSel({});
+      setLineSel({});
       closeHeatMenu();
       setError(null);
     } catch (err) {
@@ -478,7 +510,7 @@ export default function AddAthleteModal({
             {selectedEvents.length > 0 && (
               <div className="mt-2.5 rounded-lg border border-[#29374E] bg-[#0B0F15]/60 p-2.5">
                 <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8193B5]">
-                  Assign heats ({selectedEvents.length})
+                  Assign heat &amp; line ({selectedEvents.length})
                 </span>
                 <div className="space-y-2">
                   {selectedEvents.map((evNum) => {
@@ -587,6 +619,20 @@ export default function AddAthleteModal({
                             </div>
                           )}
                         </div>
+
+                        {/* Line (lane) number — same dark chip style as the heat button */}
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={lineSel[evNum] ?? ""}
+                          onChange={(e) => handleLineChange(evNum, e.target.value)}
+                          placeholder="Line"
+                          aria-label={`Line for ${eventLabel(evNum)}`}
+                          title="Line"
+                          disabled={saving}
+                          className="w-[4.25rem] shrink-0 rounded-lg border border-[#344157] bg-[#0B0F15] px-2 py-2 text-center text-xs font-semibold text-white outline-none transition placeholder:text-[#71819F] focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:dark]"
+                        />
                         <button
                           type="button"
                           onClick={() => toggleEvent(evNum)}
@@ -604,8 +650,8 @@ export default function AddAthleteModal({
             )}
 
             <p className="mt-2 text-[11px] leading-4 text-[#8193B5]">
-              Pick the events you want, then assign a heat to each one below. An
-              athlete can be in one heat per event.
+              Pick the events you want, then assign a heat and an optional line
+              (lane number) to each one below. An athlete can be in one heat per event.
             </p>
           </div>
           {error && (

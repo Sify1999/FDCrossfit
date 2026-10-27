@@ -32,13 +32,22 @@ class CompetitionHeatUpdate(BaseModel):
     end_time: str | None = Field(None, pattern=TIME_PATTERN)
 
 
+class CompetitionHeatAthlete(BaseModel):
+    """Athlete registered in a heat, with their optional line (lane) number."""
+    name: str
+    line: int | None = None
+
+
 class CompetitionHeatRead(BaseModel):
     id: int
     event_id: int
     heat_number: int
     start_time: str
     end_time: str
-    athletes: list[str] = Field(default_factory=list, description="Names of athletes registered in this heat")
+    athletes: list[CompetitionHeatAthlete] = Field(
+        default_factory=list,
+        description="Athletes registered in this heat (name + optional line)",
+    )
 
     model_config = {"from_attributes": True}
 

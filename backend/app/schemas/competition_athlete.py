@@ -31,6 +31,10 @@ class CompetitionAthleteBulkCreate(BaseModel):
         None,
         description="Optional map of event number → heat number for the registered events",
     )
+    lines: dict[int, int] | None = Field(
+        None,
+        description="Optional map of event number → line (lane) number for the registered events",
+    )
 
 
 class CompetitionAthleteUpdateRegistration(BaseModel):
@@ -50,6 +54,10 @@ class CompetitionAthleteUpdateRegistration(BaseModel):
     heats: dict[int, int] | None = Field(
         None,
         description="Optional map of event number → heat number for the registered events",
+    )
+    lines: dict[int, int] | None = Field(
+        None,
+        description="Optional map of event number → line (lane) number for the registered events",
     )
 
 
@@ -89,6 +97,7 @@ class CompetitionAthleteRead(BaseModel):
     tiebreaker_value: int | None = None
     tiebreaker_value_2: int | None = None
     heat: int | None = None
+    line: int | None = None
     created_at: datetime
     updated_at: datetime
 

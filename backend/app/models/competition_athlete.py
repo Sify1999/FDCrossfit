@@ -28,6 +28,8 @@ class CompetitionAthlete(Base, TimestampMixin):
     tiebreaker_value: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     tiebreaker_value_2: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     heat: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
+    # Lane / line number the athlete competes in for this event (optional).
+    line: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     heat_id: Mapped[int | None] = mapped_column(
         ForeignKey("competition_heats.id", ondelete="SET NULL"),
         nullable=True,

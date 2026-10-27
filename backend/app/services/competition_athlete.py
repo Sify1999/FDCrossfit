@@ -100,6 +100,7 @@ async def create_athlete_bulk(
     athlete's ``heat_id`` to it, connecting the athlete to the timed heat.
     """
     heats = data.heats or {}
+    lines = data.lines or {}
 
     # Look up existing heat records for this athlete's level so we can link heat_id.
     heat_id_map: dict[tuple[int, int], int] = {}
@@ -123,6 +124,7 @@ async def create_athlete_bulk(
             score=None,
             heat=heat_number,
             heat_id=heat_id,
+            line=lines.get(event),
         )
         db.add(athlete)
         athletes.append(athlete)
@@ -157,8 +159,9 @@ async def update_athlete_registration(
     existing_by_event = {e.event: e for e in existing}
     target_events = set(data.events)
     heats = data.heats or {}
+    lines = data.lines or {}
 
-    # Update kept events (level / heat number / heat_id) and create new ones.
+    # Update kept events (level / heat number / heat_id / line) and create new ones.
     for event in data.events:
         heat_number = heats.get(event)
         heat_id = heat_id_map.get((event, heat_number)) if heat_number is not None else None
@@ -172,13 +175,21 @@ async def update_athlete_registration(
                     score=None,
                     heat=heat_number,
                     heat_id=heat_id,
+                    line=lines.get(event),
                 )
             )
         else:
-            if cur.level != data.level or cur.heat != heat_number or cur.heat_id != heat_id:
+            line_number = lines.get(event)
+            if (
+                cur.level != data.level
+                or cur.heat != heat_number
+                or cur.heat_id != heat_id
+                or cur.line != line_number
+            ):
                 cur.level = data.level
                 cur.heat = heat_number
                 cur.heat_id = heat_id
+                cur.line = line_number
 
     # Delete events that are no longer selected.
     to_delete = [ev for ev in existing_by_event if ev not in target_events]
