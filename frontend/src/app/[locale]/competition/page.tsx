@@ -1587,6 +1587,7 @@ export default function CompetitionPage() {
         }}
         onSaved={() => {
           loadLeaderboard();
+          loadSchedule();
         }}
         editingAthlete={editingAthlete}
       />
@@ -1595,6 +1596,7 @@ export default function CompetitionPage() {
         onClose={closeShowAthletes}
         onDataChanged={() => {
           loadLeaderboard();
+          loadSchedule();
         }}
         readOnly={showAthletesReadOnly}
         initialName={showAthletesInitialName}
