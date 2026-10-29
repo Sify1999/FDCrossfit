@@ -185,7 +185,7 @@
     "contact": "Contact",
     "address": "Karaj, Azimieh, Kaj Blvd, FD Crossfit",
     "phone": "+989102901448",
-    "email": "info@gym.com",
+    "email": "alirezagh1245@gmail.com",
     "instagram": "@crossfit.fd",
     "rights": " All rights reserved.",
     "links": {
@@ -343,102 +343,162 @@
       "title": "Sign Up for the Competition",
       "description": "Register now to compete in the FD Crossfit Championship. Limited spots available — secure yours today."
     },
-    "ruleBook": {
-      "title": "Competition Rules",
-      "description": "Four days of competition, four dedicated rule chapters — tap any day to open its rule book.",
-      "card": {
-        "tagline": "Rules for the events held on this day.",
-        "open": "Open rule book"
-      },
-      "modal": {
-        "title": "Rule Book",
-        "subtitle": "Rules, standards & regulations for every day of the FD Crossfit Championship."
-      },
-      "jumpTo": "Jump to",
-      "chapters": {
-        "general": {
-          "title": "General Rules & Athlete Conduct",
-          "body": [
-            "All athletes must check in at the registration desk at least 30 minutes before their first event of the day.",
-            "Athletes must wear their official competition wristband for the entire event — without it, results are not recorded.",
-            "Appropriate athletic attire is required. Cleats are only allowed where the event brief explicitly permits them.",
-            "The head judge's decision is final. Disputes must be raised immediately after the event, before leaving the competition floor.",
-            "Unsportsmanlike conduct may result in disqualification from the entire competition.",
-            "Every athlete is responsible for knowing and following the rules of each event they register for."
-          ]
-        },
-        "day1": {
-          "title": "Day 1 — 12 Aban",
-          "body": [
-            "Day 1 opens with the combined Events 1 & 2 session, followed by Event 3.",
-            "Events 1 & 2 run as one continuous session — complete Event 1 and then Event 2 back-to-back. The combined result counts as a single leaderboard entry.",
-            "A 5-minute transition is allowed between the two parts of the combined session. Going over forfeits the second part.",
-            "Event 3 is a For-Time workout with a fixed time cap. Any unfinished work is recorded at the moment the cap is reached.",
-            "Athletes must be standing at their assigned lane 10 minutes before the scheduled heat start."
-          ]
-        },
-        "day2": {
-          "title": "Day 2 — 13 Aban",
-          "body": [
-            "Day 2 features Events 4 and 5, separated by the scheduled break.",
-            "Event 4 is scored by maximum repetitions within the time cap. Only fully completed reps count.",
-            "Event 5 is a weighted event with a fixed load per division. Attempts that miss the required standard are recorded as no-reps.",
-            "Athletes may rest and re-rack as needed during weighted events, as long as the bar is under control at all times.",
-            "Confirm your score sheet with the judge before signing it at the end of each heat."
-          ]
-        },
-        "day3": {
-          "title": "Day 3 — 14 Aban",
-          "body": [
-            "Day 3 features Events 6 and 7.",
-            "Event 6 is an AMRAP format. Your score is total completed rounds plus the reps of the last partial round.",
-            "The clock starts with the judge's '3, 2, 1… GO' call and stops exactly at the time cap.",
-            "Event 7 requires alternating between two movements. Every rep must be completed in the prescribed order.",
-            "No extra credit is given for unfinished reps when the cap is reached — the score stands as recorded."
-          ]
-        },
-        "day4": {
-          "title": "Day 4 — 15 Aban",
-          "body": [
-            "Day 4 features Events 8 and 9 — the final day of the championship.",
-            "Event 8 is scored on accuracy and control. Points are awarded only for clean, deliberate repetitions.",
-            "Event 9 is the championship finale and closes the leaderboard after the last heat.",
-            "Podium results are announced at the closing ceremony. Only athletes present receive their awards.",
-            "Top-three finishers must be available for final results confirmation within 30 minutes of their event."
-          ]
-        },
-        "scoring": {
-          "title": "Scoring & Rankings",
-          "body": [
-            "Each event awards points based on placement within your division — 1st place receives the highest points.",
-            "The overall leaderboard is the sum of every athlete's points across all events, updated live as results are posted.",
-            "For-Time events rank the lowest time highest; AMRAP and max-rep events rank the highest score highest.",
-            "Tiebreakers follow the event brief — where times are equal, the earlier recorded time-break wins.",
-            "Results are provisional for 30 minutes after posting. Appeals are accepted during this window only."
-          ]
-        },
-        "judging": {
-          "title": "Judging & Movement Standards",
-          "body": [
-            "Every heat is judged by certified head judges with full authority over rep counts and no-reps.",
-            "Movement standards follow official CrossFit standards unless the event brief states otherwise.",
-            "No-reps are called audibly and immediately. The movement must be corrected before it can count.",
-            "Judges do not coach athletes during live events. One coach or teammate may give tactical cues only during paused rest periods.",
-            "Video review is available for the top 5 finishers of every scored event upon request within 30 minutes."
-          ]
-        },
-        "safety": {
-          "title": "Equipment & Safety",
-          "body": [
-            "All barbells, plates, rigs and pull-up bars are inspected every morning before the first heat.",
-            "Chalk, grips and lifting belts are permitted. Straps are only allowed where the event brief allows them.",
-            "Knee sleeves, wrist wraps and appropriate footwear are mandatory in all weightlifting events.",
-            "If you feel unwell, dizzy or injured, stop immediately and alert the event medic.",
-            "AEDs, medical staff and water stations are available at every venue for the entire competition."
-          ]
-        }
-      }
+  "ruleBook": {
+    "title": "Competition Rules and Regulations",
+    "description": "Four days of competition, four dedicated sections of rules — click on a day's card to open that day's rules.",
+    "card": {
+      "tagline": "Rules for the events held on this day.",
+      "open": "Open Rules"
     },
+    "modal": {
+      "title": "Rulebook",
+      "subtitle": "Rules, standards, and regulations for all four days of the FD CrossFit competition"
+    },
+    "jumpTo": "Jump to",
+    "chapters": {
+      "general": {
+        "title": "General Rules and Athlete Conduct",
+        "body": [
+          "Arrive at the venue entrance at least 30 minutes before your heat starts.",
+          "Your heat's start time is listed on the competition website. Arrive a little early for document checks and registration, and enter the venue immediately after the registration staff approve you.",
+          "Accompanying guests are not allowed on days one, two, and three.",
+          "No heat will wait for any athlete. Heat changes or transferring a late athlete to another heat are not permitted.",
+          "If you are not present when the briefing official calls athletes onto the competition floor, you will be removed from that heat and receive the points for last place in that test's standings.",
+          "With approximately 200 athletes attending each day, following the schedule is mandatory to respect all participants' time and prevent delays.",
+          "Day four: each finalist may bring only one accompanying guest with a valid ticket.",
+          "A valid identity document and valid sports insurance are mandatory. Athletes are responsible for knowing their heat time, arriving on time, and being ready when called.",
+          "Warm-ups and cool-downs must take place only in designated areas. Entry onto the competition floor is permitted only when called and authorized by the heat official.",
+          "After their heat ends, athletes must clear the floor within two minutes and follow staff instructions. Routes used by athletes, judges, and event staff must remain clear.",
+          "Guests may not enter the competition floor, the judges' area, or the score-recording area."
+        ]
+      },
+      "day1": {
+        "title": "Day 1 — 12 Aban",
+        "body": [
+          "Test 1 | Eight minutes for maximum rounds and reps",
+          "Each round: 10 alternating dumbbell snatches, followed by 5 burpee box jump-overs and return box jump-overs.",
+          "Each box combination consists of one burpee and a box crossing, followed by a return crossing without a burpee. Each complete combination counts as one rep.",
+          "Alternating dumbbell snatch:",
+          "Each complete round of Test 1 is worth 15 scored reps.",
+          "Test 2: Three minutes for maximum reps of moving a barbell from the floor to overhead. Each test is scored separately.",
+          "Beginner: 17.5 kg dumbbell; 50 kg barbell; 60 cm box.",
+          "Intermediate: 20 kg dumbbell; 60 kg barbell; 60 cm box.",
+          "Advanced: 22.5 kg dumbbell; 70 kg barbell; 60 cm box.",
+          "The movement order and test duration are the same for all three divisions.",
+          "Start and alternating hands | At the start of each rep, both ends of the dumbbell must touch the floor. Reps must alternate between the right and left hands. A dumbbell clean and jerk may not be performed in place of a dumbbell snatch.",
+          "Valid finish and hand change | Revised rule | At the end of each rep, the dumbbell must be overhead, the elbow of the working arm, the knees, and the hips must be fully extended, and the body must be straight.",
+          "Changing hands before full lockout is not permitted. The free hand must not touch any part of the athlete's body while performing the movement.",
+          "Dumbbell area and placement on the floor | A one-meter-by-one-meter square will be marked on the floor with tape. When the dumbbell touches the floor or is set down during rest, it must be inside the marked area. Placing it on the line or touching the tape is permitted.",
+          "The dumbbell must be placed on the floor under control; throwing it is not permitted.",
+          "Penalty for leaving the area or throwing the dumbbell | Each time the dumbbell leaves the marked area or is thrown, a penalty of 4 reps applies. The judge records each occurrence, and 4 reps per occurrence are deducted from the total at the end of Test 1.",
+          "No-rep conditions | Both ends of the dumbbell do not touch the floor; hands are not alternated; the free hand touches the body; the finishing position is incomplete; hands are changed before full lockout; or a clean and jerk is performed instead of a snatch.",
+          "Burpee and box-crossing combination:",
+          "Counting one complete rep | First, perform one burpee box jump-over, then one box jump-over without a burpee to return. The judge records one rep only after both parts are completed. This combination is performed five times per round.",
+          "Body direction and floor guide line | During the burpee and both jumps, the athlete must face the box. Performing the movement sideways is not permitted.",
+          "To make the required facing direction clear, a straight line will be marked on the floor in line with the direction the athlete faces toward the box.",
+          "This line guides the athlete and provides a visual reference for the judge to identify the correct movement direction and prevent execution and judging errors.",
+          "Jumping onto and stepping down from the box | Takeoff from the floor and landing on the box must be performed with both feet simultaneously. Step-ups and single-leg jumps are not permitted. Stepping down is the only permitted way to descend; jumping from the box to the floor is a no-rep. The hands must not touch the box while crossing or moving around it.",
+          "Correcting an error on the return | If the first part is valid but the return crossing is a no-rep, only the return section must be repeated; the burpee does not need to be repeated. After a valid return crossing and step-down, one complete rep is recorded.",
+          "Test 1 tiebreak | Completion of the first three rounds",
+          "The judge records the time from the start of Test 1 when the fifth box combination in round three is completed; this point equals 45 valid reps. If final scores are tied, the faster time earns the higher placing.",
+          "If three full rounds are not completed, there is no tiebreak time; the athlete's result is still recorded.",
+          "Floor to overhead:",
+          "Permitted techniques | All weightlifting techniques for moving a barbell from the floor to overhead are permitted: muscle, power, or squat snatch; or a clean followed by a press or jerk. A clean by itself does not count as a complete rep.",
+          "Start of each rep | At the start of each rep, the plates on both ends of the barbell must touch the floor, and both ends of the barbell must leave the floor simultaneously. The plates do not have to touch the floor simultaneously. Every rep must start from the floor.",
+          "End of each rep | The barbell must be overhead, and the elbows, knees, and hips must be fully extended. The judge records the rep once the athlete reaches the correct finishing position.",
+          "No-rep conditions | Bouncing or slamming the barbell into the floor; the two ends of the barbell leave the floor at different times; or the elbows, knees, or hips are not fully extended at the end of the movement.",
+          "Test 2 tiebreak | First ten reps",
+          "The time at which the tenth valid rep is completed is recorded from the start of Test 2, not from the start of Test 1. If the final rep counts are tied, the faster tiebreak time earns the higher placing.",
+          "If ten valid reps are not completed, there is no tiebreak time; the athlete's result is still recorded.",
+          "Recording results | Only reps completed before the test time expires are counted. The Test 1 and Test 2 tiebreak times must be written in separate fields on the judging sheet."
+        ]
+      },
+      "day2": {
+        "title": "Day 2 — 13 Aban",
+        "body": [
+          "Test 3: 2,000-meter row",
+          "The distance, time cap, and test rules are the same for all three divisions. In each heat, 10 athletes compete on 10 rowing machines; each machine has a dedicated judge.",
+          "Heat cycle | 15 minutes",
+          "Minute 0 to 3: warm up on the machine; adjust the damper, footrests, and straps.",
+          "Minute 3 to 4: stop rowing; the judge sets the monitor.",
+          "Minute 4 to 13: perform the test with a 9-minute time cap.",
+          "Minute 13 to 15: exit and prepare the floor for the next heat.",
+          "Rowing standards:",
+          "Monitor setup and preparation | During the three-minute preparation period, the athlete warms up on their machine and adjusts the damper, footrests, and straps. The athlete then stops pulling the handle so the judge can set the monitor to 2,000 meters.",
+          "Start command and result reference | The test starts on the judge's command. The machine timer starts with the first pull; the time, distance, and 9-minute time cap are determined by the information on that monitor.",
+          "Do not touch the monitor | From the time the judge sets the monitor until the test ends, the athlete may not touch the monitor or change its settings. After the test, the monitor must not be reset until the judge has recorded the result.",
+          "Changing the damper is permitted | The athlete may change the damper setting on their own machine during the test. This permission does not include touching the monitor.",
+          "Completing 2,000 meters | The test ends when the distance is completed, and the final time is recorded from the monitor. An athlete who finishes before the time cap may leave the floor after the judge records the result.",
+          "Time-cap finish | If the distance is not completed within 9 minutes, the athlete must stop rowing when instructed by the judge and place the handle in its holder. The distance shown at that moment is recorded; any additional meters accumulated afterward do not count.",
+          "Equipment for this test | CrossFit shoes only are permitted; assistance equipment, including belts and knee sleeves, is not permitted. Adjusting the footrests and using the machine's own straps during the preparation period are allowed.",
+          "Result, tiebreak, and penalties:",
+          "Test result ranking | Athletes who finish are ranked higher with a lower final time. Athletes who reach the time cap are ranked higher with a greater final distance. Athletes who finish the full distance rank above athletes who reach the time cap.",
+          "Tiebreak | The elapsed time from the start of the test until the first 500 meters are completed is recorded; this is the time taken to cover the distance, not the average speed displayed on the monitor. In a tie, the lower tiebreak time takes priority. If both the result and tiebreak are tied, the athletes share the rank.",
+          "Accidental handle release | Penalty for each occurrence",
+          "If the 2,000 meters are completed: add 10 seconds to the time shown on the monitor. If the athlete reaches the time cap: subtract 50 meters from the recorded distance. Time example: a time of 7 minutes with one infraction becomes 7 minutes and 10 seconds. Distance example: 1,850 meters with one infraction becomes 1,800 meters.",
+          "Intentional handle release | Intentionally releasing the handle results in disqualification. If the machine is damaged, the athlete is responsible for the repair costs.",
+          "Items recorded by the judge:",
+          "The raw time or distance, tiebreak time, number of infractions, and final result after penalties must be recorded separately on the judging sheet."
+        ]
+      },
+      "day3": {
+        "title": "Day 3 — 14 Aban",
+        "body": [
+          "Day three consists of Events 6 and 7.",
+          "Event 6 is performed in AMRAP format. Your score is the total number of completed rounds plus the reps completed in the final incomplete round.",
+          "The clock starts on the judge's call (“3, 2, 1 … go”) and stops exactly when the time cap is reached.",
+          "In Event 7, you must alternate between two movements. Each rep must be completed in the prescribed order.",
+          "No additional score is awarded for incomplete reps when the time cap is reached — the score remains as recorded."
+        ]
+      },
+      "day4": {
+        "title": "Day 4 — 15 Aban",
+        "body": [
+          "Day four consists of Events 8 and 9 — the final day of the competition.",
+          "Event 8 is scored based on accuracy and control. Points are awarded only for clean and deliberate reps.",
+          "Event 9 is the competition final, and the leaderboard closes after the last heat.",
+          "The podium results will be announced at the closing ceremony. Prizes are awarded only to athletes who attend the ceremony.",
+          "The top three athletes in each division must be available for final result verification within 30 minutes of their event."
+        ]
+      },
+      "scoring": {
+        "title": "Scoring and Rankings",
+        "body": [
+          "Beginner, Intermediate, and Advanced divisions are scored separately. Each test's score equals the athlete's rank in that test: first place receives one point, second place receives two points, and so on. A lower total score earns a higher overall placing.",
+          "All tests have equal weight, and no test carries an additional multiplier.",
+          "Athletes with the same result share the same rank and points. The next rank accounts for the number of athletes tied; example: first, second, second, fourth; points: 1, 2, 2, 4.",
+          "To determine first through third place overall, the number of first-place finishes is compared first; more first-place finishes means a higher placing. These placings are counted across all tests after recalculation among the 10 finalists.",
+          "If the number of first-place finishes is also tied, the better result in the last test determines the placing. For other positions, if total points are tied, the last test is compared directly.",
+          "Last test: Test 8 for Beginner and Intermediate; Test 9 for Advanced. If the result in this deciding test is also tied, the competition team makes the final decision.",
+          "In any of these situations, the athlete receives the points for last place in the standings for that test in the relevant stage. This number equals the number of athletes in the standings, and tied ranks do not change it."
+        ]
+      },
+      "judging": {
+        "title": "Judging and Movement Standards",
+        "body": [
+          "Each heat is judged by qualified head judges who have full authority to count reps and call no-reps.",
+          "Movement standards follow official CrossFit standards unless the event briefing states otherwise.",
+          "A no-rep is announced verbally and immediately, and the movement must be corrected to count.",
+          "The athlete's signature is obtained when the result is recorded. From that time, the athlete has a maximum of 15 minutes to raise an appeal directly with the head judge, and must do so before leaving the venue.",
+          "The head judge reviews the appeal at that time, and the outcome is announced within the same 15-minute period after the result is signed.",
+          "An appeal cannot be submitted after the athlete leaves the venue or after the deadline, even if 15 minutes have not yet elapsed since leaving. Signing the result does not waive the right to appeal within this period.",
+          "Signing the result does not waive the right to appeal within this period."
+        ]
+      },
+      "safety": {
+        "title": "Equipment and Safety",
+        "body": [
+          "Permitted equipment for each WOD is listed in that WOD's judging handbook. Headphones and earbuds, as well as changing shoes during a test, are prohibited.",
+          "Initial equipment setup is carried out by the judge during the allocated time. Athletes are responsible for their own mobile phones. Official filming is carried out by the event staff.",
+          "Equipment must be used properly. Athletes are responsible for compensating for damage they cause to equipment.",
+          "Equipment failures, stoppages, or any incident affecting a test, and decisions about how to continue or whether to repeat the test, are handled by the judging team and event organizers.",
+          "Disrespect, fighting, threats, or disruption of the event will result in disqualification and removal from the competition.",
+          "Appeals are permitted through the designated process and within the specified time limit; filing an appeal does not, by itself, result in disqualification."
+        ]
+      }
+    }
+  }
+,
     "schedule": {
       "title": "Competition Schedule",
       "description": "Four days of competition — tap any day to explore its events and heats, then plan your day with ease.",

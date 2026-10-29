@@ -995,7 +995,7 @@ export default function CompetitionPage() {
 
   // Rule Book popup — targetDay decides which chapter is scrolled into view.
   const [ruleBookOpen, setRuleBookOpen] = useState(false);
-  const [ruleBookTargetDay, setRuleBookTargetDay] = useState(1);
+  const [ruleBookTargetDay, setRuleBookTargetDay] = useState(0);
 
   function openRuleBook(day: number) {
     setRuleBookTargetDay(day);
@@ -1273,7 +1273,10 @@ export default function CompetitionPage() {
                 label={t("hero.ruleBook")}
                 desc="Rule Book"
                 highlight
-                onClick={() => scrollTo("section-ruleBook")}
+                onClick={() => {
+                  setRuleBookTargetDay(0);
+                  setRuleBookOpen(true);
+                }}
               />
             </div>
 

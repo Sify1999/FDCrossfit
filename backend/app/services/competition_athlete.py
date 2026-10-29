@@ -280,3 +280,73 @@ async def update_athlete_score(
         select(CompetitionAthlete).where(CompetitionAthlete.id == athlete_id)
     )
     return result.scalar_one_or_none()
+async def recompute_event_ranks(
+    db: AsyncSession,
+    event_number: int,
+    time_cap_seconds: int | None = None,
+) -> None:
+    """
+    Recompute scores for all athletes in a given event by ranking them.
+
+    Event 1 (combined 1&2)
+        rank by reps DESC, time_seconds ASC  →  score = rank
+    Event 3 (for-time with cap)
+        finished  (time <= cap) sorted by time ASC
+        unfinished (time > cap or NULL) sorted by reps DESC
+        score = rank
+    """
+    from sqlalchemy import update as upd
+
+    stmt = select(CompetitionAthlete).where(
+        CompetitionAthlete.event == event_number
+    )
+    result = await db.execute(stmt)
+    athletes = list(result.scalars().all())
+
+    if event_number == 1:
+        # Event 1&2 combined entry — compute TWO separate ranks on the same set:
+        #   Event 1 rank by reps DESC, time_seconds ASC → score
+        #   Event 2 rank by reps_2 DESC, time_seconds_2 ASC → score_2
+        ev1 = sorted(athletes, key=lambda a: (
+            -(a.reps or 0),
+            a.time_seconds if a.time_seconds is not None else float("inf"),
+        ))
+        ev2 = sorted(athletes, key=lambda a: (
+            -(a.reps_2 or 0),
+            a.time_seconds_2 if a.time_seconds_2 is not None else float("inf"),
+        ))
+        rank_map = {}
+        for r, a in enumerate(ev1, start=1):
+            rank_map.setdefault(a.id, (r, 0))
+        for r, a in enumerate(ev2, start=1):
+            cur = rank_map.get(a.id, (0, 0))
+            rank_map[a.id] = (cur[0], r)
+        for aid, (r1, r2) in rank_map.items():
+            await db.execute(
+                upd(CompetitionAthlete)
+                .where(CompetitionAthlete.id == aid)
+                .values(score=r1, score_2=r2)
+            )
+    elif event_number == 2:
+        # Event 2 uses the same combined entry — handled by event=1 above
+        return
+    elif event_number == 3:
+        cap = time_cap_seconds or 540  # default 9 min
+
+        def _key(a: CompetitionAthlete) -> tuple:
+            t = a.time_seconds
+            if t is not None and t <= cap:
+                return (0, t, 0)           # finished => rank by time ASC
+            return (1, 0, -(a.reps or 0))   # unfinished => rank by reps DESC
+        athletes.sort(key=_key)
+    else:
+        return  # not auto-scored
+
+    for rank, athlete in enumerate(athletes, start=1):
+        if athlete.score != rank:
+            await db.execute(
+                upd(CompetitionAthlete)
+                .where(CompetitionAthlete.id == athlete.id)
+                .values(score=rank)
+            )
+    await db.flush()

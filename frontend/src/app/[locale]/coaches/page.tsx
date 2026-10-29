@@ -15,7 +15,7 @@ const COACHES: {
 }[] = [
   {
     id: "ali",
-    name: "Ali Ghasemi",
+    name: "Ali",
     role: "Coach",
     specialties: ["Olympic Lifting", "Programming"],
     image: "/images/coaches/ali.PNG",
@@ -78,49 +78,59 @@ export default function CoachesPage() {
             return (
               <div
                 key={coach.id}
-                className="
+                className={`
                 relative w-full max-w-[340px] aspect-[3/4] sm:max-w-none
                 overflow-hidden rounded-2xl
                 border-2 border-[#B4E3BD]/20 bg-gray-900
                 shadow-[0_8px_25px_-8px_rgba(180,227,189,0.15)]
                 transition-all duration-300
-                hover:-translate-y-1 hover:border-[#B4E3BD]
-                hover:shadow-[0_12px_35px_-8px_rgba(180,227,189,0.35)]
-                "
-                onClick={() => setOpenId(isOpen ? null : coach.id)}
-                aria-expanded={isOpen}
+                ${coach.id === "ali"
+                  ? "hover:-translate-y-1 hover:border-[#B4E3BD] hover:shadow-[0_12px_35px_-8px_rgba(180,227,189,0.35)]"
+                  : ""
+                }
+                `}
+                onClick={coach.id === "ali" ? () => setOpenId(isOpen ? null : coach.id) : undefined}
+                aria-expanded={coach.id === "ali" ? isOpen : undefined}
               >
                 {/* Photo */}
                 <Image
                   src={coach.image}
                   alt={coach.name}
                   fill
-                  className="object-cover"
+                  className="object-cover object-top"
                 />
 
                 {/* Base gradient so text is always readable */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
 
-                {/* Bottom info bar — click to expand */}
-                <button
-                  onClick={() => setOpenId(isOpen ? null : coach.id)}
-                  aria-expanded={isOpen}
-                  className="absolute inset-x-0 bottom-0 p-4 text-left"
-                >
-                  <h3 className="text-base font-semibold sm:text-lg">{coach.name}</h3>
-                  <p className="mb-2 text-xs text-[#B4E3BD] sm:text-sm">{coach.role}</p>
-                  <p className="text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs">
-                    {t("specialtiesLabel")}
-                  </p>
-                  <p className="mt-1 mb-2 text-xs text-gray-400 sm:text-sm">
-                    {coach.specialties.join(" · ")}
-                  </p>
-                  <p className="text-[10px] italic text-gray-500 underline decoration-[#B4E3BD]/40 underline-offset-4 sm:text-xs">
-                    {t("readMore")}
-                  </p>
-                </button>
+                {/* Bottom info bar — clickable (expands) for Ali only */}
+                {coach.id === "ali" ? (
+                  <button
+                    onClick={() => setOpenId(isOpen ? null : coach.id)}
+                    aria-expanded={isOpen}
+                    className="absolute inset-x-0 bottom-0 p-4 text-left"
+                  >
+                    <h3 className="text-base font-semibold sm:text-lg">{coach.name}</h3>
+                    <p className="mb-2 text-xs text-[#B4E3BD] sm:text-sm">{coach.role}</p>
+                    <p className="text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs">
+                      {t("specialtiesLabel")}
+                    </p>
+                    <p className="mt-1 mb-2 text-xs text-gray-400 sm:text-sm">
+                      {coach.specialties.join(" · ")}
+                    </p>
+                    <p className="text-[10px] italic text-gray-500 underline decoration-[#B4E3BD]/40 underline-offset-4 sm:text-xs">
+                      {t("readMore")}
+                    </p>
+                  </button>
+                ) : (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-left">
+                    <h3 className="text-base font-semibold sm:text-lg">{coach.name}</h3>
+                    <p className="mb-0 text-xs text-[#B4E3BD] sm:text-sm">{coach.role}</p>
+                  </div>
+                )}
 
-                {/* Expanded overlay */}
+                {/* Expanded overlay — Ali only (non-Ali cards are static) */}
+                {coach.id === "ali" && (
                 <div
                   dir="ltr"
                   className={`
@@ -148,12 +158,16 @@ export default function CoachesPage() {
                   </div>
 
                   <div className="mt-2 flex-1 overflow-y-auto px-4 pb-4 coach-scroll">
-                    <p className="text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs">
-                      {t("specialtiesLabel")}
-                    </p>
-                    <p className="mb-3 mt-1 text-sm text-gray-300 sm:text-sm">
-                      {coach.specialties.join(" · ")}
-                    </p>
+                    {coach.id === "ali" && (
+                      <>
+                        <p className="text-[10px] uppercase tracking-wide text-gray-500 sm:text-xs">
+                          {t("specialtiesLabel")}
+                        </p>
+                        <p className="mb-3 mt-1 text-sm text-gray-300 sm:text-sm">
+                          {coach.specialties.join(" · ")}
+                        </p>
+                      </>
+                    )}
                     <p className="text-sm italic leading-relaxed text-[#B4E3BD]/90 sm:text-sm">
                       {tNotes(coach.id)}
                     </p>
@@ -162,6 +176,7 @@ export default function CoachesPage() {
                     </p>
                   </div>
                 </div>
+                )}
               </div>
             );
           })}

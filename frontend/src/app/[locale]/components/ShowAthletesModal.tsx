@@ -511,6 +511,8 @@ export default function ShowAthletesModal({
   const [part2, setPart2] = useState<PartDraft>(emptyPart());
   const [tie1, setTie1] = useState<TimeDraft>(emptyTime());
   const [tie2, setTie2] = useState<TimeDraft>(emptyTime());
+  // For auto-scored events (3): meters / reps beyond time cap
+  const [event3Reps, setEvent3Reps] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -583,47 +585,133 @@ export default function ShowAthletesModal({
   function startEditScore(entry: AthleteEntry) {
     setEditingId(entry.id);
     setSaveError(null);
-    setPart1(partFromStored(entry.score, entry.reps, entry.weight, entry.time_seconds));
-    setPart2(partFromStored(entry.score_2, entry.reps_2, entry.weight_2, entry.time_seconds_2));
-    setTie1(secondsToTimeDraft(entry.tiebreaker_value));
-    setTie2(secondsToTimeDraft(entry.tiebreaker_value_2));
+
+    if (entry.event === 1) {
+      // Auto-scored Event 1&2 (two separate rankings)
+      // Event 1 → part1.num (reps) + tie1 (time_seconds)
+      // Event 2 → part2.num (reps_2) + tie2 (time_seconds_2)
+      setPart1(partFromStored(null, entry.reps, null, null));
+      setTie1(secondsToTimeDraft(entry.time_seconds));
+      setPart2(partFromStored(null, entry.reps_2, null, null));
+      setTie2(secondsToTimeDraft(entry.time_seconds_2));
+      setEvent3Reps("");
+    } else if (entry.event === 3) {
+      // Auto-scored Event 3: part1 = time, event3Reps = meters/reps
+      setPart1(partFromStored(null, null, null, entry.time_seconds));
+      setEvent3Reps(numToStr(entry.reps));
+      // Clear unused fields
+      setPart2(emptyPart());
+      setTie1(emptyTime());
+      setTie2(emptyTime());
+    } else {
+      // Manual scoring for all other events
+      setPart1(partFromStored(entry.score, entry.reps, entry.weight, entry.time_seconds));
+      setPart2(partFromStored(entry.score_2, entry.reps_2, entry.weight_2, entry.time_seconds_2));
+      setTie1(secondsToTimeDraft(entry.tiebreaker_value));
+      setTie2(secondsToTimeDraft(entry.tiebreaker_value_2));
+      setEvent3Reps("");
+    }
   }
 
   function cancelEdit() {
     setEditingId(null);
     setSaveError(null);
+    setEvent3Reps("");
   }
 
   async function saveScore(entryId: number) {
     setSaveError(null);
 
-    const p1 = partToPayload(part1);
-    const p2 = partToPayload(part2);
+    // Find the entry to know its event number
+    const entry = entries.find((e) => e.id === entryId);
+    if (!entry) {
+      setSaveError("Entry not found");
+      return;
+    }
 
-    const payload = {
-      score: p1.score,
-      reps: p1.reps,
-      weight: p1.weight,
-      time_seconds: p1.time_seconds,
-      score_2: p2.score,
-      reps_2: p2.reps,
-      weight_2: p2.weight,
-      time_seconds_2: p2.time_seconds,
-      tiebreaker_type: "time",
-      tiebreaker_value: timeDraftToSeconds(tie1),
-      tiebreaker_value_2: timeDraftToSeconds(tie2),
-    };
+    if (entry.event === 1) {
+      // Auto-scored: Event 1&2 two separate rankings
+      const payload = {
+        reps: strToNum(part1.num),
+        time_seconds: timeDraftToSeconds(tie1),
+        reps_2: strToNum(part2.num),
+        time_seconds_2: timeDraftToSeconds(tie2),
+        weight: null,
+        score: null,
+        score_2: null,
+        weight_2: null,
+        tiebreaker_type: "time",
+        tiebreaker_value: timeDraftToSeconds(tie1),
+        tiebreaker_value_2: timeDraftToSeconds(tie2),
+      };
+      setSaving(true);
+      try {
+        await api.patch(`/competition-athletes/${entryId}`, payload);
+        setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...payload } : e)));
+        setEditingId(null);
+        onDataChanged();
+      } catch (err) {
+        setSaveError(getErrorMessage(err, "Failed to save score"));
+      } finally {
+        setSaving(false);
+      }
+    } else if (entry.event === 3) {
+      // Auto-scored: Event 3 — send time & reps (DNF meters), score is auto-calculated
+      const t = partToPayload(part1);
+      const payload = {
+        time_seconds: t.time_seconds,
+        reps: strToNum(event3Reps),
+        weight: null,
+        score: null,
+        score_2: null,
+        reps_2: null,
+        weight_2: null,
+        time_seconds_2: null,
+        tiebreaker_type: null,
+        tiebreaker_value: null,
+        tiebreaker_value_2: null,
+      };
+      setSaving(true);
+      try {
+        await api.patch(`/competition-athletes/${entryId}`, payload);
+        setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...payload } : e)));
+        setEditingId(null);
+        onDataChanged();
+      } catch (err) {
+        setSaveError(getErrorMessage(err, "Failed to save score"));
+      } finally {
+        setSaving(false);
+      }
+    } else {
+      // Current manual scoring for all other events (4-9)
+      const p1 = partToPayload(part1);
+      const p2 = partToPayload(part2);
 
-    setSaving(true);
-    try {
-      await api.patch(`/competition-athletes/${entryId}`, payload);
-      setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...payload } : e)));
-      setEditingId(null);
-      onDataChanged();
-    } catch (err) {
-      setSaveError(getErrorMessage(err, "Failed to save score"));
-    } finally {
-      setSaving(false);
+      const payload = {
+        score: p1.score,
+        reps: p1.reps,
+        weight: p1.weight,
+        time_seconds: p1.time_seconds,
+        score_2: p2.score,
+        reps_2: p2.reps,
+        weight_2: p2.weight,
+        time_seconds_2: p2.time_seconds,
+        tiebreaker_type: "time",
+        tiebreaker_value: timeDraftToSeconds(tie1),
+        tiebreaker_value_2: timeDraftToSeconds(tie2),
+      };
+
+      setSaving(true);
+      try {
+        await api.patch(`/competition-athletes/${entryId}`, payload);
+        setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...payload } : e)));
+        setEditingId(null);
+        onDataChanged();
+      } catch (err) {
+        setSaveError(getErrorMessage(err, "Failed to save score"));
+      } finally {
+        setSaving(false);
+      }
     }
   }
 
@@ -777,7 +865,23 @@ export default function ShowAthletesModal({
                                   <div className="flex min-w-0 flex-col items-start gap-1 sm:items-end">
                                     {/* Result (reps / weight / time) + tie breaker */}
                                     <span className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] font-medium text-gray-500">
-                                      {isCombined ? (
+                                      {entry.event === 1 ? (
+                                        <>
+                                          <span>E1 Reps <b className="font-bold text-gray-400">{entry.reps != null ? entry.reps.toLocaleString() : "—"}</b></span>
+                                          <span className="text-gray-700">•</span>
+                                          <span>E1 Time <b className="font-bold tabular-nums text-gray-400">{entry.time_seconds != null ? formatTime(entry.time_seconds) : "—"}</b></span>
+                                          <span className="text-gray-700">•</span>
+                                          <span>E2 Reps <b className="font-bold text-gray-400">{entry.reps_2 != null ? entry.reps_2.toLocaleString() : "—"}</b></span>
+                                          <span className="text-gray-700">•</span>
+                                          <span>E2 Time <b className="font-bold tabular-nums text-gray-400">{entry.time_seconds_2 != null ? formatTime(entry.time_seconds_2) : "—"}</b></span>
+                                        </>
+                                      ) : entry.event === 3 ? (
+                                        <>
+                                          <span>Time <b className="font-bold tabular-nums text-gray-400">{entry.time_seconds != null ? formatTime(entry.time_seconds) : "—"}</b></span>
+                                          <span className="text-gray-700">•</span>
+                                          <span>Meters <b className="font-bold text-gray-400">{entry.reps != null ? entry.reps.toLocaleString() : "—"}</b></span>
+                                        </>
+                                      ) : isCombined ? (
                                         <>
                                           <span>Ev1 <b className="font-bold text-gray-400">{resultText(entry.reps, entry.weight, entry.time_seconds)}</b></span>
                                           <span className="text-gray-700">•</span>
@@ -798,7 +902,49 @@ export default function ShowAthletesModal({
                                       )}
                                     </span>
 
-                                    {isCombined ? (
+                                    {entry.event === 1 ? (
+                                      <span className="flex flex-wrap items-center gap-1.5">
+                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                          <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">E1 Rank</span>
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
+                                            {entry.score !== null ? entry.score.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
+                                          </span>
+                                        </span>
+                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                          <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">E1 Reps</span>
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
+                                            {entry.reps !== null ? entry.reps.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
+                                          </span>
+                                        </span>
+                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                          <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">E2 Rank</span>
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
+                                            {entry.score_2 !== null ? entry.score_2.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
+                                          </span>
+                                        </span>
+                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                          <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">E2 Reps</span>
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
+                                            {entry.reps_2 !== null ? entry.reps_2.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
+                                          </span>
+                                        </span>
+                                      </span>
+                                    ) : entry.event === 3 ? (
+                                      <span className="flex flex-wrap items-center gap-1.5">
+                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                          <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Rank</span>
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
+                                            {entry.score !== null ? entry.score.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
+                                          </span>
+                                        </span>
+                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                          <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Time</span>
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
+                                            {entry.time_seconds != null ? formatTime(entry.time_seconds) : <span className="font-medium text-gray-500">—</span>}
+                                          </span>
+                                        </span>
+                                      </span>
+                                    ) : isCombined ? (
                                       <span className="flex flex-wrap items-center gap-1.5">
                                         <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Event 1</span>
@@ -872,7 +1018,49 @@ export default function ShowAthletesModal({
                                     onSubmit={(e) => { e.preventDefault(); saveScore(entry.id); }}
                                     className="animate-[fadeIn_0.3s_ease-out] rounded-b-xl border-t border-[#B4E3BD]/15 bg-black/40 px-4 py-4 sm:px-5"
                                   >
-                                    {isCombined ? (
+                                    {entry.event === 1 ? (
+                                      <>
+                                        {/* Auto-scored: Event 1 — reps higher better, time tiebreaker */}
+                                        <div>
+                                          <span className={FIELD_LABEL}>Event 1 — Reps (primary)</span>
+                                          <NumInput value={part1.num} onChange={(v) => setPart1({ ...part1, num: v, unit: "reps" })} placeholder="Reps" ariaLabel="Event 1 reps" />
+                                        </div>
+                                        <div className="max-w-[220px]">
+                                          <TieBreakerField label="Event 1 — Time (tiebreaker)" value={tie1} onChange={setTie1} />
+                                        </div>
+
+                                        <div className="mt-4 border-t border-gray-800 pt-4" />
+
+                                        <div>
+                                          <span className={FIELD_LABEL}>Event 2 — Reps (primary)</span>
+                                          <NumInput value={part2.num} onChange={(v) => setPart2({ ...part2, num: v, unit: "reps" })} placeholder="Reps" ariaLabel="Event 2 reps" />
+                                        </div>
+                                        <div className="max-w-[220px]">
+                                          <TieBreakerField label="Event 2 — Time (tiebreaker)" value={tie2} onChange={setTie2} />
+                                        </div>
+
+                                        <p className="mt-2 text-[10px] italic leading-relaxed text-gray-500">
+                                          Each event is scored separately: ranked by reps (higher better) then tie‑breaker time (lower better). Score = rank.
+                                        </p>
+                                      </>
+                                    ) : entry.event === 3 ? (
+                                      <>
+                                        {/* Auto-scored: Event 3 — completion time, reps/meters for DNF */}
+                                        <div>
+                                          <span className={FIELD_LABEL}>Completion Time (lower is better)</span>
+                                          <div className="flex items-center gap-3">
+                                            <TimeInput value={{ min: part1.min, sec: part1.sec }} onChange={(t) => setPart1({ ...part1, unit: "time", min: t.min, sec: t.sec })} ariaPrefix="Completion time" />
+                                          </div>
+                                        </div>
+                                        <div className="mt-4 max-w-[220px] border-t border-gray-800 pt-4">
+                                          <span className={FIELD_LABEL}>Meters / Reps (if beyond time cap)</span>
+                                          <NumInput value={event3Reps} onChange={setEvent3Reps} placeholder="Meters" ariaLabel="DNF meters" suffix="m" />
+                                        </div>
+                                        <p className="mt-2 text-[10px] italic leading-relaxed text-gray-500">
+                                          Athletes finishing within the time cap are ranked by time (lower better); those who don't are ranked by meters (higher better). Score = rank.
+                                        </p>
+                                      </>
+                                    ) : isCombined ? (
                                       <>
                                         <div>
                                           <PartTitle hint="first part">Event 1</PartTitle>

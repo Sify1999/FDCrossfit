@@ -257,14 +257,14 @@ export default function CoachSpotlight() {
           </p>
 
 
-          <p className="
+          {/* <p className="
           mx-auto
           max-w-md
           text-gray-400
           leading-relaxed
           ">
             {t(`notes.${active.id}`)}
-          </p>
+          </p> */}
 
         </div>
 
