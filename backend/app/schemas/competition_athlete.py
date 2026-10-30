@@ -71,10 +71,14 @@ class CompetitionAthleteUpdate(BaseModel):
     reps: int | None = Field(None, ge=0, description="Repetitions completed in the event (Event 1 for 1&2)")
     weight: int | None = Field(None, ge=0, description="Weight lifted (kg) in the event (Event 1 for 1&2)")
     time_seconds: int | None = Field(None, ge=0, description="Raw performance time (total seconds) — for time-based events (Event 1 for 1&2)")
+    time_ms: int | None = Field(None, ge=0, le=999, description="Milliseconds part of the time (0–999)")
+    time_hundredths: int | None = Field(None, ge=0, le=99, description="Hundredths-of-a-second part (0–99)")
     score_2: int | None = Field(None, ge=0, description="Event 2 score for the combined Event 1&2")
     reps_2: int | None = Field(None, ge=0, description="Event 2 repetitions for the combined Event 1&2")
     weight_2: int | None = Field(None, ge=0, description="Event 2 weight (kg) for the combined Event 1&2")
     time_seconds_2: int | None = Field(None, ge=0, description="Event 2 raw performance time (total seconds)")
+    time_ms_2: int | None = Field(None, ge=0, le=999, description="Event 2 milliseconds part of the time (0–999)")
+    time_hundredths_2: int | None = Field(None, ge=0, le=99, description="Event 2 hundredths-of-a-second part (0–99)")
     tiebreaker_type: str | None = Field(None, description="Tiebreaker type — always 'time' in the UI")
     tiebreaker_value: int | None = Field(None, ge=0, description="Tiebreaker value (seconds for time)")
     tiebreaker_value_2: int | None = Field(None, ge=0, description="Event 2 tiebreaker value (seconds for time)")
@@ -89,10 +93,14 @@ class CompetitionAthleteRead(BaseModel):
     reps: int | None = None
     weight: int | None = None
     time_seconds: int | None = None
+    time_ms: int | None = None
+    time_hundredths: int | None = None
     score_2: int | None = None
     reps_2: int | None = None
     weight_2: int | None = None
     time_seconds_2: int | None = None
+    time_ms_2: int | None = None
+    time_hundredths_2: int | None = None
     tiebreaker_type: str | None = None
     tiebreaker_value: int | None = None
     tiebreaker_value_2: int | None = None

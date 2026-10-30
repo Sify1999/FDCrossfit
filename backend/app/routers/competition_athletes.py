@@ -104,11 +104,13 @@ async def update_competition_athlete_score(
         reps=data.reps,
         weight=data.weight,
         time_seconds=data.time_seconds,
+        time_hundredths=data.time_hundredths,
         score_2=data.score_2,
         reps_2=data.reps_2,
         weight_2=data.weight_2,
         time_seconds_2=data.time_seconds_2,
         tiebreaker_value_2=data.tiebreaker_value_2,
+        time_hundredths_2=data.time_hundredths_2,
     )
     if not updated:
         raise HTTPException(

@@ -229,11 +229,13 @@ async def update_athlete_score(
     reps: int | None = _UNSET,
     weight: int | None = _UNSET,
     time_seconds: int | None = _UNSET,
+    time_hundredths: int | None = _UNSET,
     score_2: int | None = _UNSET,
     reps_2: int | None = _UNSET,
     weight_2: int | None = _UNSET,
     time_seconds_2: int | None = _UNSET,
     tiebreaker_value_2: int | None = _UNSET,
+    time_hundredths_2: int | None = _UNSET,
 ) -> CompetitionAthlete | None:
     """Update score, reps/weight, time-seconds and tiebreaker fields.
 
@@ -255,6 +257,8 @@ async def update_athlete_score(
         values["weight"] = weight
     if time_seconds is not _UNSET:
         values["time_seconds"] = time_seconds
+    if time_hundredths is not _UNSET:
+        values["time_hundredths"] = time_hundredths
     if score_2 is not _UNSET:
         values["score_2"] = score_2
     if reps_2 is not _UNSET:
@@ -263,8 +267,8 @@ async def update_athlete_score(
         values["weight_2"] = weight_2
     if time_seconds_2 is not _UNSET:
         values["time_seconds_2"] = time_seconds_2
-    if tiebreaker_value_2 is not _UNSET:
-        values["tiebreaker_value_2"] = tiebreaker_value_2
+    if time_hundredths_2 is not _UNSET:
+        values["time_hundredths_2"] = time_hundredths_2
     if not values:
         return None
     stmt = (
@@ -303,50 +307,56 @@ async def recompute_event_ranks(
     result = await db.execute(stmt)
     athletes = list(result.scalars().all())
 
+    # Group by level so each level gets its own 1..N ranking
+    by_level: dict[str, list[CompetitionAthlete]] = {}
+    for a in athletes:
+        by_level.setdefault(a.level, []).append(a)
+
     if event_number == 1:
-        # Event 1&2 combined entry — compute TWO separate ranks on the same set:
-        #   Event 1 rank by reps DESC, time_seconds ASC → score
-        #   Event 2 rank by reps_2 DESC, time_seconds_2 ASC → score_2
-        ev1 = sorted(athletes, key=lambda a: (
-            -(a.reps or 0),
-            a.time_seconds if a.time_seconds is not None else float("inf"),
-        ))
-        ev2 = sorted(athletes, key=lambda a: (
-            -(a.reps_2 or 0),
-            a.time_seconds_2 if a.time_seconds_2 is not None else float("inf"),
-        ))
-        rank_map = {}
-        for r, a in enumerate(ev1, start=1):
-            rank_map.setdefault(a.id, (r, 0))
-        for r, a in enumerate(ev2, start=1):
-            cur = rank_map.get(a.id, (0, 0))
-            rank_map[a.id] = (cur[0], r)
-        for aid, (r1, r2) in rank_map.items():
-            await db.execute(
-                upd(CompetitionAthlete)
-                .where(CompetitionAthlete.id == aid)
-                .values(score=r1, score_2=r2)
-            )
+        for level, group in by_level.items():
+            ev1 = sorted(group, key=lambda a: (
+                -(a.reps or 0),
+                a.time_seconds if a.time_seconds is not None else float("inf"),
+            ))
+            ev2 = sorted(group, key=lambda a: (
+                -(a.reps_2 or 0),
+                a.time_seconds_2 if a.time_seconds_2 is not None else float("inf"),
+            ))
+            rank_map = {}
+            for r, a in enumerate(ev1, start=1):
+                rank_map.setdefault(a.id, (r, 0))
+            for r, a in enumerate(ev2, start=1):
+                cur = rank_map.get(a.id, (0, 0))
+                rank_map[a.id] = (cur[0], r)
+            for aid, (r1, r2) in rank_map.items():
+                await db.execute(
+                    upd(CompetitionAthlete)
+                    .where(CompetitionAthlete.id == aid)
+                    .values(score=r1, score_2=r2)
+                )
     elif event_number == 2:
         # Event 2 uses the same combined entry — handled by event=1 above
         return
     elif event_number == 3:
         cap = time_cap_seconds or 540  # default 9 min
 
-        def _key(a: CompetitionAthlete) -> tuple:
-            t = a.time_seconds
-            if t is not None and t <= cap:
-                return (0, t, 0)           # finished => rank by time ASC
-            return (1, 0, -(a.reps or 0))   # unfinished => rank by reps DESC
-        athletes.sort(key=_key)
+        for level, group in by_level.items():
+            def _key(a: CompetitionAthlete) -> tuple:
+                total = (a.time_seconds or 0) + ((a.time_hundredths or 0) / 100.0)
+                if (a.time_seconds is not None and
+                    a.time_seconds <= cap and
+                    (a.time_seconds < cap or (a.time_seconds == cap and (a.time_hundredths or 0) == 0))):
+                    return (0, total, -(a.reps or 0))  # finished => time ASC, then reps DESC
+                return (1, 0, -(a.reps or 0))         # unfinished => reps DESC
+            group.sort(key=_key)
+            for rank, athlete in enumerate(group, start=1):
+                if athlete.score != rank:
+                    await db.execute(
+                        upd(CompetitionAthlete)
+                        .where(CompetitionAthlete.id == athlete.id)
+                        .values(score=rank)
+                    )
     else:
         return  # not auto-scored
 
-    for rank, athlete in enumerate(athletes, start=1):
-        if athlete.score != rank:
-            await db.execute(
-                upd(CompetitionAthlete)
-                .where(CompetitionAthlete.id == athlete.id)
-                .values(score=rank)
-            )
     await db.flush()

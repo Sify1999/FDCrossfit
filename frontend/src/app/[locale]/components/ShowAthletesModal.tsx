@@ -25,6 +25,10 @@ type AthleteEntry = {
   tiebreaker_value_2: number | null;
   heat: number | null;
   line: number | null;
+  time_ms?: number | null;
+  time_ms_2?: number | null;
+  time_hundredths?: number | null;
+  time_hundredths_2?: number | null;
 };
 
 type Props = {
@@ -513,6 +517,8 @@ export default function ShowAthletesModal({
   const [tie2, setTie2] = useState<TimeDraft>(emptyTime());
   // For auto-scored events (3): meters / reps beyond time cap
   const [event3Reps, setEvent3Reps] = useState<string>("");
+  // For Event 3 auto-score: milliseconds part of the completion time
+  const [event3Hundredths, setEvent3Hundredths] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -596,8 +602,9 @@ export default function ShowAthletesModal({
       setTie2(secondsToTimeDraft(entry.time_seconds_2));
       setEvent3Reps("");
     } else if (entry.event === 3) {
-      // Auto-scored Event 3: part1 = time, event3Reps = meters/reps
+      // Auto-scored Event 3: part1 = time, event3Ms = ms, event3Reps = meters/reps
       setPart1(partFromStored(null, null, null, entry.time_seconds));
+      setEvent3Hundredths(numToStr(entry.time_hundredths));
       setEvent3Reps(numToStr(entry.reps));
       // Clear unused fields
       setPart2(emptyPart());
@@ -617,6 +624,7 @@ export default function ShowAthletesModal({
     setEditingId(null);
     setSaveError(null);
     setEvent3Reps("");
+    setEvent3Hundredths("");
   }
 
   async function saveScore(entryId: number) {
@@ -656,10 +664,11 @@ export default function ShowAthletesModal({
         setSaving(false);
       }
     } else if (entry.event === 3) {
-      // Auto-scored: Event 3 — send time & reps (DNF meters), score is auto-calculated
+      // Auto-scored: Event 3 — send time (including ms) & reps (DNF meters), score is auto-calculated
       const t = partToPayload(part1);
       const payload = {
         time_seconds: t.time_seconds,
+        time_hundredths: strToNum(event3Hundredths ?? ""),
         reps: strToNum(event3Reps),
         weight: null,
         score: null,
@@ -877,7 +886,11 @@ export default function ShowAthletesModal({
                                         </>
                                       ) : entry.event === 3 ? (
                                         <>
-                                          <span>Time <b className="font-bold tabular-nums text-gray-400">{entry.time_seconds != null ? formatTime(entry.time_seconds) : "—"}</b></span>
+                                          <span>Time <b className="font-bold tabular-nums text-gray-400">
+                                            {entry.time_seconds != null
+                                              ? formatTime(entry.time_seconds) + (entry.time_hundredths ? `.${String(entry.time_hundredths).padStart(2, "0")}` : "")
+                                              : "—"}
+                                          </b></span>
                                           <span className="text-gray-700">•</span>
                                           <span>Meters <b className="font-bold text-gray-400">{entry.reps != null ? entry.reps.toLocaleString() : "—"}</b></span>
                                         </>
@@ -940,7 +953,9 @@ export default function ShowAthletesModal({
                                         <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Time</span>
                                           <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
-                                            {entry.time_seconds != null ? formatTime(entry.time_seconds) : <span className="font-medium text-gray-500">—</span>}
+                                            {entry.time_seconds != null
+                                              ? formatTime(entry.time_seconds) + (entry.time_hundredths ? `.${String(entry.time_hundredths).padStart(2, "0")}` : "")
+                                              : <span className="font-medium text-gray-500">—</span>}
                                           </span>
                                         </span>
                                       </span>
@@ -1048,8 +1063,24 @@ export default function ShowAthletesModal({
                                         {/* Auto-scored: Event 3 — completion time, reps/meters for DNF */}
                                         <div>
                                           <span className={FIELD_LABEL}>Completion Time (lower is better)</span>
-                                          <div className="flex items-center gap-3">
+                                          <div className="flex items-center gap-2" dir="ltr">
                                             <TimeInput value={{ min: part1.min, sec: part1.sec }} onChange={(t) => setPart1({ ...part1, unit: "time", min: t.min, sec: t.sec })} ariaPrefix="Completion time" />
+                                            <span className="shrink-0 select-none text-xs font-bold text-gray-500">.</span>
+                                            <input
+                                              type="text"
+                                              inputMode="numeric"
+                                              autoComplete="off"
+                                              maxLength={2}
+                                              value={event3Hundredths}
+                                              onFocus={(e) => e.target.select()}
+                                              onChange={(e) => {
+                                                const digits = e.target.value.replace(/\D/g, "").slice(0, 2);
+                                                setEvent3Hundredths(digits);
+                                              }}
+                                              placeholder="hs"
+                                              aria-label="Hundredths of a second"
+                                              className="w-14 shrink-0 rounded-xl border border-gray-700 bg-gray-900 px-2 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition placeholder:font-medium placeholder:text-gray-500 focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20"
+                                            />
                                           </div>
                                         </div>
                                         <div className="mt-4 max-w-[220px] border-t border-gray-800 pt-4">
