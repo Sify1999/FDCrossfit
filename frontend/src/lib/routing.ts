@@ -9,4 +9,6 @@ export const routing = defineRouting({
 
   // The prefix of the default locale will be shown (e.g., /fa/page)
   localePrefix: "always",
+
+  localeDetection: false,
 });

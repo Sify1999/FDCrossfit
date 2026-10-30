@@ -1314,7 +1314,7 @@ export default function CompetitionPage() {
           Four day cards — tapping a card opens the Rule Book popup and
           scrolls it straight to that day's chapter.
       ════════════════════════════════════════════════════════════════ */}
-      <section id="section-ruleBook" className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-black px-6 py-24 sm:px-12">
+      {/* <section id="section-ruleBook" className="relative flex min-h-screen w-full items-center justify-center overflow-hidden bg-black px-6 py-24 sm:px-12">
         <div aria-hidden className="absolute top-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/50 to-transparent" />
         <div aria-hidden className="pointer-events-none absolute left-1/2 top-24 -z-0 h-80 w-80 -translate-x-1/2 rounded-full bg-[#B4E3BD]/10 blur-3xl" />
         <div className="relative z-10 w-full">
@@ -1335,7 +1335,7 @@ export default function CompetitionPage() {
             <BackToTop onClick={() => scrollTo("hero")} />
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* ════════════════════════════════════════════════════════════════
           SCHEDULE SECTION (زمان بندی)

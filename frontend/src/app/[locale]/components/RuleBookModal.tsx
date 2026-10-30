@@ -19,10 +19,10 @@ type RuleChapter = {
 
 const CHAPTERS: RuleChapter[] = [
   { id: "rules-general", titleKey: "ruleBook.chapters.general.title", bodyKey: "ruleBook.chapters.general.body" },
-  { id: "rules-day-1", day: 1, titleKey: "ruleBook.chapters.day1.title", bodyKey: "ruleBook.chapters.day1.body" },
-  { id: "rules-day-2", day: 2, titleKey: "ruleBook.chapters.day2.title", bodyKey: "ruleBook.chapters.day2.body" },
-  { id: "rules-day-3", day: 3, titleKey: "ruleBook.chapters.day3.title", bodyKey: "ruleBook.chapters.day3.body" },
-  { id: "rules-day-4", day: 4, titleKey: "ruleBook.chapters.day4.title", bodyKey: "ruleBook.chapters.day4.body" },
+  // { id: "rules-day-1", day: 1, titleKey: "ruleBook.chapters.day1.title", bodyKey: "ruleBook.chapters.day1.body" },
+  // { id: "rules-day-2", day: 2, titleKey: "ruleBook.chapters.day2.title", bodyKey: "ruleBook.chapters.day2.body" },
+  // { id: "rules-day-3", day: 3, titleKey: "ruleBook.chapters.day3.title", bodyKey: "ruleBook.chapters.day3.body" },
+  // { id: "rules-day-4", day: 4, titleKey: "ruleBook.chapters.day4.title", bodyKey: "ruleBook.chapters.day4.body" },
   { id: "rules-scoring", titleKey: "ruleBook.chapters.scoring.title", bodyKey: "ruleBook.chapters.scoring.body" },
   { id: "rules-judging", titleKey: "ruleBook.chapters.judging.title", bodyKey: "ruleBook.chapters.judging.body" },
   { id: "rules-safety", titleKey: "ruleBook.chapters.safety.title", bodyKey: "ruleBook.chapters.safety.body" },
