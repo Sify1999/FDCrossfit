@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 // Images are stored as data so adding a new gym photo
 // only requires adding another object here.
 const GYM_IMAGES = [
-  { id: "gym1", image: "/images/gym/gym1.png" },
+  // { id: "gym1", image: "/images/gym/gym1.png" },
   { id: "gym2", image: "/images/gym/gym2.png" },
   { id: "gym3", image: "/images/gym/gym3.png" },
   { id: "gym4", image: "/images/gym/gym4.png" },

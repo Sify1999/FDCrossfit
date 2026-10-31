@@ -49,12 +49,14 @@ export default function HomePage() {
             {/* justify-start here too, not justify-end — buttons should
                 start from the same edge as the text above them. */}
             <div className="flex flex-wrap justify-start gap-4">
-              <Link
-                href="/register"
+              <a
+                href="https://chat.whatsapp.com/ITsBuTpbiIAEILOjaMgyQC?s=cl&p=i&mlu=4&ilr=4&iam=2"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-black rounded-full bg-[#B4E3BD] px-8 py-3 text-lg font-semibold transition hover:bg-white"
               >
                 {t("hero.bookCta")}
-              </Link>
+              </a>
               <Link
                 href="/contact"
                 className="rounded-full border-2 border-[#B4E3BD] px-8 py-3 text-lg font-semibold text-[#B4E3BD] transition hover:bg-[#B4E3BD] hover:text-black"

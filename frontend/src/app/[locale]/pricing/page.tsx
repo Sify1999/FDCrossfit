@@ -9,9 +9,8 @@ const PLANS = [
     name: "Basic",
     price: "4,200,000",
     features: [
-      "8 sessions / month",
-      "Access to open gym",
-      "Community events",
+      "8 sessions",
+      "Nutrition guidance",
     ],
   },
   {
@@ -21,7 +20,6 @@ const PLANS = [
     features: [
       "12 sessions",
       "Nutrition guidance",
-      "Community events",
     ],
     popular: true,
   },
@@ -31,9 +29,7 @@ const PLANS = [
     price: "5,500,000",
     features: [
       "16 sessions",
-      "1-on-1 coaching",
-      "Nutrition guidance",
-      "Priority booking",
+      "Nutrition guidance"
     ],
   },
   {
@@ -42,9 +38,7 @@ const PLANS = [
     price: "6,500,000",
     features: [
       "21 sessions",
-      "1-on-1 coaching",
       "Nutrition guidance",
-      "Priority booking",
     ],
   },
   {
@@ -53,9 +47,7 @@ const PLANS = [
     price: "8,000,000",
     features: [
       "21 sessions",
-      "1-on-1 coaching",
       "Nutrition guidance",
-      "Priority booking",
     ],
   },
 ];
