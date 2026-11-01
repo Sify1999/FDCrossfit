@@ -585,7 +585,7 @@ function TimeCell({ time, end }: { time: string; end: string }) {
    Phone: each row is a two-line card — the full athlete name on top (it
    wraps instead of being cut off), then event / heat / line / time. */
 const SCHEDULE_GRID_SM =
-  "sm:grid sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_4rem_3rem_10rem] sm:items-center sm:gap-3";
+  "sm:grid sm:grid-cols-[minmax(0,2fr)_minmax(0,0.8fr)_4rem_3rem_10rem] sm:items-center sm:gap-3";
 
 function DaySchedule({
   t,
