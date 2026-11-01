@@ -226,7 +226,12 @@ export default function AddAthleteModal({
       if (editingAthlete) {
         await api.put(
           `/competition-athletes/${encodeURIComponent(editingAthlete.name)}`,
-          { level, heats, lines }
+          {
+            level,
+            heats,
+            lines,
+            ...(trimmed !== editingAthlete.name ? { new_name: trimmed } : {}),
+          }
         );
       } else {
         await api.post("/competition-athletes/bulk", {
@@ -312,7 +317,6 @@ export default function AddAthleteModal({
               placeholder="e.g. John Doe"
               autoFocus
               disabled={saving}
-              readOnly={!!editingAthlete}
               className="w-full rounded-xl border border-[#34465D] bg-[#0B0F15] px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-[#71819F] focus:border-[#79E8B8] focus:ring-1 focus:ring-[#79E8B8]/20 disabled:opacity-60"
             />
           </div>

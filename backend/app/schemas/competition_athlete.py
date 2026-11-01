@@ -55,6 +55,10 @@ class CompetitionAthleteUpdateRegistration(BaseModel):
         min_length=1, max_length=50,
         description="Skill level — e.g. Beginner, Intermediate, Advanced",
     )
+    new_name: str | None = Field(
+        None, min_length=1, max_length=255,
+        description="Rename the athlete — all entries, heats and scores are kept intact",
+    )
     heats: dict[int, int | None] | None = Field(
         None,
         description="Map of event number → heat number (null clears). Events not listed are left as they are.",

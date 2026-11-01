@@ -171,8 +171,16 @@ async def update_athlete_registration(
     name: str,
     data: CompetitionAthleteUpdateRegistration,
 ) -> list[CompetitionAthlete]:
-    """Update an athlete's level, heats and lines. NEVER deletes rows or
-    clears scores — missing event rows are simply added."""
+    """Update an athlete's level, heats and lines. Optionally renames the athlete.
+    NEVER deletes rows or clears scores — missing event rows are simply added."""
+    # Rename if requested
+    new_name = data.new_name.strip() if data.new_name else None
+    if new_name and new_name != name:
+        for row in await get_athlete_entries(db, name):
+            row.name = new_name
+        await db.flush()
+        name = new_name
+
     for row in await get_athlete_entries(db, name):
         if row.level != data.level:
             row.level = data.level
