@@ -10,7 +10,7 @@ import AddAthleteModal from "../components/AddAthleteModal";
 import ShowAthletesModal from "../components/ShowAthletesModal";
 import ScheduleManagerModal from "../components/ScheduleManagerModal";
 import RuleBookModal from "../components/RuleBookModal";
-import { useCallback, useState, useRef, useEffect } from "react";
+import { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 
 /* ─── Icons (inline, currentColor so they inherit) ─────────────────── */
@@ -59,6 +59,21 @@ function IconCalendarSmall() {
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+function IconSearch() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" />
+      <path d="m21 21-4.35-4.35" />
+    </svg>
+  );
+}
+function IconXSmall() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
 }
@@ -349,6 +364,144 @@ function buildScheduleDays(events: ScheduleEventApi[]): CompetitionDay[] {
   return [...days.values()].sort((a, b) => a.day - b.day);
 }
 
+/* ─── Schedule search helpers ───────────────────────────────────────
+   Purely client-side: these only FILTER the already-loaded schedule for
+   display. Nothing here calls the API or mutates the loaded data. */
+
+const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
+const ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+
+/** Normalizes text for matching: lowercase, unify Arabic/Persian letter
+ * variants and digits, treat ZWNJ as a space. Maps one character to one
+ * character, so string length is preserved (needed for highlighting). */
+function normalizeSearch(value: string): string {
+  let out = "";
+  for (const ch of value) {
+    let c = ch;
+    if (c === "ي" || c === "ى") c = "ی";
+    else if (c === "ك") c = "ک";
+    else if (c === "\u200c" || c === "\u200b") c = " ";
+    else {
+      const p = PERSIAN_DIGITS.indexOf(c);
+      const a = ARABIC_DIGITS.indexOf(c);
+      if (p >= 0) c = String(p);
+      else if (a >= 0) c = String(a);
+    }
+    out += c.toLowerCase();
+  }
+  return out;
+}
+
+/** Trim + collapse whitespace + normalize. Empty string = "not searching". */
+function prepareQuery(raw: string): string {
+  return normalizeSearch(raw).replace(/\s+/g, " ").trim();
+}
+
+/** Returns a NEW days array containing only matching athletes. Heats,
+ * events and days with no match are dropped. The input is never mutated. */
+function filterScheduleDays(days: CompetitionDay[], query: string): CompetitionDay[] {
+  if (!query) return days;
+  return days
+    .map((day) => ({
+      ...day,
+      events: day.events
+        .map((ev) => ({
+          ...ev,
+          heats: ev.heats
+            .map((h) => ({
+              ...h,
+              athletes: (h.athletes ?? []).filter((a) =>
+                normalizeSearch(a.name).replace(/\s+/g, " ").includes(query)
+              ),
+            }))
+            .filter((h) => (h.athletes?.length ?? 0) > 0),
+        }))
+        .filter((ev) => ev.heats.length > 0),
+    }))
+    .filter((day) => day.events.length > 0);
+}
+
+/** Number of DISTINCT athletes across the given (already filtered) days. */
+function countDistinctAthletes(days: CompetitionDay[]): number {
+  const names = new Set<string>();
+  for (const day of days) {
+    for (const ev of day.events) {
+      for (const h of ev.heats) {
+        for (const a of h.athletes ?? []) names.add(a.name);
+      }
+    }
+  }
+  return names.size;
+}
+
+/** Athlete name with the matched part highlighted. */
+function HighlightedName({ name, query }: { name: string; query: string }) {
+  if (!query) return <>{name}</>;
+  const normalized = normalizeSearch(name);
+  // Collapsing whitespace could shift indexes — only highlight when safe.
+  const idx = normalized.length === name.length ? normalized.indexOf(query) : -1;
+  if (idx < 0) return <>{name}</>;
+  return (
+    <>
+      {name.slice(0, idx)}
+      <mark className="rounded bg-[#B4E3BD]/25 px-0.5 text-[#B4E3BD]">
+        {name.slice(idx, idx + query.length)}
+      </mark>
+      {name.slice(idx + query.length)}
+    </>
+  );
+}
+
+/* ─── Schedule search bar — matches the level tabs: dark pill, mint
+   focus ring, logical (RTL-safe) start/end spacing. ─────────────── */
+function ScheduleSearchBar({
+  value,
+  onChange,
+  placeholder,
+  clearLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  clearLabel: string;
+}) {
+  return (
+    <div className="relative mx-auto mb-4 w-full max-w-3xl">
+      <span className="pointer-events-none absolute inset-y-0 start-4 flex items-center text-gray-500">
+        <IconSearch />
+      </span>
+      <input
+        type="text"
+        inputMode="search"
+        enterKeyHint="search"
+        autoComplete="off"
+        spellCheck={false}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" && value) {
+            e.preventDefault();
+            onChange("");
+          }
+        }}
+        placeholder={placeholder}
+        aria-label={placeholder}
+        className="w-full rounded-full border border-white/10 bg-[#141414] py-3 ps-11 pe-11 text-sm text-white outline-none transition-all duration-200 placeholder:text-gray-500 focus:border-[#B4E3BD]/60 focus:bg-[#181818] focus:ring-2 focus:ring-[#B4E3BD]/20 sm:py-3.5"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label={clearLabel}
+          className="absolute inset-y-0 end-3 my-auto flex h-7 w-7 items-center justify-center rounded-full text-gray-500 transition hover:bg-white/10 hover:text-white"
+        >
+          <IconXSmall />
+        </button>
+      )}
+    </div>
+  );
+}
+
 /* ─── Leaderboard types ──────────────────────────── */
 type StageInfo = {
   stage: number;
@@ -440,6 +593,7 @@ function DaySchedule({
   open,
   onToggle,
   locale,
+  query,
 }: {
   t: (key: string) => string;
   day: CompetitionDay;
@@ -447,10 +601,13 @@ function DaySchedule({
   open: boolean;
   onToggle: () => void;
   locale: string;
+  /** Prepared (normalized) search query — empty when not searching. */
+  query: string;
 }) {
   const heatCount = day.events.reduce((sum, e) => sum + e.heats.length, 0);
   const eventCount = day.events.length;
   const dayLabel = dayDateLabel(day.day, locale as "en" | "fa");
+  const searching = query !== "";
 
   return (
     <div
@@ -538,7 +695,8 @@ function DaySchedule({
               event.heats.map((heat) => {
                 const athletes = heat.athletes ?? [];
                 // One row per athlete — empty heats get a placeholder row so the
-                // Heat 1..N sequence stays visible.
+                // Heat 1..N sequence stays visible (never while searching: the
+                // filter already removed heats with no matching athlete).
                 const rows: ({ name: string; line: number | null } | null)[] =
                   athletes.length > 0 ? [...athletes] : [null];
                 return rows.map((athlete, ai) => {
@@ -559,7 +717,9 @@ function DaySchedule({
                             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD]/15 text-[9px] font-bold uppercase text-[#B4E3BD]">
                               {athleteName.slice(0, 2)}
                             </span>
-                            <span className="truncate text-xs font-semibold text-white sm:text-sm">{athleteName}</span>
+                            <span className="truncate text-xs font-semibold text-white sm:text-sm">
+                              {searching ? <HighlightedName name={athleteName} query={query} /> : athleteName}
+                            </span>
                           </span>
                         ) : (
                           <span className="block truncate text-[11px] italic text-gray-600">No athletes in this heat</span>
@@ -599,17 +759,22 @@ function DaySchedule({
 /* ─── Day accordion list — only ONE day stays open at a time, so the
    schedule stays compact and predictable: opening a day closes any
    other open day. The list remounts per level via `key`, which also
-   resets the open state when switching Beginner/Intermediate/Advanced. */
+   resets the open state when switching Beginner/Intermediate/Advanced.
+   While a search is active, every day that still has a match is forced
+   open so the results are visible without extra taps. */
 function DayScheduleList({
   t,
   days,
   locale,
+  query,
 }: {
   t: (key: string) => string;
   days: CompetitionDay[];
   locale: string;
+  query: string;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const searching = query !== "";
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
@@ -619,8 +784,13 @@ function DayScheduleList({
           t={t}
           index={i}
           day={day}
-          open={openId === day.id}
-          onToggle={() => setOpenId((cur) => (cur === day.id ? null : day.id))}
+          query={query}
+          open={searching || openId === day.id}
+          onToggle={() => {
+            // Toggling is paused while searching (all matches stay open).
+            if (searching) return;
+            setOpenId((cur) => (cur === day.id ? null : day.id));
+          }}
           locale={locale}
         />
       ))}
@@ -1097,6 +1267,37 @@ export default function CompetitionPage() {
     scrollTo("section-schedule");
   }, [scrollTo]);
 
+  // ── Schedule athlete search (display-only; never touches the API/DB) ──
+  const [scheduleSearch, setScheduleSearch] = useState("");
+  const searchQuery = useMemo(() => prepareQuery(scheduleSearch), [scheduleSearch]);
+  const isSearching = searchQuery !== "";
+
+  const levelDays = scheduleByLevel[activeLevel] ?? [];
+
+  const filteredDays = useMemo(
+    () => filterScheduleDays(levelDays, searchQuery),
+    [levelDays, searchQuery]
+  );
+  const matchCount = useMemo(
+    () => (isSearching ? countDistinctAthletes(filteredDays) : 0),
+    [filteredDays, isSearching]
+  );
+
+  // When the current level has no match, tell the user which OTHER levels do.
+  const otherLevelMatches = useMemo(() => {
+    if (!isSearching || filteredDays.length > 0) return [];
+    return LEVELS.map((l) => l.key)
+      .filter((key) => key !== activeLevel)
+      .map((key) => ({
+        key,
+        count: countDistinctAthletes(filterScheduleDays(scheduleByLevel[key] ?? [], searchQuery)),
+      }))
+      .filter((x) => x.count > 0);
+  }, [isSearching, filteredDays.length, activeLevel, scheduleByLevel, searchQuery]);
+
+  const searchPlaceholder = isRTL ? "جستجوی ورزشکار در برنامه..." : "Search athletes in the schedule...";
+  const clearSearchLabel = isRTL ? "پاک کردن جستجو" : "Clear search";
+
   return (
     <main className="min-h-screen bg-black text-white">
       {/* ════════════════════════════════════════════════════════════════
@@ -1290,15 +1491,39 @@ export default function CompetitionPage() {
 
           <LevelTabs t={t} active={activeLevel} onChange={setActiveLevel} />
 
-          {/* Tap hint — keeps the accordion behaviour obvious */}
-          <div className="mb-6 flex justify-center sm:mb-8">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] text-gray-400 sm:text-xs">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#B4E3BD]">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-              {t("schedule.hint")}
-            </span>
-          </div>
+          {/* Athlete search — only shown once there is a schedule to search */}
+          {!scheduleLoading && levelDays.length > 0 && (
+            <ScheduleSearchBar
+              value={scheduleSearch}
+              onChange={setScheduleSearch}
+              placeholder={searchPlaceholder}
+              clearLabel={clearSearchLabel}
+            />
+          )}
+
+          {/* Tap hint (normal) / result count (while searching) */}
+          {!scheduleLoading && levelDays.length > 0 && (
+            <div className="mb-6 flex justify-center sm:mb-8">
+              {isSearching ? (
+                <span
+                  aria-live="polite"
+                  className="inline-flex items-center gap-2 rounded-full border border-[#B4E3BD]/30 bg-[#B4E3BD]/10 px-4 py-2 text-[11px] font-semibold text-[#B4E3BD] sm:text-xs"
+                >
+                  <IconSearch />
+                  {isRTL
+                    ? `${matchCount.toLocaleString("fa-IR")} ورزشکار پیدا شد`
+                    : `${matchCount} athlete${matchCount === 1 ? "" : "s"} found`}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-[11px] text-gray-400 sm:text-xs">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#B4E3BD]">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                  {t("schedule.hint")}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Day accordions. `key` remounts the list on level change so
               the staggered fade-in replays. */}
@@ -1306,7 +1531,7 @@ export default function CompetitionPage() {
             <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 sm:gap-4">
               <p className="py-8 text-center text-sm text-gray-500">Loading schedule…</p>
             </div>
-          ) : (scheduleByLevel[activeLevel] ?? []).length === 0 ? (
+          ) : levelDays.length === 0 ? (
             <div className="mx-auto w-full max-w-3xl rounded-2xl border border-dashed border-gray-700/60 py-12 text-center">
               <p className="text-sm font-semibold text-gray-300">No events scheduled yet</p>
               <p className="mt-1 text-xs text-gray-500">
@@ -1324,8 +1549,54 @@ export default function CompetitionPage() {
                 </button>
               )}
             </div>
+          ) : isSearching && filteredDays.length === 0 ? (
+            <div className="mx-auto w-full max-w-3xl rounded-2xl border border-dashed border-gray-700/60 px-4 py-12 text-center">
+              <p className="text-sm font-semibold text-gray-300">
+                {isRTL ? "ورزشکاری با این نام پیدا نشد" : "No athletes match your search"}
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                {isRTL
+                  ? "املای نام را بررسی کنید یا بخشی از نام را وارد کنید."
+                  : "Check the spelling, or try just part of the name."}
+              </p>
+
+              {otherLevelMatches.length > 0 && (
+                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                  <span className="text-xs text-gray-500">
+                    {isRTL ? "در سطوح دیگر پیدا شد:" : "Found in other levels:"}
+                  </span>
+                  {otherLevelMatches.map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setActiveLevel(m.key)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#B4E3BD]/40 bg-[#B4E3BD]/10 px-3.5 py-1.5 text-xs font-semibold text-[#B4E3BD] transition hover:bg-[#B4E3BD]/20"
+                    >
+                      {t(`difficulty.${m.key}`)}
+                      <span className="rounded-full bg-[#B4E3BD]/20 px-1.5 text-[10px] font-bold tabular-nums">
+                        {m.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setScheduleSearch("")}
+                className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-gray-300 transition hover:border-white/30 hover:text-white"
+              >
+                {clearSearchLabel}
+              </button>
+            </div>
           ) : (
-            <DayScheduleList key={activeLevel} t={t} days={scheduleByLevel[activeLevel] ?? []} locale={locale} />
+            <DayScheduleList
+              key={activeLevel}
+              t={t}
+              days={filteredDays}
+              locale={locale}
+              query={searchQuery}
+            />
           )}
 
           <div className="mt-10 flex justify-center sm:mt-12">

@@ -42,6 +42,8 @@ async def get_competition_athletes(
     )
 
 
+# NOTE: "/names" must stay registered BEFORE the "/{name:path}" routes below,
+# otherwise it would be swallowed as an athlete literally named "names".
 @router.get("/names", response_model=list[str])
 async def get_competition_athlete_names(
     q: str | None = Query(None, description="Search query to filter athletes"),
@@ -49,18 +51,6 @@ async def get_competition_athlete_names(
 ) -> list[str]:
     """Public endpoint — returns distinct athlete names, optionally filtered."""
     return await list_distinct_names(db, query=q)
-
-
-@router.get("/{name}", response_model=CompetitionAthleteList)
-async def get_single_athlete_entries(
-    name: str,
-    db: AsyncSession = Depends(get_db),
-) -> CompetitionAthleteList:
-    """Get all competition entries for a specific athlete by name."""
-    athletes = await get_athlete_entries(db, name)
-    return CompetitionAthleteList(
-        athletes=[CompetitionAthleteRead.model_validate(a) for a in athletes]
-    )
 
 
 @router.post("", response_model=CompetitionAthleteRead, status_code=201)
@@ -125,7 +115,24 @@ async def update_competition_athlete_score(
     return CompetitionAthleteRead.model_validate(updated)
 
 
-@router.put("/{name}", response_model=CompetitionAthleteList)
+# ─── Name-based routes ────────────────────────────────────────────────
+# `:path` lets the name contain "/" (e.g. "Rami/Mohamad Amin Nia"). The
+# server decodes %2F back to "/" before routing, so without `:path` these
+# would 404. They are declared AFTER /names, /bulk and /{athlete_id}.
+
+@router.get("/{name:path}", response_model=CompetitionAthleteList)
+async def get_single_athlete_entries(
+    name: str,
+    db: AsyncSession = Depends(get_db),
+) -> CompetitionAthleteList:
+    """Get all competition entries for a specific athlete by name."""
+    athletes = await get_athlete_entries(db, name)
+    return CompetitionAthleteList(
+        athletes=[CompetitionAthleteRead.model_validate(a) for a in athletes]
+    )
+
+
+@router.put("/{name:path}", response_model=CompetitionAthleteList)
 async def update_competition_athlete_registration(
     name: str,
     data: CompetitionAthleteUpdateRegistration,
@@ -146,7 +153,7 @@ async def update_competition_athlete_registration(
     )
 
 
-@router.delete("/{name}", status_code=204)
+@router.delete("/{name:path}", status_code=204)
 async def delete_competition_athlete(
     name: str,
     db: AsyncSession = Depends(get_db),
