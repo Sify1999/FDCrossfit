@@ -1608,7 +1608,8 @@ export default function CompetitionPage() {
       {/* ════════════════════════════════════════════════════════════════
           SCORES SECTION (جدول امتیازات)
       ════════════════════════════════════════════════════════════════ */}
-      <section
+      {isAdmin && (
+        <section
         id="section-scores"
         className="relative min-h-screen w-full overflow-hidden bg-black px-4 py-20 sm:px-12 sm:py-24"
       >
@@ -1917,6 +1918,7 @@ export default function CompetitionPage() {
           </div>
         </div>
       </section>
+      )}
       <AddAthleteModal
         open={addModalOpen}
         onClose={() => {

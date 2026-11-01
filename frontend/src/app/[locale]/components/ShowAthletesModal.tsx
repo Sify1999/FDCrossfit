@@ -602,13 +602,13 @@ export default function ShowAthletesModal({
       setTie2(secondsToTimeDraft(entry.time_seconds_2));
       setEvent3Reps("");
     } else if (entry.event === 3) {
-      // Auto-scored Event 3: part1 = time, event3Ms = ms, event3Reps = meters/reps
+      // Auto-scored Event 3: part1 = time, event3Ms = ms, event3Reps = meters/reps, tie1 = tiebreaker time
       setPart1(partFromStored(null, null, null, entry.time_seconds));
       setEvent3Hundredths(numToStr(entry.time_hundredths));
       setEvent3Reps(numToStr(entry.reps));
+      setTie1(secondsToTimeDraft(entry.tiebreaker_value));
       // Clear unused fields
       setPart2(emptyPart());
-      setTie1(emptyTime());
       setTie2(emptyTime());
     } else if (entry.event === 4) {
       // Auto-scored Event 4: time (lower better), R1 time tiebreaker
