@@ -578,13 +578,14 @@ function TimeCell({ time, end }: { time: string; end: string }) {
 }
 
 
+
 /* ─── Day accordion — each DAY is the main row. Clicking a day expands
    it and reveals every event and heat, one row per athlete.
-   The table uses FIXED-width heat/line/time columns (identical in the header
-   and every row) so longer times like "10:00 – 10:30 AM" can never push
-   the layout around. On phones the event name moves under the athlete. */
-const SCHEDULE_GRID =
-  "grid grid-cols-[minmax(0,1fr)_3.25rem_2.75rem_6.75rem] items-center gap-1.5 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_4rem_3rem_10rem] sm:gap-3";
+   Desktop (sm+): a 5-column table grid with FIXED heat/line/time columns.
+   Phone: each row is a two-line card — the full athlete name on top (it
+   wraps instead of being cut off), then event / heat / line / time. */
+const SCHEDULE_GRID_SM =
+  "sm:grid sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_4rem_3rem_10rem] sm:items-center sm:gap-3";
 
 function DaySchedule({
   t,
@@ -672,21 +673,21 @@ function DaySchedule({
       >
         <div id={`${day.id}-panel`} className="min-h-0 overflow-hidden">
           <div dir="ltr" className="border-t border-white/5 bg-black/30 px-3 pb-4 pt-3 sm:px-6 sm:pb-5">
-            {/* Header row — same grid as the data rows */}
-            <div className={`${SCHEDULE_GRID} px-2 pb-2 sm:px-3`}>
-              <span className="text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+            {/* Header row — desktop only (on phones every badge is labelled) */}
+            <div className={`hidden ${SCHEDULE_GRID_SM} px-3 pb-2`}>
+              <span className="text-start text-[11px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70">
                 {t("schedule.athlete")}
               </span>
-              <span className="hidden text-start text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:block sm:text-[11px]">
+              <span className="text-start text-[11px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70">
                 {t("schedule.event")}
               </span>
-              <span className="text-center text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+              <span className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70">
                 {t("schedule.heat")}
               </span>
-              <span className="text-center text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+              <span className="text-center text-[11px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70">
                 {t("schedule.line")}
               </span>
-              <span className="text-end text-[9px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:text-[11px]">
+              <span className="text-end text-[11px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70">
                 {t("schedule.time")}
               </span>
             </div>
@@ -706,44 +707,56 @@ function DaySchedule({
                   return (
                     <div
                       key={`${day.id}-e${ei}-h${heat.heat}-a${ai}`}
-                      className={`${SCHEDULE_GRID} rounded-lg border-t px-2 py-2 transition-colors duration-200 hover:bg-[#B4E3BD]/[0.06] sm:px-3 sm:py-2.5 ${
+                      className={`flex flex-col gap-1.5 ${SCHEDULE_GRID_SM} rounded-lg border-t px-2 py-2.5 transition-colors duration-200 hover:bg-[#B4E3BD]/[0.06] sm:px-3 ${
                         isFirstOfEvent ? "mt-1.5 border-[#B4E3BD]/30" : "border-white/5"
                       }`}
                     >
-                      {/* Athlete (+ event subtitle on phones) */}
+                      {/* Athlete — wraps on phones, single truncated line on desktop */}
                       <span className="min-w-0">
                         {athleteName ? (
-                          <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="flex min-w-0 items-center gap-2">
                             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#B4E3BD]/15 text-[9px] font-bold uppercase text-[#B4E3BD]">
                               {athleteName.slice(0, 2)}
                             </span>
-                            <span className="truncate text-xs font-semibold text-white sm:text-sm">
+                            <span className="min-w-0 text-xs font-semibold leading-snug text-white [overflow-wrap:anywhere] sm:truncate sm:text-sm">
                               {searching ? <HighlightedName name={athleteName} query={query} /> : athleteName}
                             </span>
                           </span>
                         ) : (
-                          <span className="block truncate text-[11px] italic text-gray-600">No athletes in this heat</span>
+                          <span className="block text-[11px] italic text-gray-600 sm:truncate">
+                            No athletes in this heat
+                          </span>
                         )}
-                        <span className="mt-0.5 block truncate text-[10px] font-medium text-gray-500 sm:hidden">
+                      </span>
+
+                      {/* Phone: second line (indented under the name).
+                          Desktop: `contents` makes these direct grid columns. */}
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 ps-8 sm:contents">
+                        {/* Event */}
+                        <span className="min-w-0 max-w-full truncate text-[10px] font-medium text-gray-500 sm:text-xs sm:text-gray-400">
                           {event.name}
                         </span>
-                      </span>
 
-                      {/* Event (desktop column) */}
-                      <span className="hidden truncate text-xs font-medium text-gray-400 sm:block">{event.name}</span>
+                        {/* Heat badge */}
+                        <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-2 py-0.5 text-[10px] font-semibold text-[#B4E3BD] sm:py-1 sm:text-xs">
+                          {t("schedule.heat")} {heat.heat}
+                        </span>
 
-                      {/* Heat badge */}
-                      <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-1 py-1 text-[10px] font-semibold text-[#B4E3BD] sm:px-2 sm:text-xs">
-                        {t("schedule.heat")} {heat.heat}
-                      </span>
+                        {/* Line (lane) badge — labelled on phones, hidden there if no line */}
+                        <span
+                          className={`${
+                            athleteLine == null ? "hidden sm:inline-flex" : "inline-flex"
+                          } items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-gray-200 sm:py-1 sm:text-xs`}
+                        >
+                          <span className="me-1 sm:hidden">{t("schedule.line")}</span>
+                          {athleteLine ?? "—"}
+                        </span>
 
-                      {/* Line (lane) badge */}
-                      <span className="inline-flex items-center justify-center whitespace-nowrap rounded-full border border-white/10 bg-white/[0.04] px-1 py-1 text-[10px] font-semibold text-gray-200 sm:px-2 sm:text-xs">
-                        {athleteLine ?? "—"}
-                      </span>
-
-                      {/* Time */}
-                      <TimeCell time={heat.time} end={heat.end} />
+                        {/* Time — pushed to the end of the line on phones */}
+                        <span className="ml-auto min-w-0 sm:ml-0">
+                          <TimeCell time={heat.time} end={heat.end} />
+                        </span>
+                      </div>
                     </div>
                   );
                 });
@@ -755,7 +768,6 @@ function DaySchedule({
     </div>
   );
 }
-
 /* ─── Day accordion list — only ONE day stays open at a time, so the
    schedule stays compact and predictable: opening a day closes any
    other open day. The list remounts per level via `key`, which also

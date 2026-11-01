@@ -7,6 +7,9 @@ import { useEffect, useState, type ReactNode } from "react";
 const MAP_EMBED_SRC =
   "https://www.google.com/maps?q=35.83099962173378,51.00531177488845&z=16&output=embed";
 
+// Must match the email shown in the footer translations (footer.email).
+const CONTACT_EMAIL = "alirezagh1245@gmail.com";
+
 export default function ContactMapSection() {
   const t = useTranslations("aboutPage");
   const tFooter = useTranslations("footer");
@@ -72,7 +75,7 @@ export default function ContactMapSection() {
               />
             </a>
 
-            <a href="mailto:info@gym.com" className="block">
+            <a href={`mailto:${CONTACT_EMAIL}`} className="block">
               <ContactRow
                 icon="/icons/mail.svg"
                 label={tFooter("email")}

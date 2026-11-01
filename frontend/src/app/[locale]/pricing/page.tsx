@@ -1,7 +1,7 @@
-
 import { useTranslations } from "next-intl";
 
-const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/YOUR_GROUP_INVITE_CODE";
+// Same WhatsApp group the homepage "Book a Free Session" button uses.
+const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/ITsBuTpbiIAEILOjaMgyQC";
 
 const PLANS = [
   {
