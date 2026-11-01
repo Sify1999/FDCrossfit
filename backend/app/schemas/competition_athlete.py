@@ -1,6 +1,14 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.services.competition_scoring import is_valid_level
+
+
+def _validate_level(v: str) -> str:
+    if not is_valid_level(v):
+        raise ValueError("Level must be Beginner, Intermediate or Advanced")
+    return v
 
 
 class CompetitionAthleteCreate(BaseModel):
@@ -17,48 +25,46 @@ class CompetitionAthleteCreate(BaseModel):
 
 
 class CompetitionAthleteBulkCreate(BaseModel):
-    """Create an athlete registered for multiple events at once."""
+    """Register an athlete. Rows for EVERY event of the level are created
+    automatically; only heat / line assignments are provided."""
     name: str = Field(min_length=1, max_length=255, description="Athlete's full name")
     level: str = Field(
         min_length=1, max_length=50,
         description="Skill level — e.g. Beginner, Intermediate, Advanced",
     )
-    events: list[int] = Field(
-        min_length=1, max_length=9,
-        description="Event numbers (1–9) the athlete is registered for",
-    )
-    heats: dict[int, int] | None = Field(
+    heats: dict[int, int | None] | None = Field(
         None,
-        description="Optional map of event number → heat number for the registered events",
+        description="Map of event number → heat number (null clears). Events not listed are left as they are.",
     )
-    lines: dict[int, int] | None = Field(
+    lines: dict[int, int | None] | None = Field(
         None,
-        description="Optional map of event number → line (lane) number for the registered events",
+        description="Map of event number → line (lane) number (null clears). Events not listed are left as they are.",
     )
+
+    _check_level = field_validator("level")(_validate_level)
 
 
 class CompetitionAthleteUpdateRegistration(BaseModel):
-    """Reconcile an existing athlete's registration (level, events & heats).
+    """Update an existing athlete's level, heats and lines.
 
-    Events that stay registered keep their existing scores / tiebreakers;
-    removed events are deleted and new events are created.
+    Never deletes anything: scores, reps, times and tiebreakers are kept, and
+    missing event rows are added. Events not present in `heats` / `lines` are
+    left exactly as they are.
     """
     level: str = Field(
         min_length=1, max_length=50,
         description="Skill level — e.g. Beginner, Intermediate, Advanced",
     )
-    events: list[int] = Field(
-        min_length=1, max_length=9,
-        description="Event numbers (1–9) the athlete is registered for",
-    )
-    heats: dict[int, int] | None = Field(
+    heats: dict[int, int | None] | None = Field(
         None,
-        description="Optional map of event number → heat number for the registered events",
+        description="Map of event number → heat number (null clears). Events not listed are left as they are.",
     )
-    lines: dict[int, int] | None = Field(
+    lines: dict[int, int | None] | None = Field(
         None,
-        description="Optional map of event number → line (lane) number for the registered events",
+        description="Map of event number → line (lane) number (null clears). Events not listed are left as they are.",
     )
+
+    _check_level = field_validator("level")(_validate_level)
 
 
 class CompetitionAthleteUpdate(BaseModel):
@@ -71,13 +77,11 @@ class CompetitionAthleteUpdate(BaseModel):
     reps: int | None = Field(None, ge=0, description="Repetitions completed in the event (Event 1 for 1&2)")
     weight: int | None = Field(None, ge=0, description="Weight lifted (kg) in the event (Event 1 for 1&2)")
     time_seconds: int | None = Field(None, ge=0, description="Raw performance time (total seconds) — for time-based events (Event 1 for 1&2)")
-    time_ms: int | None = Field(None, ge=0, le=999, description="Milliseconds part of the time (0–999)")
     time_hundredths: int | None = Field(None, ge=0, le=99, description="Hundredths-of-a-second part (0–99)")
     score_2: int | None = Field(None, ge=0, description="Event 2 score for the combined Event 1&2")
     reps_2: int | None = Field(None, ge=0, description="Event 2 repetitions for the combined Event 1&2")
     weight_2: int | None = Field(None, ge=0, description="Event 2 weight (kg) for the combined Event 1&2")
     time_seconds_2: int | None = Field(None, ge=0, description="Event 2 raw performance time (total seconds)")
-    time_ms_2: int | None = Field(None, ge=0, le=999, description="Event 2 milliseconds part of the time (0–999)")
     time_hundredths_2: int | None = Field(None, ge=0, le=99, description="Event 2 hundredths-of-a-second part (0–99)")
     tiebreaker_type: str | None = Field(None, description="Tiebreaker type — always 'time' in the UI")
     tiebreaker_value: int | None = Field(None, ge=0, description="Tiebreaker value (seconds for time)")
@@ -93,13 +97,11 @@ class CompetitionAthleteRead(BaseModel):
     reps: int | None = None
     weight: int | None = None
     time_seconds: int | None = None
-    time_ms: int | None = None
     time_hundredths: int | None = None
     score_2: int | None = None
     reps_2: int | None = None
     weight_2: int | None = None
     time_seconds_2: int | None = None
-    time_ms_2: int | None = None
     time_hundredths_2: int | None = None
     tiebreaker_type: str | None = None
     tiebreaker_value: int | None = None

@@ -610,6 +610,20 @@ export default function ShowAthletesModal({
       setPart2(emptyPart());
       setTie1(emptyTime());
       setTie2(emptyTime());
+    } else if (entry.event === 4) {
+      // Auto-scored Event 4: time (lower better), R1 time tiebreaker
+      setPart1(partFromStored(null, null, null, entry.time_seconds));
+      setTie1(secondsToTimeDraft(entry.tiebreaker_value));
+      setPart2(emptyPart());
+      setTie2(emptyTime());
+      setEvent3Reps("");
+    } else if (entry.event === 5 || entry.event === 6) {
+      // Auto-scored Event 5 & 6: reps (more better), time tiebreaker
+      setPart1(partFromStored(null, entry.reps, null, null));
+      setTie1(secondsToTimeDraft(entry.tiebreaker_value));
+      setPart2(emptyPart());
+      setTie2(emptyTime());
+      setEvent3Reps("");
     } else {
       // Manual scoring for all other events
       setPart1(partFromStored(entry.score, entry.reps, entry.weight, entry.time_seconds));
@@ -678,6 +692,58 @@ export default function ShowAthletesModal({
         time_seconds_2: null,
         tiebreaker_type: null,
         tiebreaker_value: null,
+        tiebreaker_value_2: null,
+      };
+      setSaving(true);
+      try {
+        await api.patch(`/competition-athletes/${entryId}`, payload);
+        setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...payload } : e)));
+        setEditingId(null);
+        onDataChanged();
+      } catch (err) {
+        setSaveError(getErrorMessage(err, "Failed to save score"));
+      } finally {
+        setSaving(false);
+      }
+    } else if (entry.event === 4) {
+      // Auto-scored: Event 4 — time (lower better), R1 time tiebreaker (lower better)
+      const payload = {
+        time_seconds: timeDraftToSeconds({ min: part1.min, sec: part1.sec }),
+        reps: null,
+        weight: null,
+        score: null,
+        score_2: null,
+        reps_2: null,
+        weight_2: null,
+        time_seconds_2: null,
+        tiebreaker_type: "time",
+        tiebreaker_value: timeDraftToSeconds(tie1),
+        tiebreaker_value_2: null,
+      };
+      setSaving(true);
+      try {
+        await api.patch(`/competition-athletes/${entryId}`, payload);
+        setEntries((prev) => prev.map((e) => (e.id === entryId ? { ...e, ...payload } : e)));
+        setEditingId(null);
+        onDataChanged();
+      } catch (err) {
+        setSaveError(getErrorMessage(err, "Failed to save score"));
+      } finally {
+        setSaving(false);
+      }
+    } else if (entry.event === 5 || entry.event === 6) {
+      // Auto-scored: Event 5 & 6 — reps (more better), time tiebreaker (lower better)
+      const payload = {
+        reps: strToNum(part1.num),
+        weight: null,
+        time_seconds: null,
+        score: null,
+        score_2: null,
+        reps_2: null,
+        weight_2: null,
+        time_seconds_2: null,
+        tiebreaker_type: "time",
+        tiebreaker_value: timeDraftToSeconds(tie1),
         tiebreaker_value_2: null,
       };
       setSaving(true);
@@ -923,24 +989,24 @@ export default function ShowAthletesModal({
                                             {entry.score !== null ? entry.score.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
                                           </span>
                                         </span>
-                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                        {/* <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">E1 Reps</span>
                                           <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
                                             {entry.reps !== null ? entry.reps.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
                                           </span>
-                                        </span>
+                                        </span> */}
                                         <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">E2 Rank</span>
                                           <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
                                             {entry.score_2 !== null ? entry.score_2.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
                                           </span>
                                         </span>
-                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                        {/* <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">E2 Reps</span>
                                           <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
                                             {entry.reps_2 !== null ? entry.reps_2.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
                                           </span>
-                                        </span>
+                                        </span> */}
                                       </span>
                                     ) : entry.event === 3 ? (
                                       <span className="flex flex-wrap items-center gap-1.5">
@@ -950,14 +1016,14 @@ export default function ShowAthletesModal({
                                             {entry.score !== null ? entry.score.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
                                           </span>
                                         </span>
-                                        <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                        {/* <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
                                           <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Time</span>
                                           <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
                                             {entry.time_seconds != null
                                               ? formatTime(entry.time_seconds) + (entry.time_hundredths ? `.${String(entry.time_hundredths).padStart(2, "0")}` : "")
                                               : <span className="font-medium text-gray-500">—</span>}
                                           </span>
-                                        </span>
+                                        </span> */}
                                       </span>
                                     ) : isCombined ? (
                                       <span className="flex flex-wrap items-center gap-1.5">
@@ -975,13 +1041,12 @@ export default function ShowAthletesModal({
                                         </span>
                                       </span>
                                     ) : (
-                                      <span className="text-base font-black tabular-nums text-white sm:text-lg">
-                                        {entry.score !== null ? (
-                                          entry.score.toLocaleString()
-                                        ) : (
-                                          <span className="text-sm font-medium text-gray-500">{readOnly ? "—" : "Add Score"}</span>
-                                        )}
-                                      </span>
+                                      <span className="inline-flex items-baseline gap-1.5 rounded-lg border border-[#B4E3BD]/25 bg-[#B4E3BD]/10 px-2 py-1">
+                                          <span className="text-[8px] font-bold uppercase tracking-wider text-[#B4E3BD]/80">Rank</span>
+                                          <span className="text-sm font-black leading-none tabular-nums text-white sm:text-base">
+                                            {entry.score !== null ? entry.score.toLocaleString() : <span className="font-medium text-gray-500">—</span>}
+                                          </span>
+                                        </span>
                                     )}
                                   </div>
 
@@ -1089,6 +1154,50 @@ export default function ShowAthletesModal({
                                         </div>
                                         <p className="mt-2 text-[10px] italic leading-relaxed text-gray-500">
                                           Athletes finishing within the time cap are ranked by time (lower better); those who don't are ranked by meters (higher better). Score = rank.
+                                        </p>
+                                      </>
+                                    ) : entry.event === 4 ? (
+                                      <>
+                                        {/* Auto-scored: Event 4 — completion time lower better, R1 time tiebreaker */}
+                                        <div>
+                                          <span className={FIELD_LABEL}>Completion Time (lower is better)</span>
+                                          <div className="flex items-center gap-3">
+                                            <TimeInput value={{ min: part1.min, sec: part1.sec }} onChange={(t) => setPart1({ ...part1, unit: "time", min: t.min, sec: t.sec })} ariaPrefix="Completion time" />
+                                          </div>
+                                        </div>
+                                        <div className="mt-4 max-w-[220px] border-t border-gray-800 pt-4">
+                                          <TieBreakerField label="R1 Time (tiebreaker — lower is better)" value={tie1} onChange={setTie1} />
+                                        </div>
+                                        <p className="mt-2 text-[10px] italic leading-relaxed text-gray-500">
+                                          Score is auto‑calculated: ranked by completion time (lower better) then R1 time (lower better).
+                                        </p>
+                                      </>
+                                    ) : entry.event === 5 ? (
+                                      <>
+                                        {/* Auto-scored: Event 5 — reps more better, R2 time tiebreaker */}
+                                        <div>
+                                          <span className={FIELD_LABEL}>Reps (more is better)</span>
+                                          <NumInput value={part1.num} onChange={(v) => setPart1({ ...part1, num: v, unit: "reps" })} placeholder="Reps" ariaLabel="Event 5 reps" />
+                                        </div>
+                                        <div className="mt-4 max-w-[220px] border-t border-gray-800 pt-4">
+                                          <TieBreakerField label="R2 Time (tiebreaker — lower is better)" value={tie1} onChange={setTie1} />
+                                        </div>
+                                        <p className="mt-2 text-[10px] italic leading-relaxed text-gray-500">
+                                          Score is auto‑calculated: ranked by reps (more better) then R2 time (lower better).
+                                        </p>
+                                      </>
+                                    ) : entry.event === 6 ? (
+                                      <>
+                                        {/* Auto-scored: Event 6 — reps more better, R1 time tiebreaker */}
+                                        <div>
+                                          <span className={FIELD_LABEL}>Reps (more is better)</span>
+                                          <NumInput value={part1.num} onChange={(v) => setPart1({ ...part1, num: v, unit: "reps" })} placeholder="Reps" ariaLabel="Event 6 reps" />
+                                        </div>
+                                        <div className="mt-4 max-w-[220px] border-t border-gray-800 pt-4">
+                                          <TieBreakerField label="R1 Time (tiebreaker — lower is better)" value={tie1} onChange={setTie1} />
+                                        </div>
+                                        <p className="mt-2 text-[10px] italic leading-relaxed text-gray-500">
+                                          Score is auto‑calculated: ranked by reps (more better) then R1 time (lower better).
                                         </p>
                                       </>
                                     ) : isCombined ? (

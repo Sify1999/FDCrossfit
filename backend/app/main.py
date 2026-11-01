@@ -13,6 +13,7 @@ from app.routers import (
     comments,
     competition_athletes,
     competition_schedule,
+    competition_standings,
     complexes,
     health,
     movements,
@@ -111,3 +112,4 @@ app.include_router(section_templates.router, prefix="/api")
 app.include_router(workout_logs.router, prefix="/api")
 app.include_router(competition_athletes.router, prefix="/api")
 app.include_router(competition_schedule.router, prefix="/api")
+app.include_router(competition_standings.router, prefix="/api")

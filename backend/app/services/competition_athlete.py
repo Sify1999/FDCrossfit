@@ -1,6 +1,6 @@
 """Competition athlete service — create & list athletes for the scoreboard."""
 
-from sqlalchemy import case, delete, select, update
+from sqlalchemy import case, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.competition_athlete import CompetitionAthlete
@@ -9,9 +9,19 @@ from app.models.competition_heat import CompetitionHeat
 from app.schemas.competition_athlete import (
     CompetitionAthleteBulkCreate,
     CompetitionAthleteCreate,
-    CompetitionAthleteUpdate,
     CompetitionAthleteUpdateRegistration,
 )
+from app.services.competition_scoring import LEVEL_MAX_EVENT, normalize_level
+
+# Row events: Event 2 lives on the combined "Event 1&2" row (event number 1).
+ROW_EVENTS = [1, 3, 4, 5, 6, 7, 8, 9]
+
+
+def level_row_events(level: str) -> list[int]:
+    """Event rows every athlete of this level has (beginner/intermediate: 1-8,
+    advanced: 1-9)."""
+    max_event = LEVEL_MAX_EVENT.get(normalize_level(level), 9)
+    return [e for e in ROW_EVENTS if e <= max_event]
 
 
 async def list_athletes(
@@ -51,8 +61,6 @@ async def list_distinct_names(
     query: str | None = None,
 ) -> list[str]:
     """Return distinct athlete names, optionally filtered by search query."""
-    from sqlalchemy import func
-
     stmt = select(CompetitionAthlete.name).distinct().order_by(CompetitionAthlete.name)
     if query:
         stmt = stmt.where(CompetitionAthlete.name.ilike(f"%{query}%"))
@@ -90,48 +98,72 @@ async def create_athlete(
     return athlete
 
 
+# ─── Registration (no event picker) ───────────────────────────────────
+
+async def _heat_id_map(db: AsyncSession, level: str) -> dict[tuple[int, int], int]:
+    """(event number, heat number) -> heat record id, for this level."""
+    result = await db.execute(
+        select(CompetitionHeat.id, CompetitionEvent.event_number, CompetitionHeat.heat_number)
+        .join(CompetitionEvent, CompetitionHeat.event_id == CompetitionEvent.id)
+        .where(CompetitionEvent.level == normalize_level(level))
+    )
+    return {(int(ev), int(hn)): int(hid) for hid, ev, hn in result.all()}
+
+
+async def _rows_for(db: AsyncSession, name: str, level: str) -> list[CompetitionAthlete]:
+    result = await db.execute(
+        select(CompetitionAthlete)
+        .where(
+            CompetitionAthlete.name == name,
+            func.lower(CompetitionAthlete.level) == normalize_level(level),
+        )
+        .order_by(CompetitionAthlete.event)
+    )
+    return list(result.scalars().all())
+
+
+async def ensure_event_rows(db: AsyncSession, name: str, level: str) -> None:
+    """Make sure the athlete has a row for every event of their level.
+    INSERT-ONLY: existing rows (scores, heats, lines) are never touched."""
+    have = {r.event for r in await _rows_for(db, name, level)}
+    for ev in level_row_events(level):
+        if ev not in have:
+            db.add(CompetitionAthlete(name=name, level=level, event=ev, score=None))
+    await db.flush()
+
+
+async def _apply_assignments(
+    db: AsyncSession,
+    name: str,
+    level: str,
+    heats: dict[int, int | None],
+    lines: dict[int, int | None],
+) -> None:
+    """Set heat / line ONLY for the events present in the maps (None clears).
+    Events that aren't mentioned are left exactly as they are."""
+    if not heats and not lines:
+        return
+    heat_ids = await _heat_id_map(db, level) if heats else {}
+    for row in await _rows_for(db, name, level):
+        if row.event in heats:
+            hn = heats[row.event]
+            row.heat = hn
+            row.heat_id = heat_ids.get((row.event, hn)) if hn is not None else None
+        if row.event in lines:
+            row.line = lines[row.event]
+    await db.flush()
+
+
 async def create_athlete_bulk(
     db: AsyncSession,
     data: CompetitionAthleteBulkCreate,
 ) -> list[CompetitionAthlete]:
-    """Create an athlete registered for multiple events, each optionally assigned to a heat.
-
-    When a matching heat record exists for (event, heat number) we also wire the
-    athlete's ``heat_id`` to it, connecting the athlete to the timed heat.
-    """
-    heats = data.heats or {}
-    lines = data.lines or {}
-
-    # Look up existing heat records for this athlete's level so we can link heat_id.
-    heat_id_map: dict[tuple[int, int], int] = {}
-    if heats:
-        result = await db.execute(
-            select(CompetitionHeat.id, CompetitionEvent.event_number, CompetitionHeat.heat_number)
-            .join(CompetitionEvent, CompetitionHeat.event_id == CompetitionEvent.id)
-            .where(CompetitionEvent.level == data.level.strip().lower())
-        )
-        for heat_id, event_number, heat_number in result.all():
-            heat_id_map[(int(event_number), int(heat_number))] = int(heat_id)
-
-    athletes = []
-    for event in data.events:
-        heat_number = heats.get(event)
-        heat_id = heat_id_map.get((event, heat_number)) if heat_number is not None else None
-        athlete = CompetitionAthlete(
-            name=data.name,
-            level=data.level,
-            event=event,
-            score=None,
-            heat=heat_number,
-            heat_id=heat_id,
-            line=lines.get(event),
-        )
-        db.add(athlete)
-        athletes.append(athlete)
-    await db.flush()
-    for a in athletes:
-        await db.refresh(a)
-    return athletes
+    """Register an athlete: one row per event of their level, then apply the
+    optional heat / line assignments. If the athlete already exists in this
+    level, missing event rows are added and nothing is duplicated or lost."""
+    await ensure_event_rows(db, data.name, data.level)
+    await _apply_assignments(db, data.name, data.level, data.heats or {}, data.lines or {})
+    return await _rows_for(db, data.name, data.level)
 
 
 async def update_athlete_registration(
@@ -139,69 +171,15 @@ async def update_athlete_registration(
     name: str,
     data: CompetitionAthleteUpdateRegistration,
 ) -> list[CompetitionAthlete]:
-    """Reconcile an athlete's registration for events & heats.
-
-    Events that remain keep their scores/tiebreakers; new events are created
-    and removed events are deleted. Heat records are linked like in bulk create.
-    """
-    # Resolve heat record ids for this level's (event, heat) pairs.
-    heat_id_map: dict[tuple[int, int], int] = {}
-    if data.heats:
-        result = await db.execute(
-            select(CompetitionHeat.id, CompetitionEvent.event_number, CompetitionHeat.heat_number)
-            .join(CompetitionEvent, CompetitionHeat.event_id == CompetitionEvent.id)
-            .where(CompetitionEvent.level == data.level.strip().lower())
-        )
-        for heat_id, event_number, heat_number in result.all():
-            heat_id_map[(int(event_number), int(heat_number))] = int(heat_id)
-
-    existing = await get_athlete_entries(db, name)
-    existing_by_event = {e.event: e for e in existing}
-    target_events = set(data.events)
-    heats = data.heats or {}
-    lines = data.lines or {}
-
-    # Update kept events (level / heat number / heat_id / line) and create new ones.
-    for event in data.events:
-        heat_number = heats.get(event)
-        heat_id = heat_id_map.get((event, heat_number)) if heat_number is not None else None
-        cur = existing_by_event.get(event)
-        if cur is None:
-            db.add(
-                CompetitionAthlete(
-                    name=name,
-                    level=data.level,
-                    event=event,
-                    score=None,
-                    heat=heat_number,
-                    heat_id=heat_id,
-                    line=lines.get(event),
-                )
-            )
-        else:
-            line_number = lines.get(event)
-            if (
-                cur.level != data.level
-                or cur.heat != heat_number
-                or cur.heat_id != heat_id
-                or cur.line != line_number
-            ):
-                cur.level = data.level
-                cur.heat = heat_number
-                cur.heat_id = heat_id
-                cur.line = line_number
-
-    # Delete events that are no longer selected.
-    to_delete = [ev for ev in existing_by_event if ev not in target_events]
-    if to_delete:
-        await db.execute(
-            delete(CompetitionAthlete).where(
-                CompetitionAthlete.name == name,
-                CompetitionAthlete.event.in_(to_delete),
-            )
-        )
-
+    """Update an athlete's level, heats and lines. NEVER deletes rows or
+    clears scores — missing event rows are simply added."""
+    for row in await get_athlete_entries(db, name):
+        if row.level != data.level:
+            row.level = data.level
     await db.flush()
+
+    await ensure_event_rows(db, name, data.level)
+    await _apply_assignments(db, name, data.level, data.heats or {}, data.lines or {})
     return await get_athlete_entries(db, name)
 
 
@@ -267,6 +245,8 @@ async def update_athlete_score(
         values["weight_2"] = weight_2
     if time_seconds_2 is not _UNSET:
         values["time_seconds_2"] = time_seconds_2
+    if tiebreaker_value_2 is not _UNSET:
+        values["tiebreaker_value_2"] = tiebreaker_value_2
     if time_hundredths_2 is not _UNSET:
         values["time_hundredths_2"] = time_hundredths_2
     if not values:
@@ -284,20 +264,17 @@ async def update_athlete_score(
         select(CompetitionAthlete).where(CompetitionAthlete.id == athlete_id)
     )
     return result.scalar_one_or_none()
+
+
 async def recompute_event_ranks(
     db: AsyncSession,
     event_number: int,
     time_cap_seconds: int | None = None,
 ) -> None:
     """
-    Recompute scores for all athletes in a given event by ranking them.
-
-    Event 1 (combined 1&2)
-        rank by reps DESC, time_seconds ASC  →  score = rank
-    Event 3 (for-time with cap)
-        finished  (time <= cap) sorted by time ASC
-        unfinished (time > cap or NULL) sorted by reps DESC
-        score = rank
+    LEGACY — writes the old `score` column for events 1 and 3 across ALL
+    athletes. The new stage standings don't read it (ranks are derived from the
+    raw results), so it is harmless; it can be removed later.
     """
     from sqlalchemy import update as upd
 
@@ -313,14 +290,19 @@ async def recompute_event_ranks(
         by_level.setdefault(a.level, []).append(a)
 
     if event_number == 1:
+        # Combined Event 1&2: two separate ranks per level
+        # Event 1 by reps DESC + time(+hundredths) ASC → score
+        # Event 2 by reps_2 DESC + time_2(+hundredths_2) ASC → score_2
         for level, group in by_level.items():
             ev1 = sorted(group, key=lambda a: (
                 -(a.reps or 0),
-                a.time_seconds if a.time_seconds is not None else float("inf"),
+                (a.time_seconds or 0) + ((a.time_hundredths or 0) / 100.0)
+                if a.time_seconds is not None else float("inf"),
             ))
             ev2 = sorted(group, key=lambda a: (
                 -(a.reps_2 or 0),
-                a.time_seconds_2 if a.time_seconds_2 is not None else float("inf"),
+                (a.time_seconds_2 or 0) + ((a.time_hundredths_2 or 0) / 100.0)
+                if a.time_seconds_2 is not None else float("inf"),
             ))
             rank_map = {}
             for r, a in enumerate(ev1, start=1):
@@ -335,20 +317,47 @@ async def recompute_event_ranks(
                     .values(score=r1, score_2=r2)
                 )
     elif event_number == 2:
-        # Event 2 uses the same combined entry — handled by event=1 above
-        return
+        return  # Event 2 handled by event 1 above
     elif event_number == 3:
         cap = time_cap_seconds or 540  # default 9 min
 
         for level, group in by_level.items():
-            def _key(a: CompetitionAthlete) -> tuple:
+            def _ev3_key(a: CompetitionAthlete) -> tuple:
                 total = (a.time_seconds or 0) + ((a.time_hundredths or 0) / 100.0)
                 if (a.time_seconds is not None and
                     a.time_seconds <= cap and
                     (a.time_seconds < cap or (a.time_seconds == cap and (a.time_hundredths or 0) == 0))):
-                    return (0, total, -(a.reps or 0))  # finished => time ASC, then reps DESC
-                return (1, 0, -(a.reps or 0))         # unfinished => reps DESC
-            group.sort(key=_key)
+                    return (0, total, -(a.reps or 0))   # finished => time ASC, then reps DESC
+                return (1, 0, -(a.reps or 0))            # unfinished => reps DESC
+            group.sort(key=_ev3_key)
+            for rank, athlete in enumerate(group, start=1):
+                if athlete.score != rank:
+                    await db.execute(
+                        upd(CompetitionAthlete)
+                        .where(CompetitionAthlete.id == athlete.id)
+                        .values(score=rank)
+                    )
+    elif event_number == 4:
+        # Event 4: time ASC (lower better), tiebreaker_value ASC (lower better)
+        for level, group in by_level.items():
+            group.sort(key=lambda a: (
+                a.time_seconds if a.time_seconds is not None else float("inf"),
+                a.tiebreaker_value if a.tiebreaker_value is not None else float("inf"),
+            ))
+            for rank, athlete in enumerate(group, start=1):
+                if athlete.score != rank:
+                    await db.execute(
+                        upd(CompetitionAthlete)
+                        .where(CompetitionAthlete.id == athlete.id)
+                        .values(score=rank)
+                    )
+    elif event_number in (5, 6):
+        # Events 5 & 6: reps DESC (more better), tiebreaker_value ASC (lower better)
+        for level, group in by_level.items():
+            group.sort(key=lambda a: (
+                -(a.reps or 0),
+                a.tiebreaker_value if a.tiebreaker_value is not None else float("inf"),
+            ))
             for rank, athlete in enumerate(group, start=1):
                 if athlete.score != rank:
                     await db.execute(

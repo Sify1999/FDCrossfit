@@ -1,6 +1,6 @@
 "use client";
 
-import { COMPETITION_EVENT_NUMBERS, COMPETITION_DAY_EVENT_GROUPS, eventLabel } from "@/lib/competition-events";
+import { COMPETITION_DAY_EVENT_GROUPS, eventLabel } from "@/lib/competition-events";
 import { dayDateLabel } from "@/lib/competition-days";
 import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
@@ -336,7 +336,13 @@ function buildScheduleDays(events: ScheduleEventApi[]): CompetitionDay[] {
         end: formatTime12h(h.end_time),
         athletes: (h.athletes ?? [])
           .map((a) => ({ name: a.name, line: a.line ?? null }))
-          .sort((a, b) => a.name.localeCompare(b.name)),
+          .sort((a, b) => {
+            // Sort by line ASC (null/undefined = no line → sort last), then name
+            const la = a.line ?? 9999;
+            const lb = b.line ?? 9999;
+            if (la !== lb) return la - lb;
+            return a.name.localeCompare(b.name);
+          }),
       })),
     });
   }
@@ -344,32 +350,38 @@ function buildScheduleDays(events: ScheduleEventApi[]): CompetitionDay[] {
 }
 
 /* ─── Leaderboard types ──────────────────────────── */
-type LeaderboardEntry = {
-  id: number;
-  name: string;
-  level: string;
-  event: number;
-  score: number | null;
-  tiebreaker_type: string | null;
-  tiebreaker_value: number | null;
+type StageInfo = {
+  stage: number;
+  state: string;
+  advance_count: number | null;
 };
 
-type AthleteFromApi = {
-  id: number;
+type StandingEventResult = {
+  rank: number | null;
+  display: string | null;
+};
+
+type StageStandingRow = {
+  position: number;
   name: string;
   level: string;
-  event: number;
-  score: number | null;
-  reps: number | null;
-  weight: number | null;
-  score_2: number | null;
-  reps_2: number | null;
-  weight_2: number | null;
-  tiebreaker_type: string | null;
-  tiebreaker_value: number | null;
-  tiebreaker_value_2: number | null;
-  created_at: string;
-  updated_at: string;
+  stage1_rank?: number | null;
+  events: Record<string, StandingEventResult>;
+  total: number | null;
+  firsts: number;
+  completed: number;
+  status: string;
+};
+
+type StandingsResponse = {
+  stages: StageInfo[];
+  standing: {
+    level: string;
+    stage: number;
+    state: string;
+    events: number[];
+    rows: StageStandingRow[];
+  };
 };
 
 /* Level colors match the difficulty icons: mint / orange / blue. */
@@ -379,28 +391,10 @@ const LEVEL_BADGE_STYLES: Record<string, string> = {
   Advanced: "bg-[#8ab4f8]/10 text-[#8ab4f8] border-[#8ab4f8]/30",
 };
 
-const EVENT_BADGE_STYLE = "bg-white/5 text-gray-300 border-white/10";
-
 function LevelBadge({ level }: { level: string }) {
   return (
     <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider sm:px-3 sm:text-[11px] ${LEVEL_BADGE_STYLES[level] || ""}`}>
       {level}
-    </span>
-  );
-}
-
-function EventBadge({ event }: { event: number }) {
-  const label =
-    event === 0
-      ? "Total"
-      : event === 1
-        ? "Event 1"
-        : event === 2
-          ? "Event 2"
-          : eventLabel(event);
-  return (
-    <span className={`inline-block whitespace-nowrap rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-wider sm:px-3 sm:text-[11px] ${EVENT_BADGE_STYLE}`}>
-      {label}
     </span>
   );
 }
@@ -948,10 +942,12 @@ export default function CompetitionPage() {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // ── Leaderboard filters ──────────────────────────────────────────
-  const [levelFilter, setLevelFilter] = useState<string>("Beginner");
-  const [eventFilter, setEventFilter] = useState<number>(0); // 0 = Total (sum of all events)
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  // ── Leaderboard / Stage standings filters ──────────────────────────
+  const [levelFilter, setLevelFilter] = useState<LevelKey>("beginner");
+  const [stageFilter, setStageFilter] = useState<number>(1);
+  const [standingRows, setStandingRows] = useState<StageStandingRow[]>([]);
+  const [standingEvents, setStandingEvents] = useState<number[]>([]);
+  const [stages, setStages] = useState<StageInfo[]>([]);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [showAthletesOpen, setShowAthletesOpen] = useState(false);
@@ -1042,96 +1038,36 @@ export default function CompetitionPage() {
     };
   }, []);
 
-  // Load leaderboard data from the API
+  // Load stage standings from the API
   const loadLeaderboard = useCallback(async () => {
     setLoadingLeaderboard(true);
+
     try {
-      const params = new URLSearchParams();
-      params.set("level", levelFilter);
-      // Events 1 & 2 are the two scored parts of the combined "Event 1&2" entry —
-      // fetch all the level's entries and split them client-side.
-      if (eventFilter >= 3) params.set("event", String(eventFilter));
-      const qs = params.toString();
-      const data = await api.get<{ athletes: AthleteFromApi[] }>(
-        `/competition-athletes?${qs}`
+      const res = await api.get<StandingsResponse>(
+        `/competition/standings?level=${encodeURIComponent(
+          levelFilter
+        )}&stage=${stageFilter}`
       );
-      if (eventFilter === 0) {
-        // Aggregate: sum every athlete's scores across all events.
-        // The combined Event 1&2 entry contributes both of its parts.
-        const summed = new Map<string, { level: string; score: number }>();
-        for (const a of data.athletes) {
-          const cur = summed.get(a.name) ?? { level: a.level, score: 0 };
-          cur.score += (a.score ?? 0) + (a.score_2 ?? 0);
-          summed.set(a.name, cur);
-        }
-        setLeaderboard(
-          Array.from(summed.entries()).map(([name, s]) => ({
-            id: 0,
-            name,
-            level: s.level,
-            event: 0,
-            score: s.score,
-            tiebreaker_type: null,
-            tiebreaker_value: null,
-          }))
-        );
-      } else if (eventFilter === 1 || eventFilter === 2) {
-        // Events 1 & 2 are the two scored parts of the combined "Event 1&2" entry —
-        // split its score into two separate leaderboard rows.
-        setLeaderboard(
-          data.athletes
-            .filter((a) => a.event === 1)
-            .map((a) => ({
-              id: a.id,
-              name: a.name,
-              level: a.level,
-              event: eventFilter,
-              score: eventFilter === 1 ? a.score : a.score_2,
-              tiebreaker_type: "time",
-              tiebreaker_value: eventFilter === 1 ? a.tiebreaker_value : a.tiebreaker_value_2,
-            }))
-        );
-      } else {
-        setLeaderboard(
-          data.athletes.map((a) => ({
-            id: a.id,
-            name: a.name,
-            level: a.level,
-            event: a.event,
-            score: a.score,
-            tiebreaker_type: a.tiebreaker_type,
-            tiebreaker_value: a.tiebreaker_value,
-          }))
-        );
-      }
+
+      setStandingRows(res.standing.rows ?? []);
+      setStandingEvents(res.standing.events ?? []);
+      setStages(res.stages ?? []);
     } catch {
-      setLeaderboard([]);
+      setStandingRows([]);
+      setStandingEvents([]);
+      setStages([]);
     } finally {
       setLoadingLeaderboard(false);
     }
-  }, [levelFilter, eventFilter]);
+  }, [levelFilter, stageFilter]);
 
   // Fetch on mount + when filters change
   useEffect(() => {
     loadLeaderboard();
   }, [loadLeaderboard]);
 
-  const filtered = leaderboard
-    .filter((r) => r.level === levelFilter)
-    .filter((r) => eventFilter === 0 || r.event === eventFilter)
-    // Hide athletes with 0 points (and athletes who haven't scored yet).
-    .filter((r) => (r.score ?? 0) > 0)
-    .sort((a, b) => {
-      // Ascending points — the LOWEST score ranks #1 (e.g. #1 has 1 point, #2 has 3).
-      const s = (a.score ?? 0) - (b.score ?? 0);
-      if (s !== 0) return s;
-      // Time tiebreakers rank by LOWEST time; everything else by highest value.
-      const bothTime = a.tiebreaker_type === "time" && b.tiebreaker_type === "time";
-      return bothTime
-        ? (a.tiebreaker_value ?? 0) - (b.tiebreaker_value ?? 0)
-        : (b.tiebreaker_value ?? 0) - (a.tiebreaker_value ?? 0);
-    })
-    .map((row, i) => ({ ...row, place: i + 1 }));
+  // Rows to display — the API already returns them sorted by stage total (lowest best)
+  const displayed = standingRows;
 
   // ── Schedule difficulty picker ─────────────────────────────────────
   // One ref wraps BOTH the trigger button and the popover, so a click on
@@ -1401,10 +1337,22 @@ export default function CompetitionPage() {
       {/* ════════════════════════════════════════════════════════════════
           SCORES SECTION (جدول امتیازات)
       ════════════════════════════════════════════════════════════════ */}
-      <section id="section-scores" className="relative min-h-screen w-full overflow-hidden bg-black px-4 py-20 sm:px-12 sm:py-24">
-        <div aria-hidden className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent" />
-        <div aria-hidden className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-[#B4E3BD]/[0.06] blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[#B4E3BD]/[0.04] blur-3xl" />
+      <section
+        id="section-scores"
+        className="relative min-h-screen w-full overflow-hidden bg-black px-4 py-20 sm:px-12 sm:py-24"
+      >
+        <div
+          aria-hidden
+          className="absolute left-0 top-0 h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-[#B4E3BD]/[0.06] blur-3xl"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-[#B4E3BD]/[0.04] blur-3xl"
+        />
 
         <div className="relative z-10 mx-auto max-w-5xl">
           <SectionHeader
@@ -1414,8 +1362,11 @@ export default function CompetitionPage() {
             description={t("scores.description")}
           />
 
-          {/* Action bar — pinned LTR so RTL/FA mode keeps the same layout */}
-          <div dir="ltr" className="mb-5 flex flex-wrap items-center justify-between gap-3">
+          {/* Action bar */}
+          <div
+            dir="ltr"
+            className="mb-5 flex flex-wrap items-center justify-between gap-3"
+          >
             <div className="min-h-[20px]">
               {loadingLeaderboard && (
                 <span className="inline-flex items-center gap-2 text-sm text-gray-500">
@@ -1424,118 +1375,193 @@ export default function CompetitionPage() {
                 </span>
               )}
             </div>
+
             {isAdmin && (
               <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setScheduleOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-gray-300 transition-all hover:border-white/30 hover:bg-white/[0.07] hover:text-white active:scale-[0.98] sm:px-5"
-              >
-                <IconCalendarSmall />
-                Schedule
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowAthletesReadOnly(false);
-                  setShowAthletesInitialName(null);
-                  setShowAthletesOpen(true);
-                }}
-                className="inline-flex items-center gap-2 rounded-full border border-[#B4E3BD]/50 px-4 py-2.5 text-sm font-semibold text-[#B4E3BD] transition-all hover:bg-[#B4E3BD]/10 active:scale-[0.98] sm:px-5"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                Show Athletes
-              </button>
-              <button
-                type="button"
-                onClick={() => setAddModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-[#B4E3BD] px-4 py-2.5 text-sm font-semibold text-black shadow-lg shadow-[#B4E3BD]/20 transition-all hover:bg-[#a3dcae] hover:shadow-[#B4E3BD]/30 active:scale-[0.98] sm:px-5"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                Add Athlete
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setScheduleOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-gray-300 transition-all hover:border-white/30 hover:bg-white/[0.07] hover:text-white active:scale-[0.98] sm:px-5"
+                >
+                  <IconCalendarSmall />
+                  Schedule
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAthletesReadOnly(false);
+                    setShowAthletesInitialName(null);
+                    setShowAthletesOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full border border-[#B4E3BD]/50 px-4 py-2.5 text-sm font-semibold text-[#B4E3BD] transition-all hover:bg-[#B4E3BD]/10 active:scale-[0.98] sm:px-5"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  Show Athletes
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingAthlete(null);
+                    setAddModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-full bg-[#B4E3BD] px-4 py-2.5 text-sm font-semibold text-black shadow-lg shadow-[#B4E3BD]/20 transition-all hover:bg-[#a3dcae] hover:shadow-[#B4E3BD]/30 active:scale-[0.98] sm:px-5"
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                  >
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  Add Athlete
+                </button>
               </div>
             )}
           </div>
 
-          {/* Leaderboard card — pinned LTR so FA mode never flips/breaks it */}
-          <div dir="ltr" className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#121212] shadow-xl shadow-black/50">
-            <span aria-hidden className="block h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent" />
+          {/* Stage selector — pill row above the standings table */}
+          <div dir="ltr" className="mb-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
+            {(stages.length > 0 ? stages : [
+              { stage: 1, state: "" },
+              { stage: 2, state: "" },
+              { stage: 3, state: "" },
+            ]).map((s) => (
+              <button
+                key={s.stage}
+                type="button"
+                onClick={() => setStageFilter(s.stage)}
+                className={`relative rounded-full border px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all duration-200 sm:px-7 sm:text-base ${
+                  stageFilter === s.stage
+                    ? "border-[#B4E3BD]/80 bg-[#B4E3BD]/15 text-[#B4E3BD] shadow-lg shadow-[#B4E3BD]/20"
+                    : "border-white/10 bg-white/[0.03] text-gray-400 hover:border-white/25 hover:bg-white/[0.06] hover:text-white"
+                }`}
+              >
+                <span className="relative z-10">Stage {s.stage}</span>
+                {s.state === "closed" && stageFilter !== s.stage && (
+                  <span className="absolute -end-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#B4E3BD] text-[8px] font-black text-black shadow">
+                    ✓
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Leaderboard */}
+          <div
+            dir="ltr"
+            className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#121212] shadow-xl shadow-black/50"
+          >
+            <span
+              aria-hidden
+              className="block h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent"
+            />
+
             <div className="max-h-[65vh] overflow-auto [scrollbar-color:#333_transparent] [scrollbar-width:thin]">
-              <table className="w-full min-w-[480px] sm:min-w-0">
+              <table className="w-full min-w-max">
                 <thead>
                   <tr>
                     <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
                       #
                     </th>
+
                     <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
                       Name
                     </th>
+
                     <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-2 text-left sm:px-5">
                       <FilterDropdown
                         label="Level"
                         options={[
-                          { value: "Beginner", label: "Beginner" },
-                          { value: "Intermediate", label: "Intermediate" },
-                          { value: "Advanced", label: "Advanced" },
+                          { value: "beginner", label: "Beginner" },
+                          { value: "intermediate", label: "Intermediate" },
+                          { value: "advanced", label: "Advanced" },
                         ]}
                         selected={levelFilter}
-                        onSelect={(v) => setLevelFilter(v as string)}
+                        onSelect={(v) => setLevelFilter(v as LevelKey)}
                       />
                     </th>
-                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-2 text-left sm:px-5">
-                      <FilterDropdown
-                        label="Event"
-                        options={[
-                          { value: 0, label: "Total" },
-                          { value: 1, label: "Event 1" },
-                          { value: 2, label: "Event 2" },
-                          ...COMPETITION_EVENT_NUMBERS.filter((n) => n > 2).map((n) => ({
-                            value: n,
-                            label: eventLabel(n),
-                          })),
-                        ]}
-                        selected={eventFilter}
-                        onSelect={(v) => setEventFilter(v as number)}
-                      />
-                    </th>
-                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
-                      Score
+
+                    {/* Dynamic event columns */}
+                    {stageFilter === 2 && (
+                      <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-[#B4E3BD]/70 sm:px-3 sm:text-[11px]">
+                        S1 Rank
+                      </th>
+                    )}
+                    {standingEvents.map((eventNumber) => (
+                      <th
+                        key={eventNumber}
+                        className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-[#B4E3BD]/70 sm:px-3 sm:text-[11px]"
+                      >
+                        E{eventNumber}
+                      </th>
+                    ))}
+
+                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:text-[11px]">
+                      Stage {stageFilter} Total
                     </th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {filtered.length === 0 ? (
+                  {displayed.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-14 text-center sm:px-6">
-                        <p className="text-sm font-semibold text-gray-300">No results match your filters.</p>
-                        <p className="mt-1 text-xs text-gray-500">Try a different level or event.</p>
+                      <td
+                        colSpan={4 + standingEvents.length + 1}
+                        className="px-4 py-14 text-center sm:px-6"
+                      >
+                        <p className="text-sm font-semibold text-gray-300">
+                          No results yet.
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          Enter scores for this stage&apos;s events to see rankings.
+                        </p>
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((row) => {
+                    displayed.map((row) => {
                       const podium =
-                        row.place === 1
+                        row.position === 1
                           ? {
-                              badge: "bg-[#FFD700]/15 text-[#FFD700] border-[#FFD700]/40",
-                              row: "bg-[#FFD700]/[0.05] hover:bg-[#FFD700]/[0.09] shadow-[inset_3px_0_0_0_#FFD700]",
+                              badge:
+                                "bg-[#FFD700]/15 text-[#FFD700] border-[#FFD700]/40",
+                              row:
+                                "bg-[#FFD700]/[0.05] hover:bg-[#FFD700]/[0.09] shadow-[inset_3px_0_0_0_#FFD700]",
                               score: "text-[#FFD700]",
                             }
-                          : row.place === 2
+                          : row.position === 2
                             ? {
-                                badge: "bg-[#C0C0C0]/15 text-[#D4D4D4] border-[#C0C0C0]/40",
-                                row: "bg-[#C0C0C0]/[0.04] hover:bg-[#C0C0C0]/[0.08] shadow-[inset_3px_0_0_0_#C0C0C0]",
+                                badge:
+                                  "bg-[#C0C0C0]/15 text-[#D4D4D4] border-[#C0C0C0]/40",
+                                row:
+                                  "bg-[#C0C0C0]/[0.04] hover:bg-[#C0C0C0]/[0.08] shadow-[inset_3px_0_0_0_#C0C0C0]",
                                 score: "text-[#D4D4D4]",
                               }
-                            : row.place === 3
+                            : row.position === 3
                               ? {
-                                  badge: "bg-[#CD7F32]/15 text-[#E09A5A] border-[#CD7F32]/40",
-                                  row: "bg-[#CD7F32]/[0.05] hover:bg-[#CD7F32]/[0.09] shadow-[inset_3px_0_0_0_#CD7F32]",
+                                  badge:
+                                    "bg-[#CD7F32]/15 text-[#E09A5A] border-[#CD7F32]/40",
+                                  row:
+                                    "bg-[#CD7F32]/[0.05] hover:bg-[#CD7F32]/[0.09] shadow-[inset_3px_0_0_0_#CD7F32]",
                                   score: "text-[#E09A5A]",
                                 }
                               : {
@@ -1545,26 +1571,66 @@ export default function CompetitionPage() {
                                 };
 
                       return (
-                        <tr key={`${row.name}-${row.event}`} className={`border-b border-white/5 transition-colors duration-200 last:border-0 ${podium.row}`}>
+                        <tr
+                          key={row.name}
+                          className={`border-b border-white/5 transition-colors duration-200 last:border-0 ${podium.row}`}
+                        >
                           <td className="px-3 py-3 sm:px-5 sm:py-4">
-                            <span className={`inline-flex min-w-[28px] items-center justify-center rounded-lg border px-2 py-0.5 text-xs font-black tabular-nums sm:min-w-[32px] sm:py-1 sm:text-sm ${podium.badge}`}>
-                              {row.place}
+                            <span
+                              className={`inline-flex min-w-[28px] items-center justify-center rounded-lg border px-2 py-0.5 text-xs font-black tabular-nums sm:min-w-[32px] sm:py-1 sm:text-sm ${podium.badge}`}
+                            >
+                              {row.position}
                             </span>
                           </td>
+
                           <td className="px-3 py-3 sm:px-5 sm:py-4">
                             <button
                               type="button"
                               onClick={() => openAthleteDetails(row.name)}
                               title={`View ${row.name}'s results`}
-                              className="block max-w-[100px] truncate text-left text-xs font-semibold text-white underline-offset-4 transition hover:text-[#B4E3BD] hover:underline sm:max-w-none sm:text-sm"
+                              className="block max-w-[120px] truncate text-left text-xs font-semibold text-white underline-offset-4 transition hover:text-[#B4E3BD] hover:underline sm:max-w-none sm:text-sm"
                             >
                               {row.name}
                             </button>
                           </td>
-                          <td className="px-3 py-3 sm:px-5 sm:py-4"><LevelBadge level={row.level} /></td>
-                          <td className="px-3 py-3 sm:px-5 sm:py-4"><EventBadge event={row.event} /></td>
-                          <td className={`whitespace-nowrap px-3 py-3 text-right text-sm font-black tabular-nums sm:px-5 sm:py-4 sm:text-base ${podium.score}`}>
-                            {row.score !== null ? row.score.toLocaleString() : <span className="text-gray-600">—</span>}
+
+                          <td className="px-3 py-3 sm:px-5 sm:py-4">
+                            <LevelBadge level={row.level} />
+                          </td>
+
+                          {stageFilter === 2 && (
+                          <td className="px-2 py-3 text-center sm:px-3 sm:py-4">
+                            <span className="inline-flex min-w-[32px] items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] font-bold tabular-nums text-gray-200 sm:text-sm">
+                              {row.stage1_rank != null ? row.stage1_rank : <span className="text-gray-600">—</span>}
+                            </span>
+                          </td>
+                          )}
+
+                          {/* Dynamic event rankings */}
+                          {standingEvents.map((eventNumber) => {
+                            const eventResult =
+                              row.events?.[String(eventNumber)];
+
+                            return (
+                              <td
+                                key={eventNumber}
+                                className="px-2 py-3 text-center sm:px-3 sm:py-4"
+                              >
+                                <span className="inline-flex min-w-[32px] items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] font-bold tabular-nums text-gray-200 sm:text-sm">
+                                  {eventResult?.rank != null ? (
+                                    eventResult.rank
+                                  ) : (
+                                    <span className="text-gray-600">—</span>
+                                  )}
+                                </span>
+                              </td>
+                            );
+                          })}
+
+                          <td
+                            className={`whitespace-nowrap px-3 py-3 text-right text-sm font-black tabular-nums sm:px-5 sm:py-4 sm:text-base ${podium.score}`}
+                          >
+                            {row.total}
                           </td>
                         </tr>
                       );
@@ -1575,13 +1641,11 @@ export default function CompetitionPage() {
             </div>
           </div>
 
-          {/* Back to top */}
-          <div className="mt-12 flex justify-center">
+          <div className="mt-10 flex justify-center sm:mt-12">
             <BackToTop onClick={() => scrollTo("hero")} />
           </div>
         </div>
       </section>
-
       <AddAthleteModal
         open={addModalOpen}
         onClose={() => {

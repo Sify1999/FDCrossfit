@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, getErrorMessage } from "@/lib/api-client";
 import { useBodyScrollLock } from "./useScrollLock";
-import { eventLabel } from "@/lib/competition-events";
+import { eventLabel, levelHasEvent } from "@/lib/competition-events";
 
 function IconX({ size = 18 }: { size?: number }) {
   return (
@@ -23,29 +23,11 @@ function IconX({ size = 18 }: { size?: number }) {
   );
 }
 
-function IconCheck() {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m5 12 4 4L19 6" />
-    </svg>
-  );
-}
-
 type Props = {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
-  /** When set, the modal edits this athlete's registration (events/heats) instead of adding a new one. */
+  /** When set, the modal edits this athlete's level / heats / lines instead of adding a new one. */
   editingAthlete?: {
     name: string;
     level: string;
@@ -75,7 +57,7 @@ const LEVELS = ["Advanced", "Intermediate", "Beginner"] as const;
 const labelClass =
   "mb-1.5 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#A5B4D0]";
 
-/** "08:25" → "8:25 AM" — used to show the heat time in the summary. */
+/** "08:25" → "8:25 AM" — used to show the heat time in the menu. */
 function fmtTime(value: string | undefined): string {
   if (!value) return "";
   const [hhRaw, mmRaw] = value.split(":");
@@ -96,9 +78,8 @@ export default function AddAthleteModal({
 
   const [name, setName] = useState("");
   const [level, setLevel] = useState<string>("Beginner");
-  const [selectedEvents, setSelectedEvents] = useState<number[]>([]);
+  // Heat + line per event number (every event of the level is always listed).
   const [heatSel, setHeatSel] = useState<Record<number, number | "">>({});
-  // Optional line (lane) number per event — rendered next to the heat picker.
   const [lineSel, setLineSel] = useState<Record<number, string>>({});
   const [openHeatMenu, setOpenHeatMenu] = useState<number | null>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number; width: number } | null>(null);
@@ -117,7 +98,11 @@ export default function AddAthleteModal({
       );
       setScheduleEvents(
         res.events
-          .filter((e) => e.level === level.toLowerCase())
+          .filter(
+            (e) =>
+              e.level === level.toLowerCase() &&
+              levelHasEvent(level, e.event_number)
+          )
           .sort((a, b) => a.event_number - b.event_number)
       );
     } catch {
@@ -131,15 +116,12 @@ export default function AddAthleteModal({
     if (open) loadSchedule();
   }, [open, loadSchedule]);
 
-  // Pre-fill the form when editing an athlete's registration.
+  // Pre-fill the form when editing, reset it when adding.
   useEffect(() => {
     if (!open) return;
     if (editingAthlete) {
       setName(editingAthlete.name);
       setLevel(editingAthlete.level);
-      setSelectedEvents(
-        editingAthlete.events.map((e) => e.event).sort((a, b) => a - b)
-      );
       const sel: Record<number, number | ""> = {};
       const lines: Record<number, string> = {};
       for (const e of editingAthlete.events) {
@@ -151,7 +133,6 @@ export default function AddAthleteModal({
     } else {
       setName("");
       setLevel("Beginner");
-      setSelectedEvents([]);
       setHeatSel({});
       setLineSel({});
     }
@@ -196,49 +177,16 @@ export default function AddAthleteModal({
   if (!open) return null;
 
   function handleLevelChange(next: string) {
+    // Heats belong to a level, so a level change starts from a clean slate.
     setLevel(next);
-    setSelectedEvents([]);
     setHeatSel({});
     setLineSel({});
     closeHeatMenu();
     setError(null);
   }
 
-  function toggleEvent(evNum: number) {
-    const isSelected = selectedEvents.includes(evNum);
-
-    setSelectedEvents((prev) =>
-      isSelected
-        ? prev.filter((e) => e !== evNum)
-        : [...prev, evNum].sort((a, b) => a - b)
-    );
-
-    if (isSelected) {
-      setHeatSel((prev) => {
-        if (!(evNum in prev)) return prev;
-        const updated = { ...prev };
-        delete updated[evNum];
-        return updated;
-      });
-      setLineSel((prev) => {
-        if (!(evNum in prev)) return prev;
-        const updated = { ...prev };
-        delete updated[evNum];
-        return updated;
-      });
-    }
-
-    setOpenHeatMenu(null);
-    setMenuPos(null);
-    setError(null);
-  }
-
   function handleHeatPick(evNum: number, heatNumber: number | "") {
     setHeatSel((prev) => ({ ...prev, [evNum]: heatNumber }));
-    // Choosing a heat also selects the event.
-    setSelectedEvents((prev) =>
-      prev.includes(evNum) ? prev : [...prev, evNum].sort((a, b) => a - b)
-    );
     closeHeatMenu();
     setError(null);
   }
@@ -248,42 +196,27 @@ export default function AddAthleteModal({
     setError(null);
   }
 
-  function clearAllEvents() {
-    setSelectedEvents([]);
-    setHeatSel({});
-    setLineSel({});
-    closeHeatMenu();
-    setError(null);
-  }
-
   async function handleSave() {
     if (saving) return;
 
     const trimmed = name.trim();
-
     if (!trimmed) {
       setError("Athlete name is required.");
       return;
     }
 
-    if (selectedEvents.length === 0) {
-      setError("Select at least one event.");
-      return;
-    }
+    // Every listed event is sent explicitly (null = no heat / no line), so
+    // clearing works. Events that aren't listed are never touched server-side.
+    const heats: Record<number, number | null> = {};
+    const lines: Record<number, number | null> = {};
+    for (const ev of scheduleEvents) {
+      const hn = heatSel[ev.event_number];
+      heats[ev.event_number] = typeof hn === "number" ? hn : null;
 
-    const heatsPayload: Record<number, number> = {};
-    const linesPayload: Record<number, number> = {};
-
-    for (const evNum of selectedEvents) {
-      const hn = heatSel[evNum];
-      if (typeof hn === "number") heatsPayload[evNum] = hn;
-
-      // Optional line (lane) number — a positive integer.
-      const rawLine = lineSel[evNum]?.trim() ?? "";
-      if (rawLine !== "") {
-        const ln = Number(rawLine);
-        if (Number.isInteger(ln) && ln > 0) linesPayload[evNum] = ln;
-      }
+      const raw = (lineSel[ev.event_number] ?? "").trim();
+      const ln = Number(raw);
+      lines[ev.event_number] =
+        raw !== "" && Number.isInteger(ln) && ln > 0 ? ln : null;
     }
 
     setSaving(true);
@@ -291,39 +224,24 @@ export default function AddAthleteModal({
 
     try {
       if (editingAthlete) {
-        // Reconcile the existing athlete's registration — keeps scores on events that stay.
         await api.put(
           `/competition-athletes/${encodeURIComponent(editingAthlete.name)}`,
-          {
-            level,
-            events: [...selectedEvents].sort((a, b) => a - b),
-            heats: heatsPayload,
-            lines: linesPayload,
-          }
+          { level, heats, lines }
         );
       } else {
         await api.post("/competition-athletes/bulk", {
           name: trimmed,
           level,
-          events: [...selectedEvents].sort((a, b) => a - b),
-          heats: heatsPayload,
-          lines: linesPayload,
+          heats,
+          lines,
         });
       }
 
       onSaved();
       onClose();
-
-      setName("");
-      setLevel("Beginner");
-      setSelectedEvents([]);
-      setHeatSel({});
-      setLineSel({});
-      closeHeatMenu();
-      setError(null);
     } catch (err) {
       setError(
-        getErrorMessage(err, "Failed to add athlete. Please try again.")
+        getErrorMessage(err, "Failed to save athlete. Please try again.")
       );
     } finally {
       setSaving(false);
@@ -357,8 +275,8 @@ export default function AddAthleteModal({
             </h2>
             <p className="mt-0.5 text-xs text-[#8193B5]">
               {editingAthlete
-                ? "Change the athlete's events & heats"
-                : "Register a new athlete for the competition"}
+                ? "Change the level, heats and lines — scores are kept"
+                : "Register a new athlete — all events of the level are added automatically"}
             </p>
           </div>
 
@@ -425,27 +343,9 @@ export default function AddAthleteModal({
             </div>
           </div>
 
-          {/* Events & heats */}
+          {/* Heat & line per event */}
           <div>
-            <div className="mb-1.5 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#A5B4D0]">
-                Events &amp; Heats
-                <span className="ml-2 rounded-full bg-[#79E8B8]/10 px-1.5 py-0.5 text-[10px] text-[#79E8B8]">
-                  {selectedEvents.length}
-                </span>
-              </span>
-
-              {selectedEvents.length > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAllEvents}
-                  disabled={saving}
-                  className="text-[11px] font-medium text-[#8193B5] transition hover:text-[#91F0C8] disabled:opacity-50"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
+            <span className={labelClass}>Heat &amp; Line (optional)</span>
 
             {scheduleLoading ? (
               <p className="rounded-lg border border-dashed border-[#344157] py-6 text-center text-xs text-[#71819F]">
@@ -453,207 +353,131 @@ export default function AddAthleteModal({
               </p>
             ) : scheduleEvents.length === 0 ? (
               <p className="rounded-lg border border-dashed border-[#344157] py-6 text-center text-xs text-[#71819F]">
-                No events available for this level yet — add heats from the Schedule manager.
+                No events available for this level yet.
               </p>
             ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              <div className="space-y-2 rounded-lg border border-[#29374E] bg-[#0B0F15]/60 p-2.5">
                 {scheduleEvents.map((ev) => {
-                  const isSelected = selectedEvents.includes(ev.event_number);
+                  const evNum = ev.event_number;
+                  const heatValue = heatSel[evNum] ?? "";
+                  const hasHeats = ev.heats.length > 0;
+                  const selectedHeat =
+                    typeof heatValue === "number"
+                      ? ev.heats.find((h) => h.heat_number === heatValue)
+                      : undefined;
+                  const selectedHeatLabel = hasHeats
+                    ? selectedHeat
+                      ? `Heat ${selectedHeat.heat_number} · ${fmtTime(selectedHeat.start_time)}`
+                      : "No heat"
+                    : "No heats added";
 
                   return (
-                    <div
-                      key={ev.id}
-                      className={`relative flex aspect-square flex-col justify-between rounded-xl border p-2 transition-colors ${
-                        isSelected
-                          ? "border-[#79E8B8] bg-[#79E8B8]/[0.08]"
-                          : "border-[#344157] bg-[#0B0F15] hover:border-[#52647E]"
-                      }`}
-                    >
-                      {/* Select / deselect circle, pinned to the top right */}
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none absolute right-2 top-2 flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${
-                          isSelected
-                            ? "border-[#79E8B8] bg-[#79E8B8] text-[#07110D]"
-                            : "border-[#52647E] text-transparent"
-                        }`}
-                      >
-                        {isSelected && <IconCheck />}
+                    <div key={ev.id} className="flex items-center gap-2">
+                      <span className="inline-flex w-[5.25rem] shrink-0 items-center justify-center rounded-md border border-[#344157] bg-[#0B0F15] px-2 py-1.5 text-[10px] font-bold text-[#A5B4D0]">
+                        {eventLabel(evNum)}
                       </span>
 
-                      {/* Clickable area: event label + number */}
-                      <button
-                        type="button"
-                        onClick={() => toggleEvent(ev.event_number)}
-                        disabled={saving}
-                        aria-pressed={isSelected}
-                        aria-label={`${isSelected ? "Deselect" : "Select"} ${eventLabel(ev.event_number)}`}
-                        className={`flex flex-1 flex-col rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#79E8B8] ${
-                          isSelected ? "text-[#91F0C8]" : "text-[#A5B4D0] hover:text-white"
-                        }`}
-                      >
-                        <span className="text-[9px] font-semibold uppercase tracking-[0.1em]">
-                          {eventLabel(ev.event_number)}
-                        </span>
+                      <div className="relative min-w-0 flex-1">
+                        <button
+                          type="button"
+                          ref={openHeatMenu === evNum ? heatBtnRef : null}
+                          onClick={(e) => toggleHeatMenu(evNum, e.currentTarget)}
+                          disabled={saving || !hasHeats}
+                          aria-haspopup="listbox"
+                          aria-expanded={openHeatMenu === evNum}
+                          aria-label={`Heat for ${eventLabel(evNum)}`}
+                          className={`flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-xs font-semibold outline-none transition focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 ${
+                            openHeatMenu === evNum
+                              ? "border-[#79E8B8] bg-[#0A1513] text-white"
+                              : "border-[#344157] bg-[#0B0F15] text-white hover:border-[#52647E]"
+                          }`}
+                        >
+                          <span className="truncate">{selectedHeatLabel}</span>
+                          <svg
+                            width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                            className={`shrink-0 text-[#71819F] transition-transform duration-200 ${openHeatMenu === evNum ? "rotate-180" : ""}`}
+                          >
+                            <path d="m6 9 6 6 6-6" />
+                          </svg>
+                        </button>
 
-                        <span className="flex flex-1 items-center justify-center text-3xl font-bold leading-none">
-                          {ev.event_number === 1 ? "1&2" : ev.event_number}
-                        </span>
-                      </button>
-
+                        {openHeatMenu === evNum && menuPos && (
+                          <div
+                            ref={heatMenuRef}
+                            role="listbox"
+                            style={{
+                              position: "fixed",
+                              top: menuPos.top,
+                              left: menuPos.left,
+                              minWidth: menuPos.width,
+                              zIndex: 9999,
+                            }}
+                            className="coach-scroll max-h-56 overflow-y-auto rounded-lg border border-[#344157] bg-[#0B0F15] py-1 shadow-xl shadow-black/60"
+                          >
+                            <button
+                              type="button"
+                              role="option"
+                              aria-selected={heatValue === ""}
+                              onClick={() => handleHeatPick(evNum, "")}
+                              className={`flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs font-medium transition ${
+                                heatValue === ""
+                                  ? "bg-[#79E8B8]/10 text-[#79E8B8]"
+                                  : "text-[#B1BED5] hover:bg-white/5 hover:text-white"
+                              }`}
+                            >
+                              <span className={heatValue === "" ? "" : "pl-4"}>No heat</span>
+                            </button>
+                            {ev.heats.map((h) => {
+                              const isSel = heatValue === h.heat_number;
+                              return (
+                                <button
+                                  key={h.id}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isSel}
+                                  onClick={() => handleHeatPick(evNum, h.heat_number)}
+                                  className={`flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition ${
+                                    isSel
+                                      ? "bg-[#79E8B8]/10 text-[#79E8B8]"
+                                      : "text-[#B1BED5] hover:bg-white/5 hover:text-white"
+                                  }`}
+                                >
+                                  <span className={`truncate ${isSel ? "" : "pl-4"}`}>
+                                    Heat {h.heat_number}
+                                  </span>
+                                  <span className="shrink-0 text-[10px] tabular-nums text-[#71819F]">
+                                    {fmtTime(h.start_time)} – {fmtTime(h.end_time)}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
+
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={lineSel[evNum] ?? ""}
+                        onChange={(e) => handleLineChange(evNum, e.target.value)}
+                        placeholder="Line"
+                        aria-label={`Line for ${eventLabel(evNum)}`}
+                        disabled={saving}
+                        className="w-[4.25rem] shrink-0 rounded-lg border border-[#344157] bg-[#0B0F15] px-2 py-2 text-center text-xs font-semibold text-white outline-none transition placeholder:text-[#71819F] focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:dark]"
+                      />
+                    </div>
                   );
                 })}
               </div>
             )}
 
-            {selectedEvents.length > 0 && (
-              <div className="mt-2.5 rounded-lg border border-[#29374E] bg-[#0B0F15]/60 p-2.5">
-                <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[#8193B5]">
-                  Assign heat &amp; line ({selectedEvents.length})
-                </span>
-                <div className="space-y-2">
-                  {selectedEvents.map((evNum) => {
-                    const ev = scheduleEvents.find((e) => e.event_number === evNum);
-                    if (!ev) return null;
-                    const heatValue = heatSel[evNum] ?? "";
-                    const hasHeats = ev.heats.length > 0;
-                    const selectedHeat =
-                      typeof heatValue === "number"
-                        ? ev.heats.find((h) => h.heat_number === heatValue)
-                        : undefined;
-                    const selectedHeatLabel = hasHeats
-                      ? selectedHeat
-                        ? `Heat ${selectedHeat.heat_number} · ${fmtTime(selectedHeat.start_time)}`
-                        : "No heat"
-                      : "No heats added";
-                    return (
-                      <div key={evNum} className="flex items-center gap-2">
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-[#344157] bg-[#0B0F15] px-2 py-1.5 text-[10px] font-bold text-[#A5B4D0]">
-                          {eventLabel(evNum)}
-                        </span>
-                        <div className="relative min-w-0 flex-1">
-                          <button
-                            type="button"
-                            ref={openHeatMenu === evNum ? heatBtnRef : null}
-                            onClick={(e) => toggleHeatMenu(evNum, e.currentTarget)}
-                            disabled={saving || !hasHeats}
-                            aria-haspopup="listbox"
-                            aria-expanded={openHeatMenu === evNum}
-                            aria-label={`Heat for ${eventLabel(evNum)}`}
-                            className={`flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-xs font-semibold outline-none transition focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 ${
-                              openHeatMenu === evNum
-                                ? "border-[#79E8B8] bg-[#0A1513] text-white"
-                                : "border-[#344157] bg-[#0B0F15] text-white hover:border-[#52647E]"
-                            }`}
-                          >
-                            <span className="truncate">{selectedHeatLabel}</span>
-                            <svg
-                              width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                              className={`shrink-0 text-[#71819F] transition-transform duration-200 ${openHeatMenu === evNum ? "rotate-180" : ""}`}
-                            >
-                              <path d="m6 9 6 6 6-6" />
-                            </svg>
-                          </button>
-
-                          {openHeatMenu === evNum && menuPos && (
-                            <div
-                              ref={heatMenuRef}
-                              role="listbox"
-                              style={{
-                                position: "fixed",
-                                top: menuPos.top,
-                                left: menuPos.left,
-                                minWidth: menuPos.width,
-                                zIndex: 9999,
-                              }}
-                              className="coach-scroll max-h-56 overflow-y-auto rounded-lg border border-[#344157] bg-[#0B0F15] py-1 shadow-xl shadow-black/60"
-                            >
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={heatValue === ""}
-                                  onClick={() => handleHeatPick(evNum, "")}
-                                  className={`flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs font-medium transition ${
-                                    heatValue === ""
-                                      ? "bg-[#79E8B8]/10 text-[#79E8B8]"
-                                      : "text-[#B1BED5] hover:bg-white/5 hover:text-white"
-                                  }`}
-                                >
-                                  {heatValue === "" && (
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
-                                  )}
-                                  <span className={heatValue === "" ? "" : "pl-4"}>
-                                    {hasHeats ? "No heat" : "No heats added"}
-                                  </span>
-                                </button>
-                                {ev.heats.map((h) => {
-                                  const isSel = heatValue === h.heat_number;
-                                  return (
-                                    <button
-                                      key={h.id}
-                                      type="button"
-                                      role="option"
-                                      aria-selected={isSel}
-                                      onClick={() => handleHeatPick(evNum, h.heat_number)}
-                                      className={`flex w-full items-center justify-between gap-2 px-2.5 py-2 text-left text-xs transition ${
-                                        isSel
-                                          ? "bg-[#79E8B8]/10 text-[#79E8B8]"
-                                          : "text-[#B1BED5] hover:bg-white/5 hover:text-white"
-                                      }`}
-                                    >
-                                      <span className="flex min-w-0 items-center gap-2">
-                                        {isSel && (
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><polyline points="20 6 9 17 4 12" /></svg>
-                                        )}
-                                        <span className={`truncate ${isSel ? "" : "pl-4"}`}>
-                                          Heat {h.heat_number}
-                                        </span>
-                                      </span>
-                                      <span className="shrink-0 text-[10px] tabular-nums text-[#71819F]">
-                                        {fmtTime(h.start_time)} – {fmtTime(h.end_time)}
-                                      </span>
-                                    </button>
-                                  );
-                                })}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Line (lane) number — same dark chip style as the heat button */}
-                        <input
-                          type="number"
-                          min={1}
-                          step={1}
-                          value={lineSel[evNum] ?? ""}
-                          onChange={(e) => handleLineChange(evNum, e.target.value)}
-                          placeholder="Line"
-                          aria-label={`Line for ${eventLabel(evNum)}`}
-                          title="Line"
-                          disabled={saving}
-                          className="w-[4.25rem] shrink-0 rounded-lg border border-[#344157] bg-[#0B0F15] px-2 py-2 text-center text-xs font-semibold text-white outline-none transition placeholder:text-[#71819F] focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:dark]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => toggleEvent(evNum)}
-                          disabled={saving}
-                          title={`Remove ${eventLabel(evNum)}`}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#344157] text-[#8193B5] transition hover:border-red-500/40 hover:text-red-400 disabled:opacity-50"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             <p className="mt-2 text-[11px] leading-4 text-[#8193B5]">
-              Pick the events you want, then assign a heat and an optional line
-              (lane number) to each one below. An athlete can be in one heat per event.
+              The athlete is automatically registered for every event of the level.
+              Heat and line are optional and can be set later.
             </p>
           </div>
+
           {error && (
             <div
               role="alert"

@@ -117,8 +117,8 @@ async def update_competition_athlete_score(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Athlete entry not found",
         )
-    # Auto-recompute ranks for events 1 (combined 1&2) and 3 (with cap)
-    if updated.event in (1, 3):
+    # Auto-recompute ranks for events 1 (combined 1&2), 3 (with cap), and 4-6
+    if updated.event in (1, 3, 4, 5, 6):
         time_cap = 540 if updated.event == 3 else None
         await recompute_event_ranks(db, updated.event, time_cap)
         await db.refresh(updated)

@@ -30,6 +30,19 @@ export const COMPETITION_EVENT_LABELS: Record<number, string> = {
   9: "Event 9",
 };
 
+/** Highest event number each level competes in. */
+export const LEVEL_MAX_EVENT: Record<string, number> = {
+  beginner: 8,
+  intermediate: 8,
+  advanced: 9,
+};
+
+/** True if the level has this event (beginner / intermediate stop at 8). */
+export function levelHasEvent(level: string, event: number): boolean {
+  const max = LEVEL_MAX_EVENT[level.trim().toLowerCase()] ?? 9;
+  return event <= max;
+}
+
 /** Display label for an event number (e.g. 1 → "Event 1&2", 4 → "Event 4"). */
 export function eventLabel(event: number): string {
   return COMPETITION_EVENT_LABELS[event] ?? `Event ${event}`;
