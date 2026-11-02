@@ -357,147 +357,227 @@
     },
     "jumpTo": "Jump to",
     "chapters": {
-      "general": {
-        "title": "General Rules and Athlete Conduct",
-        "body": [
-          "Arrive at the venue entrance at least 30 minutes before your heat starts.",
-          "Your heat's start time is listed on the competition website. Arrive a little early for document checks and registration, and enter the venue immediately after the registration staff approve you.",
-          "Accompanying guests are not allowed on days one, two, and three.",
-          "No heat will wait for any athlete. Heat changes or transferring a late athlete to another heat are not permitted.",
-          "If you are not present when the briefing official calls athletes onto the competition floor, you will be removed from that heat and receive the points for last place in that test's standings.",
-          "With approximately 200 athletes attending each day, following the schedule is mandatory to respect all participants' time and prevent delays.",
-          "Day four: each finalist may bring only one accompanying guest with a valid ticket.",
-          "A valid identity document and valid sports insurance are mandatory. Athletes are responsible for knowing their heat time, arriving on time, and being ready when called.",
-          "Warm-ups and cool-downs must take place only in designated areas. Entry onto the competition floor is permitted only when called and authorized by the heat official.",
-          "After their heat ends, athletes must clear the floor within two minutes and follow staff instructions. Routes used by athletes, judges, and event staff must remain clear.",
-          "Guests may not enter the competition floor, the judges' area, or the score-recording area."
-        ]
-      },
-      "day1": {
-        "title": "Day 1 — 12 Aban",
-        "body": [
-          "Test 1 | Eight minutes for maximum rounds and reps",
-          "Each round: 10 alternating dumbbell snatches, followed by 5 burpee box jump-overs and return box jump-overs.",
-          "Each box combination consists of one burpee and a box crossing, followed by a return crossing without a burpee. Each complete combination counts as one rep.",
-          "Alternating dumbbell snatch:",
-          "Each complete round of Test 1 is worth 15 scored reps.",
-          "Test 2: Three minutes for maximum reps of moving a barbell from the floor to overhead. Each test is scored separately.",
-          "Beginner: 17.5 kg dumbbell; 50 kg barbell; 60 cm box.",
-          "Intermediate: 20 kg dumbbell; 60 kg barbell; 60 cm box.",
-          "Advanced: 22.5 kg dumbbell; 70 kg barbell; 60 cm box.",
-          "The movement order and test duration are the same for all three divisions.",
-          "Start and alternating hands | At the start of each rep, both ends of the dumbbell must touch the floor. Reps must alternate between the right and left hands. A dumbbell clean and jerk may not be performed in place of a dumbbell snatch.",
-          "Valid finish and hand change | Revised rule | At the end of each rep, the dumbbell must be overhead, the elbow of the working arm, the knees, and the hips must be fully extended, and the body must be straight.",
-          "Changing hands before full lockout is not permitted. The free hand must not touch any part of the athlete's body while performing the movement.",
-          "Dumbbell area and placement on the floor | A one-meter-by-one-meter square will be marked on the floor with tape. When the dumbbell touches the floor or is set down during rest, it must be inside the marked area. Placing it on the line or touching the tape is permitted.",
-          "The dumbbell must be placed on the floor under control; throwing it is not permitted.",
-          "Penalty for leaving the area or throwing the dumbbell | Each time the dumbbell leaves the marked area or is thrown, a penalty of 4 reps applies. The judge records each occurrence, and 4 reps per occurrence are deducted from the total at the end of Test 1.",
-          "No-rep conditions | Both ends of the dumbbell do not touch the floor; hands are not alternated; the free hand touches the body; the finishing position is incomplete; hands are changed before full lockout; or a clean and jerk is performed instead of a snatch.",
-          "Burpee and box-crossing combination:",
-          "Counting one complete rep | First, perform one burpee box jump-over, then one box jump-over without a burpee to return. The judge records one rep only after both parts are completed. This combination is performed five times per round.",
-          "Body direction and floor guide line | During the burpee and both jumps, the athlete must face the box. Performing the movement sideways is not permitted.",
-          "To make the required facing direction clear, a straight line will be marked on the floor in line with the direction the athlete faces toward the box.",
-          "This line guides the athlete and provides a visual reference for the judge to identify the correct movement direction and prevent execution and judging errors.",
-          "Jumping onto and stepping down from the box | Takeoff from the floor and landing on the box must be performed with both feet simultaneously. Step-ups and single-leg jumps are not permitted. Stepping down is the only permitted way to descend; jumping from the box to the floor is a no-rep. The hands must not touch the box while crossing or moving around it.",
-          "Correcting an error on the return | If the first part is valid but the return crossing is a no-rep, only the return section must be repeated; the burpee does not need to be repeated. After a valid return crossing and step-down, one complete rep is recorded.",
-          "Test 1 tiebreak | Completion of the first three rounds",
-          "The judge records the time from the start of Test 1 when the fifth box combination in round three is completed; this point equals 45 valid reps. If final scores are tied, the faster time earns the higher placing.",
-          "If three full rounds are not completed, there is no tiebreak time; the athlete's result is still recorded.",
-          "Floor to overhead:",
-          "Permitted techniques | All weightlifting techniques for moving a barbell from the floor to overhead are permitted: muscle, power, or squat snatch; or a clean followed by a press or jerk. A clean by itself does not count as a complete rep.",
-          "Start of each rep | At the start of each rep, the plates on both ends of the barbell must touch the floor, and both ends of the barbell must leave the floor simultaneously. The plates do not have to touch the floor simultaneously. Every rep must start from the floor.",
-          "End of each rep | The barbell must be overhead, and the elbows, knees, and hips must be fully extended. The judge records the rep once the athlete reaches the correct finishing position.",
-          "No-rep conditions | Bouncing or slamming the barbell into the floor; the two ends of the barbell leave the floor at different times; or the elbows, knees, or hips are not fully extended at the end of the movement.",
-          "Test 2 tiebreak | First ten reps",
-          "The time at which the tenth valid rep is completed is recorded from the start of Test 2, not from the start of Test 1. If the final rep counts are tied, the faster tiebreak time earns the higher placing.",
-          "If ten valid reps are not completed, there is no tiebreak time; the athlete's result is still recorded.",
-          "Recording results | Only reps completed before the test time expires are counted. The Test 1 and Test 2 tiebreak times must be written in separate fields on the judging sheet."
-        ]
-      },
-      "day2": {
-        "title": "Day 2 — 13 Aban",
-        "body": [
-          "Test 3: 2,000-meter row",
-          "The distance, time cap, and test rules are the same for all three divisions. In each heat, 10 athletes compete on 10 rowing machines; each machine has a dedicated judge.",
-          "Heat cycle | 15 minutes",
-          "Minute 0 to 3: warm up on the machine; adjust the damper, footrests, and straps.",
-          "Minute 3 to 4: stop rowing; the judge sets the monitor.",
-          "Minute 4 to 13: perform the test with a 9-minute time cap.",
-          "Minute 13 to 15: exit and prepare the floor for the next heat.",
-          "Rowing standards:",
-          "Monitor setup and preparation | During the three-minute preparation period, the athlete warms up on their machine and adjusts the damper, footrests, and straps. The athlete then stops pulling the handle so the judge can set the monitor to 2,000 meters.",
-          "Start command and result reference | The test starts on the judge's command. The machine timer starts with the first pull; the time, distance, and 9-minute time cap are determined by the information on that monitor.",
-          "Do not touch the monitor | From the time the judge sets the monitor until the test ends, the athlete may not touch the monitor or change its settings. After the test, the monitor must not be reset until the judge has recorded the result.",
-          "Changing the damper is permitted | The athlete may change the damper setting on their own machine during the test. This permission does not include touching the monitor.",
-          "Completing 2,000 meters | The test ends when the distance is completed, and the final time is recorded from the monitor. An athlete who finishes before the time cap may leave the floor after the judge records the result.",
-          "Time-cap finish | If the distance is not completed within 9 minutes, the athlete must stop rowing when instructed by the judge and place the handle in its holder. The distance shown at that moment is recorded; any additional meters accumulated afterward do not count.",
-          "Equipment for this test | CrossFit shoes only are permitted; assistance equipment, including belts and knee sleeves, is not permitted. Adjusting the footrests and using the machine's own straps during the preparation period are allowed.",
-          "Result, tiebreak, and penalties:",
-          "Test result ranking | Athletes who finish are ranked higher with a lower final time. Athletes who reach the time cap are ranked higher with a greater final distance. Athletes who finish the full distance rank above athletes who reach the time cap.",
-          "Tiebreak | The elapsed time from the start of the test until the first 500 meters are completed is recorded; this is the time taken to cover the distance, not the average speed displayed on the monitor. In a tie, the lower tiebreak time takes priority. If both the result and tiebreak are tied, the athletes share the rank.",
-          "Accidental handle release | Penalty for each occurrence",
-          "If the 2,000 meters are completed: add 10 seconds to the time shown on the monitor. If the athlete reaches the time cap: subtract 50 meters from the recorded distance. Time example: a time of 7 minutes with one infraction becomes 7 minutes and 10 seconds. Distance example: 1,850 meters with one infraction becomes 1,800 meters.",
-          "Intentional handle release | Intentionally releasing the handle results in disqualification. If the machine is damaged, the athlete is responsible for the repair costs.",
-          "Items recorded by the judge:",
-          "The raw time or distance, tiebreak time, number of infractions, and final result after penalties must be recorded separately on the judging sheet."
-        ]
-      },
-      "day3": {
-        "title": "Day 3 — 14 Aban",
-        "body": [
-          "Day three consists of Events 6 and 7.",
-          "Event 6 is performed in AMRAP format. Your score is the total number of completed rounds plus the reps completed in the final incomplete round.",
-          "The clock starts on the judge's call (“3, 2, 1 … go”) and stops exactly when the time cap is reached.",
-          "In Event 7, you must alternate between two movements. Each rep must be completed in the prescribed order.",
-          "No additional score is awarded for incomplete reps when the time cap is reached — the score remains as recorded."
-        ]
-      },
-      "day4": {
-        "title": "Day 4 — 15 Aban",
-        "body": [
-          "Day four consists of Events 8 and 9 — the final day of the competition.",
-          "Event 8 is scored based on accuracy and control. Points are awarded only for clean and deliberate reps.",
-          "Event 9 is the competition final, and the leaderboard closes after the last heat.",
-          "The podium results will be announced at the closing ceremony. Prizes are awarded only to athletes who attend the ceremony.",
-          "The top three athletes in each division must be available for final result verification within 30 minutes of their event."
-        ]
-      },
-      "scoring": {
-        "title": "Scoring and Rankings",
-        "body": [
-          "Beginner, Intermediate, and Advanced divisions are scored separately. Each test's score equals the athlete's rank in that test: first place receives one point, second place receives two points, and so on. A lower total score earns a higher overall placing.",
-          "All tests have equal weight, and no test carries an additional multiplier.",
-          "Athletes with the same result share the same rank and points. The next rank accounts for the number of athletes tied; example: first, second, second, fourth; points: 1, 2, 2, 4.",
-          "To determine first through third place overall, the number of first-place finishes is compared first; more first-place finishes means a higher placing. These placings are counted across all tests after recalculation among the 10 finalists.",
-          "If the number of first-place finishes is also tied, the better result in the last test determines the placing. For other positions, if total points are tied, the last test is compared directly.",
-          "Last test: Test 8 for Beginner and Intermediate; Test 9 for Advanced. If the result in this deciding test is also tied, the competition team makes the final decision.",
-          "In any of these situations, the athlete receives the points for last place in the standings for that test in the relevant stage. This number equals the number of athletes in the standings, and tied ranks do not change it."
-        ]
-      },
-      "judging": {
-        "title": "Judging and Movement Standards",
-        "body": [
-          "Each heat is judged by qualified head judges who have full authority to count reps and call no-reps.",
-          "Movement standards follow official CrossFit standards unless the event briefing states otherwise.",
-          "A no-rep is announced verbally and immediately, and the movement must be corrected to count.",
-          "The athlete's signature is obtained when the result is recorded. From that time, the athlete has a maximum of 15 minutes to raise an appeal directly with the head judge, and must do so before leaving the venue.",
-          "The head judge reviews the appeal at that time, and the outcome is announced within the same 15-minute period after the result is signed.",
-          "An appeal cannot be submitted after the athlete leaves the venue or after the deadline, even if 15 minutes have not yet elapsed since leaving. Signing the result does not waive the right to appeal within this period.",
-          "Signing the result does not waive the right to appeal within this period."
-        ]
-      },
-      "safety": {
-        "title": "Equipment and Safety",
-        "body": [
-          "Permitted equipment for each WOD is listed in that WOD's judging handbook. Headphones and earbuds, as well as changing shoes during a test, are prohibited.",
-          "Initial equipment setup is carried out by the judge during the allocated time. Athletes are responsible for their own mobile phones. Official filming is carried out by the event staff.",
-          "Equipment must be used properly. Athletes are responsible for compensating for damage they cause to equipment.",
-          "Equipment failures, stoppages, or any incident affecting a test, and decisions about how to continue or whether to repeat the test, are handled by the judging team and event organizers.",
-          "Disrespect, fighting, threats, or disruption of the event will result in disqualification and removal from the competition.",
-          "Appeals are permitted through the designated process and within the specified time limit; filing an appeal does not, by itself, result in disqualification."
-        ]
+        "general": {
+          "title": "قوانین کلی و رفتار ورزشکاران",
+          "body": [
+            "حداقل ۳۰ دقیقه پیش از شروع هیت، جلوی ورودی سالن حاضر باشید.",
+            "ساعت شروع هیت در سایت مسابقه درج شده است. برای بررسی مدارک و پذیرش، کمی زودتر برسید و پس از تأیید مسئول پذیرش، بلافاصله وارد سالن شوید.",
+            "ورود همراه در روزهای اول، دوم و سوم ممنوع است.",
+            "هیچ هیتی منتظر هیچ ورزشکاری نمی‌ماند. جابه‌جایی هیت یا انتقال ورزشکار جامانده به هیت دیگر وجود ندارد.",
+            "اگر هنگام فراخوان مسئول بریفینگ برای ورود ورزشکاران به زمین حاضر نباشید، از همان هیت حذف می‌شوید و امتیاز آخرین جایگاه جدول همان تست را دریافت میکنید.",
+            "با توجه به حضور حدود ۲۰۰ ورزشکار در یک روز، رعایت زمان‌بندی برای حفظ حق تمام شرکت‌کنندگان و جلوگیری از معطلی الزامی است.",
+            "روز چهارم: هر فینالیست فقط یک همراه با بلیت معتبر میتواند داشته باشد.",
+            "ارائه مدرک شناسایی معتبر و بیمه ورزشی معتبر الزامی است. مسئولیت اطلاع از ساعت هیت، حضور به‌موقع و آمادگی برای فراخوان بر عهده ورزشکار است.",
+            "گرم‌کردن و سردکردن فقط در محل‌های تعیین شده انجام می‌شود. ورود به زمین مسابقه صرفاً با فراخوان و اجازه مسئول هیت مجاز است.",
+            "ورزشکار پس از پایان هیت موظف است حداکثر ظرف دو دقیقه و طبق راهنمایی مسئولان، زمین را تخلیه کند. مسیر تردد ورزشکاران، داوران و عوامل اجرایی باید باز بماند.",
+            "همراهان اجازه ورود به زمین مسابقه، محل استقرار داوران و بخش ثبت امتیاز را ندارند."
+          ]
+        },
+        "day1": {
+          "title": "روز ۱ — ۱۲ آبان",
+          "body": [
+            "تست ۱ | هشت دقیقه بیشترین دور و تکرار",
+            "در هر دور: ۱۰ اسنچ دمبل متناوب، سپس ۵ ترکیب برپی باکس جامپ‌اور و باکس جامپ‌اور برگشت.",
+            "هر ترکیب باکس شامل یک برپی و عبور از باکس، سپس یک عبور برگشت بدون برپی است. هر ترکیب کامل یک تکرار دارد؛",
+            "اسنچ دمبل متناوب:",
+            "هر دور کامل تست ۱ برابر با ۱۵ تکرار امتیازی است.",
+            "یک دقیقه استراحت؛ سپس تست ۲",
+            "تست ۲: سه دقیقه بیشترین تکرار انتقال هالتر از زمین به بالای سر. نتیجه هر تست جداگانه ثبت می‌شود.",
+            "وزنه ها و ارتفاع باکس : ",
+            "بیگینر: دمبل ۱۷٫۵ کیلوگرم؛ هالتر ۵۰ کیلوگرم؛ باکس ۶۰ سانتیمتر.",
+            "اینترمدیت: دمبل ۲۰ کیلوگرم؛ هالتر ۶۰ کیلوگرم؛ باکس ۶۰ سانتیمتر.",
+            "ادونس: دمبل ۲۲٫۵ کیلوگرم؛ هالتر ۷۰ کیلوگرم؛ باکس ۶۰ سانتیمتر.",
+            "ترتیب حرکات و مدت تست ها برای هر سه رده یکسان است.",
+            "شروع و تناوب دست‌ها | در شروع هر تکرار، هر دو سر دمبل باید با زمین تماس پیدا کنند. تکرارها به‌صورت متناوب با دست راست و چپ اجرا می‌شوند. اجرای کلین و جرک به‌جای اسنچ دمبل مجاز نیست.",
+            "پایان صحیح و تعویض دست | در پایان هر تکرار، دمبل باید بالای سر باشد و آرنج دست حامل دمبل، زانوها و مفصل لگن کاملا باز و بدن صاف باشد.",
+            "پس از تکمیل وضعیت پایان و تایید توسط داور ، تعویض دست از همان نقطه بالای سر مجاز است؛ نیازی به پایین اوردن دمبل تا زیر صورت نیست",
+            "محدوده دمبل و قراردادن روی زمین | یک مربع یک متر در یک متر با چسب روی زمین مشخص می‌شود. هنگام تماس دمبل با زمین و استراحت، دمبل باید داخل محدوده باشد. قرار گرفتن روی خط یا تماس با چسب مجاز است.",
+            "تعویض دست پیش از تأیید تکرار توسط داور مجاز نیست. دست آزاد هنگام اجرای حرکت نباید هیچ قسمتی از بدن ورزشکار را لمس کند.",
+            "یک مربع یک متر در یک متر با چسب روی زمین مشخص می‌شود. هنگام تماس دمبل با زمین و استراحت، دمبل باید داخل محدوده باشد. قرار گرفتن روی خط یا تماس با چسب مجاز است. دمبل باید با کنترل روی زمین قرار داده شود؛ پرتاب آن مجاز نیست.",
+            "جریمه خروج از محدوده یا پرتاب دمبل | هر بار خروج دمبل از محدوده یا پرتاب آن، ۴ تکرار جریمه دارد. داور هر مورد را ثبت میکند و در پایان تست ۱، به‌ازای هر مورد ۴ تکرار از مجموع کسر می‌شود.",
+            "موارد نو‌رپ | تماس نداشتن هر دو سر دمبل با زمین؛ رعایت نکردن تناوب دست‌ها؛ تماس دست آزاد با بدن؛ ناقص بودن وضعیت پایان؛ تعویض دست پیش از کامل‌شدن لاکاوت؛ اجرای کلین و جرک به جای اسنچ.",
+            "ترکیب برپی و عبور از باکس:",
+            "شمارش یک تکرار کامل | ابتدا یک برپی باکس جامپ‌اور، سپس یک باکس جامپ‌اور بدون برپی برای برگشت انجام می‌شود. داور فقط پس از تکمیل هر دو بخش یک تکرار ثبت میکند. این ترکیب در هر دور پنج بار اجرا می‌شود.",
+            "جهت بدن و خط راهنمای زمین | هنگام اجرای برپی و هر دو پرش، ورزشکار باید روبه‌باکس باشد. اجرای حرکت از پهلو مجاز نیست.",
+            "برای مشخص بودن جهت اجرای روبه‌باکس، یک خط مستقیم روی زمین در امتداد جهت مواجهه با باکس کشیده می‌شود.",
+            "این خط، راهنمای ورزشکار و مرجع دیداری داور برای تشخیص جهت صحیح حرکت است تا از اشتباه در اجرا و داوری جلوگیری شود.",
+            "پرش و پایین آمدن از باکس | جداشدن از زمین و فرود روی باکس باید با دو پا و هم‌زمان باشد. استپآپ یا پرش تک‌پا مجاز نیست. پایین آمدن فقط به‌صورت استپ‌داون مجاز است؛ پریدن از باکس به زمین نو‌رپ است. دست‌ها هنگام عبور و جابه‌جایی نباید با باکس تماس داشته باشند.",
+            "نو رپ در هر بخش | شروع دوباره از برپی | نو رپ در هر بخش از ترکیب، شامل برپی، عبور رفت یا عبور برگشت، یعنی شروع دوباره همان تکرار از برپی. کل ترکیب رفت‌وبرگشت باید دوباره صحیح اجرا شود؛ تکرارهای صحیح قبلی حفظ می‌شوند.",
+            "تای‌بریک تست ۱ | پایان سه دور اول",
+            "داور زمان تکمیل پنجمین ترکیب باکس در دور سوم را از شروع تست ۱ ثبت میکند؛ این نقطه برابر با ۴۵ تکرار صحیح است. در امتیاز نهایی مساوی، زمان کمتر جایگاه بالاتری دارد.",
+            "اگر سه دور کامل نشود، زمان تای‌بریک وجود ندارد؛ نتیجه ورزشکار همچنان ثبت می‌شود.",
+            "زمین تا بالای سر:",
+            "الگوهای مجاز | انتقال هالتر از زمین به بالای سر با تمام الگوهای وزنه‌برداری مجاز است: ماسل، پاور یا اسکوات اسنچ؛ یا کلین همراه با پرس یا جرک. کلین بهتنهایی تکرار کامل محسوب نمی‌شود.",
+            "شروع هر تکرار | در شروع هر تکرار، صفحات دو طرف هالتر باید با زمین تماس داشته باشند و دو طرف هالتر هم‌زمان از زمین بلند شوند. هم‌زمانبودن تماس صفحات با زمین الزامی نیست. هر تکرار از زمین آغاز می‌شود.",
+            "پایان هر تکرار | هالتر باید بالای سر باشد و آرنج‌ها، زانوها و مفصل لگن کاملاً باز باشند. داور پس از رسیدن ورزشکار به وضعیت صحیح پایان، تکرار را ثبت میکند.",
+            "موارد نو‌رپ | استفاده از بانس یا کوبیدن هالتر به زمین؛ بلند شدن غیرهم‌زمان دو طرف هالتر؛ کاملنشدن بازشدگی آرنج‌ها، زانوها یا لگن در پایان حرکت.",
+            "تای‌بریک تست ۲ | ده تکرار اول",
+            "زمان تکمیل دهمین تکرار صحیح، از لحظه شروع تست ۲ ثبت می‌شود؛ نه از شروع تست ۱. در تعداد تکرار نهایی مساوی، زمان تای‌بریک کمتر جایگاه بالاتری دارد.",
+            "اگر ده تکرار صحیح کامل نشود، زمان تای‌بریک وجود ندارد؛ نتیجه ورزشکار همچنان ثبت می‌شود.",
+            "ثبت نتیجه | فقط تکرارهایی که تا پایان زمان تست کامل شدهاند، ثبت می‌شوند. تای‌بریک تست ۱ و تست ۲ در دو محل جداگانه روی برگه داوری نوشته می‌شوند."
+          ]
+        },
+        "day2": {
+          "title": "روز ۲ — ۱۳ آبان",
+          "body": [
+            "تست ۳؛ روئینگ ۲۰۰۰ متر",
+            "مسافت، تایم‌کپ و قوانین تست برای هر سه رده یکسان است. در هر هیت، ۱۰ ورزشکار روی ۱۰ دستگاه روئینگ رقابت میکنند؛ هر دستگاه داور اختصاصی دارد.",
+            "چرخه هر هیت | ۱۵ دقیقه",
+            "دقیقه صفر تا :۳ گرم‌کردن روی دستگاه؛ تنظیم دمپر، جای پا و بندها.",
+            "دقیقه ۳ تا :۴ توقف کشیدن؛ تنظیم مانیتور توسط داور.",
+            "دقیقه ۴ تا :۱۳ اجرای تست با تایم‌کپ ۹ دقیقه.",
+            "دقیقه ۱۳ تا :۱۵ خروج و آماده سازی زمین برای هیت بعد.","استاندارد اجرای روئینگ:",
+            "آماده سازی و تنظیم مانیتور | ورزشکار در سه دقیقه آمادهسازی، روی دستگاه خود گرم میکند و دمپر، جای پا و بندها را تنظیم میکند. سپس کشیدن دسته را متوقف میکند تا داور مانیتور را برای ۲۰۰۰ متر تنظیم کند.",
+            "فرمان شروع و مرجع ثبت نتیجه | شروع تست با فرمان داور است. تایمر دستگاه با اولین کشش آغاز می‌شود؛ ملاک زمان، مسافت و تایم‌کپ ۹دقیقهای، اطلاعات همان مانیتور است.",
+            "مانیتور را لمس نکنید | از زمان تنظیم مانیتور توسط داور تا پایان تست، لمس مانیتور یا تغییر تنظیمات آن توسط ورزشکار ممنوع است. پس از پایان نیز تا ثبت نتیجه توسط داور، مانیتور نباید ریست شود.",
+            "تغییر دمپر مجاز است | ورزشکار میتواند در طول تست، دمپر دستگاه خودش را تغییر دهد. این اجازه شامل لمس مانیتور نمی‌شود.",
+            "تکمیل ۲۰۰۰ متر | با تکمیل مسافت، تست پایان مییابد و زمان نهایی از مانیتور ثبت می‌شود. ورزشکاری که پیش از تایم‌کپ تمام کند، پس از ثبت نتیجه توسط داور میتواند زمین را ترک کند.",
+            "پایان تایم‌کپ | اگر مسافت در ۹ دقیقه کامل نشود، با اعلام داور کشیدن متوقف می‌شود و دسته در نگهدارنده قرار می‌گیرد. مسافت نمایش‌داده‌شده در همان لحظه ثبت می‌شود؛ مترهای اضافه شده پس از آن محاسبه نمی‌شوند.",
+            "تجهیزات این تست | فقط کفش کراسفیت مجاز است؛ استفاده از تجهیزات کمکی، از جمله کمربند و زانوبند، مجاز نیست. تنظیم جای پا و استفاده از بندهای خود دستگاه در زمان آمادهسازی مجاز است.",
+            "نتیجه، تای‌بریک و جریمه : ",
+            "رتبه‌بندی نتیجه تست | تمام‌کننده‌ها با زمان نهایی کمتر رتبه بهتری می‌گیرند. افراد تایم‌کپشده با مسافت نهایی بیشتر رتبه بهتری می‌گیرند. تمام‌کننده‌ها بالاتر از افراد تایم‌کپشده قرار می‌گیرند.",
+            "تای‌بریک | ۵۰۰ متر اول |  زمان سپری‌شده از شروع تست تا تکمیل ۵۰۰ متر اول ثبت می‌شود؛ این عدد زمان عبور از مسافت است، نه سرعت میانگین نمایش‌داده‌شده روی مانیتور. در نتیجه مساوی، تای‌بریک کمتر اولویت دارد. تساوی نتیجه و تای‌بریک، رتبه مشترک دارد.",
+            "در رفتن غیرعمدی دسته | جریمه برای هر بار",
+            "اگر ۲۰۰۰ متر کامل شود: ۱۰ ثانیه به زمان مانیتور اضافه می‌شود. اگر ورزشکار تایم‌کپ شود: ۵۰ متر از مسافت ثبت شده کسر می‌شود. مثال زمان: ۷ دقیقه با یک خطا، ۷ دقیقه و ۱۰ ثانیه ثبت می‌شود. مثال مسافت: ۱۸۵۰ متر با یک خطا، ۱۸۰۰ متر ثبت می‌شود.",
+            "اگر مسافت پیش از تایمکپ کامل شده باشد، حتی با عبور زمان جریمه شده از ۹ دقیقه، ورزشکار همچنان تمام کننده است؛ مثلا ۸:۵۵ با یک خطا، ۹:۰۵ ثبت میشود.",
+            "رها کردن عمدی دسته | رها کردن عمدی دسته موجب دیسکوالیفای است. در صورت آسیب‌رساندن به دستگاه، هزینه خسارت بر عهده ورزشکار است.",
+            "مواردی که داور ثبت می‌کند:",
+            "زمان یا مسافت خام، زمان تای‌بریک، تعداد خطاها و نتیجه نهایی پس از جریمه باید جداگانه روی برگه داوری ثبت شوند.",
+            "بلند شدن از روی صندلی | دیسکوالیفای | از فرمان شروع تا پایان تست، ورزشکار اجازه ندارد از روی صندلی دستگاه بلند شود. بلند شدن از روی صندلی در حین اجرای تست ، موجب دیسکوالیفای می شود."
+          ]
+        },
+        "day3": {
+          "title": "روز ۳ — ۱۴ آبان",
+          "body": [
+            "تست ۴ : ۵ راند فور تایم | ۱۲ دقیقه",
+            "هر هیت: ۳ ورزشکار",
+            "هر راند: ۶ والواک + ۸ شاتلران + ۱۰ ددلیفت",
+            " وزنه ددلیفت بیگینر : ۸۰ کیلوگرم | اینترمدیت : ۱۰۰ | ادونس : ۱۲۵",
+            "هر راند: ۶ والواک + ۸ شاتلران + ۱۰ ددلیفت",
+            "هر شاتل: یک رفت وبرگشت در مسیر ۷٫۵ متری",
+            "والواک | چیدمان خطوط و استاندارد اجرا :",
+            " خط شروع: لبه داخلی چسب، یعنی لبه نزدیکتر به دیوار، در فاصله ۱۵۰ سانتیمتری دیوار قرار میگیرد. پهنای چسب به سمت بیرون از دیوار است.",
+            "خط نزدیک دیوار: فاصله تا لبه دورتر چسب از دیوار اندازهگیری میشود. چسب روی عدد تعیینشده تمام میشود و پهنای آن به سمت دیوار است.",
+            "ادونس: ۲۶ سانتیمتر | اینترمدیت: ۴۰ سانتیمتر | بیگینر: ۵۵ سانتیمتر",
+            "ترتیب اجرای حرکت : ",
+            "پیش از شروع تست، ورزشکار ایستاده و رو به دیوار است. با فرمان «،۳ ،۲ ،۱ شروع» داور، برمیگردد و اجرای والواک را آغاز میکند.",
+            "هر تکرار از وضعیت خوابیده روی زمین و با تماس هر دو دست با خط شروع آغاز میشود.",
+            "ابتدا بدن از زمین جدا میشود؛ سپس هر دو پا روی دیوار قرار میگیرند. دستها فقط پس از جدا شدن هر دو پا از زمین اجازه حرکت دارند.",
+            "در بالای حرکت، تماس بخشی از سینه هر دو دست با چسب نزدیک دیوار کافی است؛ سپس ورزشکار برگشت را آغاز میکند.",
+            "در برگشت، ابتدا هر دو دست به خط شروع میرسند؛ سپس پاها و بدن میتوانند روی زمین قرار بگیرند. با بازگشت کامل به وضعیت شروع، یک تکرار ثبت میشود.",
+            "پس از ۶ تکرار صحیح، ورزشکار وارد شاتلران میشود.",
+            "شاتلران و ددلیفت | استاندارد حرکات : ",
+            "هر رفت وبرگشت در مسیر ۷٫۵ متری، یک تکرار محسوب میشود؛ مجموعا ۸ رفت وبرگشت انجام میشود.",
+            "در هر تغییر مسیر، هر دو پا و یک دست باید از خط عبور کنند و آن سوی خط با زمین تماس داشته باشند.",
+            " شروع اولیه شاتلران و پایان هشتمین رفت وبرگشت، تاچ زمین ندارند. در پایان تکرار هشتم،ورزشکار فقط باید از خط عبور کند.",
+            " پس از تکمیل ۸ تکرار، ورزشکار به هالتر خود مراجعه میکند و ۱۰ ددلیفت انجام میدهد.",
+            "۱۰ ددلیفت : ",
+            " هر تکرار از زمین آغاز میشود؛ صفحههای هر دو طرف هالتر باید با زمین تماس داشته باشند.",
+            "ددلیفت سومو مجاز نیست. دستها باید بیرون زانوها قرار بگیرند؛ نوع گرفتن میله آزاد است.",
+            " در پایان هر تکرار، ورزشکار کاملا صاف میایستد؛ زانوها و لگن کاملا باز، دستها صاف و سر و شانه ها از نمای کنار پشت هالتر قرار میگیرند.",
+            "پایین آوردن هالتر پیش از رسیدن به وضعیت کامل پایان حرکت، نورپ محسوب میشود.",
+            "کوبیدن عمدی هالتر به زمین و استفاده از جهش آن برای تکرار بعدی (Bounce)، نورپ است. صرف تماس هالتر با زمین، خطا نیست.",
+            " با تکمیل دهمین ددلیفت صحیح، یک راند تمام می شود.",
+            "تایبریک: پایان راند اول | داور زمان پایان دهمین ددلیفت صحیح در راند اول را به عنوان تایبریک ثبت می کند.",
+            "پایان تست = لمس دیوار",
+            "پس از آخرین ددلیفت صحیح در راند پنجم، ورزشکار باید با دست دیوار را لمس کند. زمان نهایی در لحظه تماس دست با دیوار متوقف می شود.",
+            "ثبت نتیجه در تایمکپ ۱۲ دقیقه :",
+            "اگر پنج راند و لمس دیوار پیش از تایمکپ کامل شوند، نتیجه بهصورت زمان ثبت می شود.",
+            "اگر ورزشکار تا پیش از تایمکپ دیوار را لمس نکند، داور بهجای زمان، تعداد کل تکرارهای صحیح را ثبت می کند.",
+            "هر راند شامل ۲۴ تکرار است: ۶ والواک + ۸ شاتلران + ۱۰ ددلیفت. مجموع پنج راند، ۱۲۰ تکرار است.",
+            "مثال مهم برای داور | ورزشکاری که همه پنج راند را کامل کرده اما پیش از کپ دستش به دیوار نرسیده است، نتیجهاش ۱۲۰ تکرار ثبت می شود.",
+            "زمان تست از فرمان شروع داور محاسبه میشود.",
+            "تست ۵ : Amrap 6 MIN",
+            "هر هیت : ۴ ورزشکار",
+            "TOES-TO-BAR + JUMP ROPE",
+            "Beginner : 8 Toes-to-Bar , 30 Single-Unders",
+            "Intermediate : 10 Toes-to-Bar , 30 Double-Unders",
+            "Advanced : 12 Toes-to-Bar , 30 Double-Unders",
+            "REST 1 MIN",
+            "تست ۶ : AMRAP 6 MIN",
+            "6 Front Squat + 12 cal Air Bike",
+            "Beginner 50KG | Intermediate 70KG | Advanced 90KG",
+            "هر تست نتیجه و تای بریک مستقل دارد.",
+            "تست ۵ | شروع , توزتوبار و طناب",
+            "وﺿﻌﯿﺖ ﺷﺮﻭﻉ | ﭘﯿﺶ ﺍﺯ ﺷﺮﻭﻉ ﺗﺴﺖ، ﻭﺭﺯﺷﮑﺎﺭ ﭼﺴﺒﯿﺪﻩ ﺑﻪ ﺩﯾﻮﺍﺭ ﻭ ﭘﺸﺖ ﻣﯿﻠﻪ ﮊﯾﻤﻨﺎﺳﺘﯿﮏ ﻗﺮﺍﺭ ﻣﯽﮔﯿﺮﺩ. ﺑﺎ ﻓﺮﻣﺎﻥ ((1،2،3 شروع)) ﺩﺍﻭﺭ، ﺑﺮﺍﯼ ﺍﺟﺮﺍﯼ ﺗﻮﺯﺗﻮﺑﺎﺭ ﺣﺮﮐﺖ ﻣﯽﮐﻨﺪ.",
+            "ﺳﺘﺎﻧﺪﺍﺭﺩ ﺗﻮﺯﺗﻮﺑﺎﺭ : ",
+            " ﺩﺭ ﭘﺎﯾﯿﻦ ﻫﺮ ﺗﮑﺮﺍﺭ، ﺁﺭﻧﺞﻫﺎ ﺑﺎﯾﺪ ﮐﺎﻣﻼ ﺻﺎﻑ ﻭ ﻭﺭﺯﺷﮑﺎﺭ ﺩﺭ ﻭﺿﻌﯿﺖ ﺁﻭﯾﺰﺍﻥ ﮐﺎﻣﻞ ﺑﺎﺷﺪ. ﭘﺎﻫﺎ ﺑﺎﯾﺪ ﺍﺯ ﺧﻂ  ۱ﺑﺪﻥ ﺑﻪ ﺳﻤﺖ ﻋﻘﺐ ﻋﺒﻮﺭ ﮐﻨﻨﺪ.",
+            "ﺩﺭ ﺑﺎﻻﯼ ﺣﺮﮐﺖ، ﺍﻧﮕﺸﺘﺎﻥ ﻫﺮ ﺩﻭ ﭘﺎ ﺑﺎﯾﺪ ﻫﻢﺯﻣﺎﻥ ﺑﺎ ﻣﯿﻠﻪ ﻭ ﺩﺭ ﻣﺤﺪﻭﺩﻩ ﺑﯿﻦ ﺩﻭ ﺩﺳﺖ ﺗﻤﺎﺱ ﭘﯿﺪﺍ ﮐﻨﻨﺪ.",
+            "ﺗﻤﺎﺱ ﮐﻒ ﭘﺎ ﯾﺎ ﻗﺴﻤﺖ ﻣﯿﺎﻧﯽ ﺭﻭﯼ ﭘﺎ ﺑﺎ ﻣﯿﻠﻪ، ﻧﻮﺭﭖ ﺍﺳﺖ. ﺗﻤﺎﺱ ﭘﺎ ﺑﯿﺮﻭﻥ ﻣﺤﺪﻭﺩﻩ ﺩﺳﺖﻫﺎ ﯾﺎ ﺭﻭﯼ ﺧﻮﺩ ﺩﺳﺖﻫﺎ ﻧﯿﺰ ﻧﻮﺭﭖ ﻣﺤﺴﻮﺏ ﻣﯽﺷﻮﺩ.",
+            "ﺍﺳﺘﺎﻧﺪﺍﺭﺩ ﻃﻨﺎﺏ : ",
+            "ﺷﻤﺎﺭﺵ ﺑﺮ ﺍﺳﺎﺱ ﺗﻌﺪﺍﺩ ﭘﺮﺵﻫﺎﯼ ﺻﺤﯿﺢ ﺍﺳﺖ؛ ﻫﺮ ﭘﺮﺵ ﺻﺤﯿﺢ، ﯾﮏ ﺗﮑﺮﺍﺭ ﻣﺤﺴﻮﺏ ﻣﯽﺷﻮﺩ.",
+            "ﺩﺭ ﺩﺑﻞﺁﻧﺪﺭ، ﻃﻨﺎﺏ ﺩﺭ ﯾﮏ ﭘﺮﺵ ﺩﻭ ﺑﺎﺭ ﺍﺯ ﺯﯾﺮ ﭘﺎ ﻋﺒﻮﺭ ﻣﯽﮐﻨﺪ. ﺩﺭ ﺳﯿﻨﮕﻞﺁﻧﺪﺭ، ﻃﻨﺎﺏ ﺩﺭ ﻫﺮ ﭘﺮﺵ ﯾﮏ ﺑﺎﺭ  ۲ﺍﺯ ﺯﯾﺮ ﭘﺎ ﻋﺒﻮﺭ ﻣﯽﮐﻨﺪ.",
+            "ﭘﺲ ﺍﺯ ﺗﮑﻤﯿﻞ ﺗﻌﺪﺍﺩ ﺗﻮﺯﺗﻮﺑﺎﺭ ﺳﻄﺢ ﺧﻮﺩ، ﻭﺭﺯﺷﮑﺎﺭ ۳۰ ﺗﮑﺮﺍﺭ ﻃﻨﺎﺏ ﺍﻧﺠﺎﻡ ﻣﯽﺩﻫﺪ؛ ﺳﭙﺲ ﺭﺍﻧﺪ ﺑﻌﺪﯼ ﺭﺍ ﺍﺯ ﺗﻮﺯﺗﻮﺑﺎﺭ ﺁﻏﺎﺯ ﻣﯽﮐﻨد.",
+            "تست ۶ | فرانت اسکوات و ایربایک",
+            "استاندارد فرانت اسکوات : ",
+            "ﺗﮑﺮﺍﺭ ﺍﻭﻝ ﻣﯽﺗﻮﺍﻧﺪ ﺑﻪﺻﻮﺭﺕ ﺍﺳﮑﻮﺍﺕ ﮐﻠﯿﻦ ﺍﺟﺮﺍ ﺷﻮﺩ؛ ﺍﯾﻦ ﺗﮑﺮﺍﺭ ﻧﯿﺰ ﺑﺎﯾﺪ ﻋﻤﻖ ﻭ ﻭﺿﻌﯿﺖ ﭘﺎﯾﺎﻥ ﺻﺤﯿﺢ را داشته ﺑﺎﺷﺪ. ",
+            "ﺩﺭ ﭘﺎﯾﯿﻦ ﺣﺮﮐﺖ، ﭼﯿﻦ ﻟﮕﻦ ﺑﺎﯾﺪ ﭘﺎﯾﯿﻦﺗﺮ ﺍﺯ ﺑﺎﻻﯼ ﺯﺍﻧﻮ ﻗﺮﺍﺭ ﺑﮕﯿﺮد ",
+            "ﺩﺭ ﺑﺎﻻﯼ ﺣﺮﮐﺖ، ﻭﺭﺯﺷﮑﺎﺭ ﺑﺎﯾﺪ ﮐﺎﻣﻼ ﺻﺎﻑ ﺑﺎﯾﺴﺘﺪ؛ ﺯﺍﻧﻮﻫﺎ ﻭ ﻟﮕﻦ ﮐﺎﻣﻼ ﺑﺎﺯ ﻭ ﺁﺭﻧﺞﻫﺎ ﮐﻤﯽ ﺟﻠﻮﺗﺮ ﺍﺯ ﻣﯿﻠﻪ ﻗﺮﺍﺭ ﺑﮕﯿﺮﻧﺪ.",
+            "ﺗﮑﺮﺍﺭ ﭘﺲ ﺍﺯ ﺗﮑﻤﯿﻞ ﺣﺮﮐﺖ ﻭ ﺷﻤﺎﺭﺵ ﺩﺍﻭﺭ ﺛﺒﺖ ﻣﯽﺷﻮﺩ. ﭘﺲ ﺍﺯ ۶ ﺗﮑﺮﺍﺭ ﺻﺤﯿﺢ، ﻭﺭﺯﺷﮑﺎﺭ ﻭﺍﺭﺩ ﺍﯾﺮﺑﺎﯾﮏ ﻣﯽﺷﻮﺩ.",
+            "استاندارد ایربایک : ",
+            "ﻣﺎﻧﯿﺘﻮﺭ ﺍﯾﺮﺑﺎﯾﮏ ﺗﻮﺳﻂ ﺩﺍﻭﺭ ﺭﯾﺴﺖ ﻣﯽﺷﻮﺩ. ﻭﺭﺯﺷﮑﺎﺭ ﺩﺭ ﻫﺮ ﺭﺍﻧﺪ ﺑﺎﯾﺪ ۱۲ ﮐﺎﻟﺮﯼ ﺭﺍ ﮐﺎﻣﻞ ﮐﻨﺪ.",
+            "ﺑﺮﺩﺍﺷﺘﻦ ﺩﺳﺖﻫﺎ ﺍﺯ ﺩﺳﺘﻪﻫﺎ ﻭ ﺍﯾﺴﺘﺎﺩﻥ ﺭﻭﯼ ﺭﮐﺎﺏ ﻣﺠﺎﺯ ﺍﺳﺖ؛ ﻭﺭﺯﺷﮑﺎﺭ ﻣﯽﺗﻮﺍﻧﺪ ﺑﺪﻭﻥ ﻧﺸﺴﺘﻦ ﺭﻭﯼ ﺻﻨﺪﻟﯽ ﺭﮐﺎﺏ ﺑﺰﻧﺪ.",
+            "ﺑﺮﺍﯼ ﭘﯿﺎﺩﻩ ﺷﺪﻥ ﺍﺯ ﺑﺎﯾﮏ ﻭ ﺁﻣﺪﻥ ﺭﻭﯼ ﺯﻣﯿﻦ، ﺍﺑﺘﺪﺍ ﺑﺎﯾﺪ ﻋﺪﺩ ۱۲ ﮐﺎﻟﺮﯼ ﺭﻭﯼ ﻣﺎﻧﯿﺘﻮﺭ ﻧﻤﺎﯾﺶ ﺩﺍﺩﻩ ﺷﻮﺩ ﻭ ﺩﺍﻭﺭ ﺍﺟﺎﺯﻩ ﺑﺪﻫﺪ.",
+            "ﭘﺲ ﺍﺯ ﺗﮑﻤﯿﻞ ۱۲ ﮐﺎﻟﺮﯼ، ﯾﮏ ﺭﺍﻧﺪ ﺗﻤﺎﻡ ﻣﯽﺷﻮﺩ؛ ﻭﺭﺯﺷﮑﺎﺭ ﺑﺮﺍﯼ ﺭﺍﻧﺪ ﺑﻌﺪﯼ ﺑﻪ ﻓﺮﺍﻧﺖﺍﺳﮑﻮﺍﺕ برمیگردد",
+            "تای بریک ها، جریمه و ثبت نتیجه | ",
+            "تای بریک مستقل هر تست : ",
+            "تست ۵: ﺯﻣﺎﻥ ﭘﺎﯾﺎﻥ ﺭﺍﻧﺪ ﺩﻭﻡ، ﭘﺲ ﺍﺯ ﺗﮑﻤﯿﻞ ﺁﺧﺮﯾﻦ ﭘﺮﺵ ﺻﺤﯿﺢ ﻃﻨﺎﺏ ﺩﺭ ﺭﺍﻧﺪ ﺩﻭم، ثبت میشود.",
+            "تست ۶: ﺯﻣﺎﻥ ﭘﺎﯾﺎﻥ ﺭﺍﻧﺪ ﺍﻭﻝ، ﭘﺲ ﺍﺯ ﺗﮑﻤﯿﻞ ۱۲ ﮐﺎﻟﺮﯼ ﺍﯾﺮﺑﺎﯾﮏ ﺩﺭ ﺭﺍﻧﺪ ﺍﻭﻝ، ﺛﺒﺖ ﻣﯽﺷﻮﺩ.",
+            "ﺟﺮﯾﻤﻪ ﭘﯿﺎﺩﻩ ﺷﺪﻥ ﺯﻭﺩﻫﻨﮕﺎﻡ ﺍﺯ ﺍﯾﺮﺑﺎﯾﮏ : ",
+            "ﻫﺮ ﺑﺎﺭ ﭘﯿﺎﺩﻩ ﺷﺪﻥ ﺍﺯ ﺑﺎﯾﮏ ﻭ ﺁﻣﺪﻥ ﺭﻭﯼ ﺯﻣﯿﻦ ﭘﯿﺶ ﺍﺯ ﺍﺟﺎﺯﻩ ﺩﺍﻭﺭ، ۴ ﺗﮑﺮﺍﺭ ﺟﺮﯾﻤﻪ ﺩﺍﺭﺩ. ﺩﺍﻭﺭ ﻫﺮ ﻣﻮﺭﺩ  ۱ﺭﺍ ﺛﺒﺖ ﻣﯽﮐﻨﺪ ﻭ ﺩﺭ ﭘﺎﯾﺎﻥ ﺗﺴﺖ ۶، ﺑﻪﺍﺯﺍﯼ ﻫﺮ ﻣﻮﺭﺩ ۴ ﺗﮑﺮﺍﺭ ﺍﺯ ﻣﺠﻤﻮﻉ ﮐﺴﺮ ﻣﯽﺷﻮﺩ.",
+            "ﺟﺮﯾﻤﻪ ﺟﺎﯾﮕﺰﯾﻦ ﮐﺎﻟﺮﯼﻫﺎﯼ ﺑﺎﻗﯽﻣﺎﻧﺪﻩ ﻧﯿﺴﺖ؛ ﻭﺭﺯﺷﮑﺎﺭ ﺑﺎﯾﺪ ﺑﻪ ﺑﺎﯾﮏ ﺑﺮﮔﺮﺩﺩ ﻭ ﻫﻤﺎﻥ ﺳﺖ ﺭﺍ ﺗﺎ ۱۲ ﮐﺎﻟﺮﯼ ﮐﺎﻣﻞ ﮐﻨﺪ. ",
+            "ﻣﺜﺎﻝ: ﭘﯿﺎﺩﻩ ﺷﺪﻥ ﺭﻭﯼ ۴ ﮐﺎﻟﺮﯼ ﯾﮏ ﺟﺮﯾﻤﻪ ۴ ﺗﮑﺮﺍﺭﯼ ﺛﺒﺖ ﻣﯽﺷﻮﺩ؛ ﻭﺭﺯﺷﮑﺎﺭ ﺑﺎﯾﺪ ﺑﺮﮔﺮﺩﺩ ﻭ ۸ ﮐﺎﻟﺮﯼ ﺑﺎﻗﯽﻣﺎﻧﺪﻩ ﻫﻤﺎﻥ ﺳﺖ ﺭﺍ ﺗﮑﻤﯿﻞ ﮐﻨﺪ.",
+            "ﺛﺒﺖ ﻧﺘﯿﺠﻪ ﺩﺭ ﭘﺎﯾﺎﻥ ۶ ﺩﻗﯿﻘﻪ : ",
+            "ﻧﺘﯿﺠﻪ ﻫﺮ ﺗﺴﺖ ﺑﻪﺻﻮﺭﺕ ﺗﻌﺪﺍﺩ ﮐﻞ ﺗﮑﺮﺍﺭﻫﺎﯼ ﺻﺤﯿﺢ ﺛﺒﺖ ﻣﯽﺷﻮﺩ؛ ﺭﺍﻧﺪﻫﺎﯼ ﮐﺎﻣﻞ ﻭ ﺗﮑﺮﺍﺭﻫﺎﯼ ﺭﺍﻧﺪ  ۱ﻧﺎﻗﺺ ﺩﺭ ﻣﺠﻤﻮﻉ ﻟﺤﺎﻅ ﻣﯽﺷﻮﻧﺪ. ",
+            "اگر ﭘﺎﯾﺎﻥ ﺗﺴﺖ ۶ ﺩﺭ ﺍﯾﺮﺑﺎﯾﮏ ﺑﺎﺷﺪ، ﺩﺍﻭﺭ ﻓﻘﻂ ﻋﺪﺩ ﻧﻤﺎﯾﺶﺩﺍﺩﻩﺷﺪﻩ ﺩﺭ ﻫﻤﺎﻥ ﻟﺤﻈﻪ ﭘﺎﯾﺎﻥ ﺭﺍ ﺛﺒﺖ ﻣﯽﮐﻨﺪ. ﮐﺎﻟﺮﯼﻫﺎﯼ ﺍﺿﺎﻓﻪﺷﺪﻩ ﭘﺲ ﺍﺯ ﭘﺎﯾﺎﻥ ﺗﺴﺖ ﺣﺴﺎﺏ ﻧﻤﯽﺷﻮند"
+          ]
+        },
+        "day4": {
+          "title": "روز ۴ — ۱۵ آبان",
+          "body": [
+            "روز چهارم شامل رویدادهای ۸ و ۹ — آخرین روز مسابقات — است.",
+            "رویداد ۸ بر اساس دقت و کنترل امتیازدهی می‌شود. امتیاز فقط برای تکرارهای تمیز و آگاهانه داده می‌شود.",
+            "رویداد ۹ فینال مسابقات است و پس از آخرین گروه، جدول امتیازات بسته می‌شود.",
+            "نتایج سکوی قهرمانی در مراسم اختتامیه اعلام می‌شود. فقط ورزشکارانی که در مراسم حضور دارند جایزه دریافت می‌کنند.",
+            "سه نفر برتر هر رده باید ظرف ۳۰ دقیقه پس از رویداد خود برای تأیید نهایی نتایج در دسترس باشند."
+          ]
+        },
+        "scoring": {
+          "title": "امتیازدهی و رتبه‌بندی",
+          "body": [
+            "رده‌های بیگینر، اینترمدیت و ادونس جداگانه امتیازدهی می‌شوند. امتیاز هر تست برابر با رتبه همان تست است: رتبه اول یک امتیاز، رتبه دوم دو امتیاز و به همین ترتیب. مجموع کمتر، جایگاه بالاتر دارد.",
+            "همه تست‌ها سهم برابر دارند و هیچ تستی ضریب اضافه ندارد.",
+            "ورزشکاران با نتیجه یکسان، رتبه و امتیاز مشترک می‌گیرند. رتبه بعدی با احتساب تعداد افراد محاسبه می‌شود؛ مثال: اول، دوم، دوم، چهارم؛ امتیازها: ،۱ ،۲ ،۲ .۴",
+            "برای تعیین مقام‌های اول تا سوم، ابتدا تعداد مقام‌های اول مقایسه می‌شود؛ تعداد بیشتر، جایگاه بالاتر دارد. این مقامها در تمام تست‌ها پس از بازمحاسبه بین ۱۰ فینالیست شمرده می‌شوند.",
+            "اگر تعداد مقام‌های اول نیز برابر باشد، نتیجه بهتر آخرین تست تعیین‌کننده است. برای سایر جایگاهها، در تساوی مجموع، مستقیما آخرین تست مقایسه می‌شود.",
+            "آخرین تست: تست ۸ برای بیگینر و اینترمدیت؛ تست ۹ برای ادونس. اگر نتیجه تست تعیین‌کننده تساوی نیز برابر باشد، تصمیم نهایی با تیم اجرایی مسابقه است.",
+            "در هر یک از این وضعیتها، ورزشکار امتیاز آخرین جایگاه جدول همان تست در مرحله مربوطه را دریافت میکند. این عدد برابر با تعداد ورزشکاران جدول است و رتبههای مشترک آن را تغییر نمیدهند."
+          ]
+        },
+        "judging": {
+          "title": "قضاوت و استاندارد حرکات",
+          "body": [
+            "هر گروه توسط داوران اصلی معتبر قضاوت می‌شود که اختیار کامل شمارش تکرارها و اعلام تکرار نامعتبر را دارند.",
+            "استاندارد حرکات مطابق استانداردهای رسمی کراس‌فیت است، مگر آنکه معرفی رویداد خلاف آن را اعلام کند.",
+            "تکرار نامعتبر به‌صورت صوتی و بلافاصله اعلام می‌شود و حرکت باید اصلاح شود تا قابل شمارش باشد.",
+            "هنگام ثبت نتیجه، امضای ورزشکار دریافت می‌شود. ورزشکار از همان زمان حداکثر ۱۵ دقیقه و فقط پیش از خروج از سالن فرصت دارد اعتراض خود را مستقیماً به سرداور اعلام کند.",
+            "سرداور همان زمان اعتراض را بررسی می‌کند و نتیجه رسیدگی در همان بازه ۱۵ دقیقه‌ای پس از امضای نتیجه اعلام می‌شود.",
+            "با خروج ورزشکار از سالن یا پایان مهلت، ثبت اعتراض ممکن نیست؛ حتی اگر پس از خروج هنوز ۱۵ دقیقه نگذشته باشد. امضای نتیجه، حق اعتراض در این مهلت را از بین نمیبرد.",
+            "امضای نتیجه، حق اعتراض در این مهلت را از بین نمیبرد."
+          ]
+        },
+        "safety": {
+          "title": "تجهیزات و ایمنی",
+          "body": [
+            "تجهیزات مجاز برای هر واد، در دفترچه داوری همان واد ذکر می‌شود. استفاده از هدفون و هندزفری و تعویض کفش حین تست ممنوع است.",
+            "تنظیم اولیه دستگاه‌ها توسط داور و در زمان اختصاصیافته انجام می‌شود. همراه داشتن تلفن همراه با مسئولیت خود ورزشکار است. فیلمبرداری رسمی توسط عوامل مسابقه انجام می‌شود.",
+            "استفاده صحیح از تجهیزات الزامی است. مسئولیت جبران خسارت ناشی از آسیب‌رساندن به تجهیزات بر عهده ورزشکار است.",
+            "بررسی خرابی تجهیزات، توقف اجرا یا هر اتفاق مؤثر بر اجرای تست و تصمیمگیری درباره نحوه ادامه یا اجرای مجدد، بر عهده تیم داوری و تیم برگزاری است.",
+            "بی‌احترامی، درگیری، تهدید یا اخلال در روند برگزاری موجب دیسکوالیفای و حذف از مسابقات می‌شود.",
+            "اعتراض از مسیر تعیین‌شده و در مهلت مقرر مجاز است و به‌خودی‌خود موجب دیسکوالیفای نمی‌شود."
+          ]
+        }
       }
-    }
   }
 ,
     "schedule": {
@@ -529,6 +609,18 @@
       "event3": {
         "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
         "workout": "For Time | Time cap : 9min | 2,000 Row"
+      },
+      "event4": {
+        "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
+        "workout": "5Rounds for time | Time Cap 12:00 | 6 Wall Walks | 8 Shuttle Runs | 10 Deadlifts"
+      },
+      "event5": {
+        "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
+        "workout": "AMRAP 6MIN | Toes-To-Bar + Jump Rope"
+      },
+      "event6": {
+        "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
+        "workout": "AMRAP 6MIN | 6 Front Squats + 12 cal Air-Bike"
       }
     },
     "scores": {

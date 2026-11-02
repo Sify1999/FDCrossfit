@@ -21,7 +21,7 @@ const CHAPTERS: RuleChapter[] = [
   { id: "rules-general", titleKey: "ruleBook.chapters.general.title", bodyKey: "ruleBook.chapters.general.body" },
   { id: "rules-day-1", day: 1, titleKey: "ruleBook.chapters.day1.title", bodyKey: "ruleBook.chapters.day1.body" },
   { id: "rules-day-2", day: 2, titleKey: "ruleBook.chapters.day2.title", bodyKey: "ruleBook.chapters.day2.body" },
-  // { id: "rules-day-3", day: 3, titleKey: "ruleBook.chapters.day3.title", bodyKey: "ruleBook.chapters.day3.body" },
+  { id: "rules-day-3", day: 3, titleKey: "ruleBook.chapters.day3.title", bodyKey: "ruleBook.chapters.day3.body" },
   // { id: "rules-day-4", day: 4, titleKey: "ruleBook.chapters.day4.title", bodyKey: "ruleBook.chapters.day4.body" },
   { id: "rules-scoring", titleKey: "ruleBook.chapters.scoring.title", bodyKey: "ruleBook.chapters.scoring.body" },
   { id: "rules-judging", titleKey: "ruleBook.chapters.judging.title", bodyKey: "ruleBook.chapters.judging.body" },
@@ -104,7 +104,7 @@ const ChapterCard = memo(function ChapterCard({
           : "border-white/10 bg-[#141414]"
       }`}
     >
-      <div className="flex items-start gap-3 sm:gap-4">
+      <div dir="rtl" className="flex items-start gap-3 sm:gap-4">
         <span
           aria-hidden
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-xs font-black tabular-nums transition-colors duration-300 ${
@@ -143,7 +143,11 @@ const ChapterCard = memo(function ChapterCard({
 
       <ul className="mt-5 space-y-3 border-t border-white/5 pt-5">
         {data.body.map((item, bi) => (
-          <li key={bi} className="flex items-start gap-3 text-sm leading-relaxed text-gray-300 sm:text-[15px]">
+          <li
+            key={bi}
+            dir="rtl"
+            className="flex items-start gap-3 text-right text-sm leading-relaxed text-gray-300 sm:text-[15px]"
+          >
             <span
               aria-hidden
               className="mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#B4E3BD]/30 bg-[#B4E3BD]/10 text-[#B4E3BD]"
@@ -377,6 +381,7 @@ export default function RuleBookModal({ open, onClose, targetDay }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="rule-book-title"
+        dir="rtl"
         onClick={(e) => e.stopPropagation()}
         className="relative flex h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl border border-gray-800 bg-[#0f0f0f] shadow-2xl shadow-black/60 sm:h-auto sm:max-h-[90vh] sm:rounded-3xl"
       >
@@ -433,6 +438,7 @@ export default function RuleBookModal({ open, onClose, targetDay }: Props) {
             </p>
             <div
               ref={navScrollRef}
+              dir="rtl"
               className="flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
               {CHAPTERS.map((ch, i) => {
