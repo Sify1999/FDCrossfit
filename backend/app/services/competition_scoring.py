@@ -7,6 +7,9 @@ Equal keys share the same rank (1, 2, 2, 4).
 Event numbers 1 and 2 both live on the combined "Event 1&2" row (event == 1):
 Event 1 uses reps / time_seconds, Event 2 uses reps_2 / time_seconds_2.
 
+MANUAL_RANK_EVENTS (currently Event 7) are the exception: the coach types the
+rank into `score` and it is used as-is — nothing is calculated.
+
 To change how an event is scored, edit RULES at the bottom — nothing else.
 """
 
@@ -22,6 +25,9 @@ TOTAL_STAGES = 3
 STAGE_EVENTS: dict[int, list[int]] = {1: [1, 2, 3], 2: [4, 5, 6], 3: [7, 8, 9]}
 LEVEL_MAX_EVENT: dict[str, int] = {"beginner": 8, "intermediate": 8, "advanced": 9}
 EVENT3_TIME_CAP = 540  # seconds (9 min)
+
+# Events whose rank is typed in by hand (stored in `score`, used as-is).
+MANUAL_RANK_EVENTS: set[int] = {7}
 
 Key = tuple | None
 KeyFn = Callable[[CompetitionAthlete], Key]
@@ -45,6 +51,25 @@ def row_event_for(event_no: int) -> int:
     return 1 if event_no == 2 else event_no
 
 
+def event3_finished(r: CompetitionAthlete) -> bool:
+    """Event 3: True only if the athlete finished BEFORE the 9:00 cap.
+
+    Hitting the cap (stored as 09:00, whatever the hundredths) or having no
+    time at all is NOT a finish — those athletes are ranked by meters.
+    """
+    t = r.time_seconds
+    return t is not None and t < EVENT3_TIME_CAP
+
+
+def event4_finished(r: CompetitionAthlete) -> bool:
+    """Event 4: finished = a completion time was saved.
+
+    A did-not-finish is saved with NO time and the reps completed, so there is
+    no cap to compare against.
+    """
+    return r.time_seconds is not None
+
+
 # ─── Rules ────────────────────────────────────────────────────────────
 
 def _ev12(part: int) -> KeyFn:
@@ -65,25 +90,42 @@ def _ev12(part: int) -> KeyFn:
 
 
 def _ev3(r: CompetitionAthlete) -> Key:
-    """Event 3: finishers by time+hundredths (lower better), then non-finishers by
-    meters/reps (higher better). Equal times tie-break by higher reps."""
-    t, reps = r.time_seconds, r.reps
-    if t is not None and t <= EVENT3_TIME_CAP:
+    """Event 3:
+    - Finishers (time under the 9:00 cap): lower time wins; equal time →
+      lower tie-breaker time wins.
+    - Non-finishers: more meters wins; equal meters → lower tie-breaker time wins.
+    - Every finisher ranks above every non-finisher.
+    """
+    tb = r.tiebreaker_value if r.tiebreaker_value is not None else INF
+
+    if event3_finished(r):
         th = r.time_hundredths or 0
-        if t < EVENT3_TIME_CAP or (t == EVENT3_TIME_CAP and th == 0):
-            # finished — rank by total time ASC, then reps DESC
-            return (0, t + th / 100.0, -(reps or 0))
-    if t is None and reps is None:
-        return None
-    return (1, 0, -(reps or 0))
+        return (0, (r.time_seconds or 0) + th / 100.0, tb)
+
+    if r.time_seconds is None and r.reps is None:
+        return None  # nothing entered yet
+
+    return (1, 0, -(r.reps or 0), tb)
 
 
 def _ev4(r: CompetitionAthlete) -> Key:
-    """Event 4: time (lower better), tiebreaker = round 1 time (lower better)."""
-    if r.time_seconds is None:
-        return None
+    """Event 4:
+    - Finishers (a time was saved): lower time wins; equal time → lower
+      tie-breaker time wins.
+    - Non-finishers (no time, reps saved): more reps wins; equal reps → lower
+      tie-breaker time wins.
+    - Every finisher ranks above every non-finisher.
+    """
     tb = r.tiebreaker_value if r.tiebreaker_value is not None else INF
-    return (r.time_seconds, tb)
+
+    if event4_finished(r):
+        th = r.time_hundredths or 0
+        return (0, (r.time_seconds or 0) + th / 100.0, tb)
+
+    if r.reps is None:
+        return None  # nothing entered yet
+
+    return (1, 0, -r.reps, tb)
 
 
 def _ev5(r: CompetitionAthlete) -> Key:
@@ -100,6 +142,13 @@ def _ev6(r: CompetitionAthlete) -> Key:
         return None
     tb = r.tiebreaker_value if r.tiebreaker_value is not None else INF
     return (-r.reps, tb)
+
+
+def _ev7(r: CompetitionAthlete) -> Key:
+    """Event 7: MANUAL — the coach types the rank into `score`.
+    (rank_event uses the score as-is for manual events; this key only says
+    whether a rank has been entered yet.)"""
+    return None if r.score is None else (r.score,)
 
 
 def _auto(r: CompetitionAthlete) -> Key:
@@ -123,7 +172,8 @@ RULES: dict[int, KeyFn] = {
     4: _ev4,
     5: _ev5,
     6: _ev6,
-    # 7-9 → _auto until their real rules are defined
+    7: _ev7,
+    # 8-9 → _auto until their real rules are defined
 }
 
 
@@ -135,7 +185,17 @@ def event_key(r: CompetitionAthlete, event_no: int) -> Key:
 
 def rank_event(rows_by_name: dict[str, CompetitionAthlete], event_no: int) -> dict[str, int]:
     """name -> rank (standard competition ranking). Athletes with no result
-    for this event are left out."""
+    for this event are left out.
+
+    Manual events (Event 7) skip the calculation: the rank is exactly the
+    score the coach typed in."""
+    if event_no in MANUAL_RANK_EVENTS:
+        return {
+            name: row.score
+            for name, row in rows_by_name.items()
+            if row.score is not None
+        }
+
     scored: list[tuple[tuple, str]] = []
     for name, row in rows_by_name.items():
         key = event_key(row, event_no)
@@ -168,9 +228,10 @@ def display_result(r: CompetitionAthlete, event_no: int) -> str | None:
         reps = r.reps if event_no == 1 else r.reps_2
         return f"{reps} reps" if reps is not None else None
     if event_no == 3:
-        if r.time_seconds is not None and r.time_seconds <= EVENT3_TIME_CAP:
-            return fmt_time(r.time_seconds, r.time_hundredths)
+        if event3_finished(r):
+            return fmt_time(r.time_seconds or 0, r.time_hundredths)
         return f"{r.reps} m" if r.reps is not None else None
+    # Events 4 & 7 (and the rest): time if finished, otherwise weight / reps.
     if r.time_seconds is not None:
         return fmt_time(r.time_seconds, r.time_hundredths)
     if r.weight is not None:

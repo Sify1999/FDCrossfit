@@ -335,6 +335,7 @@
       "subtitle": "مرزهای خود را آزمایش کنید، در بهترین حالت خود رقابت کنید. همین حالا ثبت‌نام کنید و توانایی‌های خود را به نمایش بگذارید.",
       "btnSignIn": "ثبت نام",
       "btnRuleBook": "قوانین",
+      "btnEvents": "رویدادها",
       "ruleBook": "قوانین مسابقه",
       "btnSchedule": "زمان بندی",
       "btnScores": "جدول امتیازات"
@@ -514,6 +515,24 @@
       "line": "لاین",
       "time": "ساعت",
       "hint": "برای مشاهده رویدادها و گروه‌ها روی هر روز کلیک کنید"
+    },
+    "events" : {
+      "title": "تست های مسابقه",
+      "subtitle": "برای مشاهده اطلاعات تست بر روی تست مورد نظر کلیک کنید و برای دیدن قوانین و مقررات بر روی دکمه قوانین کلیک کنید",
+      "day": "روز",
+      "viewInRuleBook": "مشاهده قوانین و مقررات",
+      "event1": {
+        "desc": "A combined session: two events back-to-back. Athletes complete Event 1 and then immediately move to Event 2. The combined result counts as a single leaderboard entry.",
+        "workout": "هشت دقیقه بیشترین دور و تکرار | در هر دور: ۱۰ اسنچ دمبل متناوب، سپس ۵ ترکیب برپی باکس جامپاور و باکس جامپاور برگشت."
+      },
+      "event2": {
+        "desc": "The second part of the combined Event 1&2 session. Athletes move directly from Event 1 into Event 2 without a break.",
+        "workout": "تست :۲ سه دقیقه بیشترین تکرار انتقال هالتر از زمین به بالای سر. نتیجه هر تست جداگانه ثبت میشود."
+      },
+      "event3": {
+        "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
+        "workout": "روئینگ ۲۰۰۰ متر در 9 دقیقه"
+      }
     },
     "scores": {
       "title": "جدول امتیازات و رتبه‌بندی",

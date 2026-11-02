@@ -337,6 +337,7 @@
       "btnSchedule": "Schedule",
       "btnScores": "Scoreboard",
       "btnRuleBook": "Rule Book",
+      "btnEvents": "Events",
       "ruleBook" : "Rules"
     },
     "signIn": {
@@ -511,6 +512,24 @@
       "line": "Line",
       "time": "Time",
       "hint": "Click a day to expand its events and heats"
+    },
+    "events": {
+      "title": "Competition Events",
+      "subtitle": "Tap an event to read its description and format — click the rule book icon to jump to that day's rules.",
+      "day": "Day",
+      "viewInRuleBook": "View in Rule Book",
+      "event1": {
+        "desc": "A combined session: two events back-to-back. Athletes complete Event 1 and then immediately move to Event 2. The combined result counts as a single leaderboard entry.",
+        "workout": "8min AMRAP 10 Dumbbel Snatch + 5 Burpee Box Jump over and Box Jump Over in return"
+      },
+      "event2": {
+        "desc": "The second part of the combined Event 1&2 session. Athletes move directly from Event 1 into Event 2 without a break.",
+        "workout": "3Min Max Rep Ground to OverHead"
+      },
+      "event3": {
+        "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
+        "workout": "For Time | Time cap : 9min | 2,000 Row"
+      }
     },
     "scores": {
       "title": "Scoreboard & Rankings",

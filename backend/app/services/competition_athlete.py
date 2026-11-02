@@ -11,7 +11,12 @@ from app.schemas.competition_athlete import (
     CompetitionAthleteCreate,
     CompetitionAthleteUpdateRegistration,
 )
-from app.services.competition_scoring import LEVEL_MAX_EVENT, normalize_level
+from app.services.competition_scoring import (
+    LEVEL_MAX_EVENT,
+    event3_finished,
+    event4_finished,
+    normalize_level,
+)
 
 # Row events: Event 2 lives on the combined "Event 1&2" row (event number 1).
 ROW_EVENTS = [1, 3, 4, 5, 6, 7, 8, 9]
@@ -280,9 +285,12 @@ async def recompute_event_ranks(
     time_cap_seconds: int | None = None,
 ) -> None:
     """
-    LEGACY — writes the old `score` column for events 1 and 3 across ALL
-    athletes. The new stage standings don't read it (ranks are derived from the
-    raw results), so it is harmless; it can be removed later.
+    LEGACY — writes the old `score` column for events 1, 3, 4, 5 and 6 across
+    ALL athletes. The new stage standings don't read it (ranks are derived from
+    the raw results), so it is harmless; it can be removed later.
+
+    Event 7 is NOT recomputed on purpose: its `score` is the rank the coach
+    typed in by hand.
     """
     from sqlalchemy import update as upd
 
@@ -327,16 +335,13 @@ async def recompute_event_ranks(
     elif event_number == 2:
         return  # Event 2 handled by event 1 above
     elif event_number == 3:
-        cap = time_cap_seconds or 540  # default 9 min
-
         for level, group in by_level.items():
             def _ev3_key(a: CompetitionAthlete) -> tuple:
-                total = (a.time_seconds or 0) + ((a.time_hundredths or 0) / 100.0)
-                if (a.time_seconds is not None and
-                    a.time_seconds <= cap and
-                    (a.time_seconds < cap or (a.time_seconds == cap and (a.time_hundredths or 0) == 0))):
-                    return (0, total, -(a.reps or 0))   # finished => time ASC, then reps DESC
-                return (1, 0, -(a.reps or 0))            # unfinished => reps DESC
+                tb = a.tiebreaker_value if a.tiebreaker_value is not None else float("inf")
+                if event3_finished(a):
+                    total = (a.time_seconds or 0) + ((a.time_hundredths or 0) / 100.0)
+                    return (0, total, tb)             # finished: time ASC, then tie-breaker ASC
+                return (1, 0, -(a.reps or 0), tb)     # not finished: meters DESC, then tie-breaker ASC
             group.sort(key=_ev3_key)
             for rank, athlete in enumerate(group, start=1):
                 if athlete.score != rank:
@@ -346,12 +351,18 @@ async def recompute_event_ranks(
                         .values(score=rank)
                     )
     elif event_number == 4:
-        # Event 4: time ASC (lower better), tiebreaker_value ASC (lower better)
+        # Event 4: finishers by time ASC, then DNFs by reps DESC; the
+        # tie-breaker time (lower better) decides equal results.
         for level, group in by_level.items():
-            group.sort(key=lambda a: (
-                a.time_seconds if a.time_seconds is not None else float("inf"),
-                a.tiebreaker_value if a.tiebreaker_value is not None else float("inf"),
-            ))
+            def _ev4_key(a: CompetitionAthlete) -> tuple:
+                tb = a.tiebreaker_value if a.tiebreaker_value is not None else float("inf")
+                if event4_finished(a):
+                    total = (a.time_seconds or 0) + ((a.time_hundredths or 0) / 100.0)
+                    return (0, total, tb)             # finished: time ASC, then tie-breaker ASC
+                if a.reps is None:
+                    return (2, 0, 0, tb)              # no result yet: last
+                return (1, 0, -a.reps, tb)            # not finished: reps DESC, then tie-breaker ASC
+            group.sort(key=_ev4_key)
             for rank, athlete in enumerate(group, start=1):
                 if athlete.score != rank:
                     await db.execute(
@@ -374,6 +385,6 @@ async def recompute_event_ranks(
                         .values(score=rank)
                     )
     else:
-        return  # not auto-scored
+        return  # not auto-scored (includes Event 7: manual rank)
 
     await db.flush()

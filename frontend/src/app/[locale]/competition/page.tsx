@@ -10,6 +10,7 @@ import AddAthleteModal from "../components/AddAthleteModal";
 import ShowAthletesModal from "../components/ShowAthletesModal";
 import ScheduleManagerModal from "../components/ScheduleManagerModal";
 import RuleBookModal from "../components/RuleBookModal";
+import EventsModal from "../components/EventsModal";
 import { useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 
@@ -1170,6 +1171,7 @@ export default function CompetitionPage() {
   }
 
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [eventsOpen, setEventsOpen] = useState(false);
 
   // Rule Book popup — targetDay decides which chapter is scrolled into view.
   const [ruleBookOpen, setRuleBookOpen] = useState(false);
@@ -1404,6 +1406,12 @@ export default function CompetitionPage() {
                 />
                 <DifficultyPicker t={t} open={diffOpen} onSelect={handleDifficultySelect} />
               </div>
+              <ActionButton
+                icon={<IconBook />}
+                label={t("hero.btnEvents")}
+                desc="View all events"
+                onClick={() => setEventsOpen(true)}
+              />
               <ActionButton
                 icon={<IconScores />}
                 label={t("hero.btnScores")}
@@ -1967,6 +1975,11 @@ export default function CompetitionPage() {
         open={ruleBookOpen}
         onClose={() => setRuleBookOpen(false)}
         targetDay={ruleBookTargetDay}
+      />
+      <EventsModal
+        open={eventsOpen}
+        onClose={() => setEventsOpen(false)}
+        onViewRuleBook={(day) => { setEventsOpen(false); openRuleBook(day); }}
       />
     </main>
   );
