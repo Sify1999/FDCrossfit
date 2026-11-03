@@ -7,8 +7,15 @@ Equal keys share the same rank (1, 2, 2, 4).
 Event numbers 1 and 2 both live on the combined "Event 1&2" row (event == 1):
 Event 1 uses reps / time_seconds, Event 2 uses reps_2 / time_seconds_2.
 
-MANUAL_RANK_EVENTS (currently Event 7) are the exception: the coach types the
-rank into `score` and it is used as-is — nothing is calculated.
+EVERY STAGE RE-RANKS ITS EVENTS among the athletes who reached it:
+    stage 1 = everyone, events 1-3
+    stage 2 = the top 20 of stage 1, events 1-6
+    stage 3 = the top 10 of stage 2, events 1-9 (1-8 for beginner/intermediate)
+Nothing is stored — ranks are always derived from the raw results.
+
+Event 7 is entered by hand: the coach types a rank into `score`. Like every
+other event it is re-ranked among the athletes of the stage (typed 1, 4, 5 for
+the three who advanced become 1, 2, 3; equal typed numbers share a rank).
 
 To change how an event is scored, edit RULES at the bottom — nothing else.
 """
@@ -22,12 +29,16 @@ from app.models.competition_athlete import CompetitionAthlete
 INF = float("inf")
 
 TOTAL_STAGES = 3
-STAGE_EVENTS: dict[int, list[int]] = {1: [1, 2, 3], 2: [4, 5, 6], 3: [7, 8, 9]}
+STAGE_EVENTS: dict[int, list[int]] = {
+    1: [1, 2, 3],
+    2: [1, 2, 3, 4, 5, 6],
+    3: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+}
+# Stage 1 / 2: a tie on the stage total is broken by the rank in this event
+# (lower is better). Stage 3 uses "more 1st places, then the final event".
+STAGE_TIEBREAK_EVENT: dict[int, int] = {1: 3, 2: 4}
 LEVEL_MAX_EVENT: dict[str, int] = {"beginner": 8, "intermediate": 8, "advanced": 9}
 EVENT3_TIME_CAP = 540  # seconds (9 min)
-
-# Events whose rank is typed in by hand (stored in `score`, used as-is).
-MANUAL_RANK_EVENTS: set[int] = {7}
 
 Key = tuple | None
 KeyFn = Callable[[CompetitionAthlete], Key]
@@ -145,9 +156,9 @@ def _ev6(r: CompetitionAthlete) -> Key:
 
 
 def _ev7(r: CompetitionAthlete) -> Key:
-    """Event 7: MANUAL — the coach types the rank into `score`.
-    (rank_event uses the score as-is for manual events; this key only says
-    whether a rank has been entered yet.)"""
+    """Event 7: MANUAL — the coach types a rank into `score` (lower = better).
+    It is re-ranked among the athletes of the stage like any other event, so
+    typed 1, 4, 5 become 1, 2, 3 for the three athletes who advanced."""
     return None if r.score is None else (r.score,)
 
 
@@ -184,18 +195,11 @@ def event_key(r: CompetitionAthlete, event_no: int) -> Key:
 # ─── Ranking ──────────────────────────────────────────────────────────
 
 def rank_event(rows_by_name: dict[str, CompetitionAthlete], event_no: int) -> dict[str, int]:
-    """name -> rank (standard competition ranking). Athletes with no result
-    for this event are left out.
+    """name -> rank (standard competition ranking: 1, 2, 2, 4) among ONLY the
+    athletes passed in. Athletes with no result for this event are left out.
 
-    Manual events (Event 7) skip the calculation: the rank is exactly the
-    score the coach typed in."""
-    if event_no in MANUAL_RANK_EVENTS:
-        return {
-            name: row.score
-            for name, row in rows_by_name.items()
-            if row.score is not None
-        }
-
+    Callers pass just the athletes of the stage, which is what re-scales the
+    ranks in stages 2 and 3."""
     scored: list[tuple[tuple, str]] = []
     for name, row in rows_by_name.items():
         key = event_key(row, event_no)
