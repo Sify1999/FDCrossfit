@@ -12,6 +12,7 @@ import ScheduleManagerModal from "../components/ScheduleManagerModal";
 import RuleBookModal from "../components/RuleBookModal";
 import { Fragment, useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import EventsModal from "../components/EventsModal";
 
 /* ─── Feature switch ─────────────────────────────────────────────────
    Stages 2 and 3 (their buttons AND tables) are hidden from EVERYONE for
@@ -29,6 +30,7 @@ function IconSignIn() {
     </svg>
   );
 }
+
 function IconSchedule() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,6 +38,24 @@ function IconSchedule() {
       <line x1="16" y1="2" x2="16" y2="6" />
       <line x1="8" y1="2" x2="8" y2="6" />
       <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
+  );
+}
+function IconClipboard() {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="5" y="4" width="14" height="17" rx="2" />
+      <path d="M9 4.5V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5" />
+      <path d="M9 10h6M9 14h6" />
     </svg>
   );
 }
@@ -1384,6 +1404,7 @@ export default function CompetitionPage() {
 
   const [scheduleOpen, setScheduleOpen] = useState(false);
 
+  const [eventsModalOpen, setEventsModalOpen] = useState(false);
   // Rule Book popup — targetDay decides which chapter is scrolled into view.
   const [ruleBookOpen, setRuleBookOpen] = useState(false);
   const [ruleBookTargetDay, setRuleBookTargetDay] = useState(0);
@@ -1660,6 +1681,13 @@ export default function CompetitionPage() {
                 highlight
                 onClick={() => scrollTo("section-signIn")}
               /> */}
+                <ActionButton
+                  icon={<IconClipboard />}
+                  label={t("events.title")}
+                  desc="Events"
+                  onClick={() => setEventsModalOpen(true)}
+                />
+
               <ActionButton
                 icon={<IconSignIn />}
                 label={t("hero.ruleBook")}
@@ -2242,6 +2270,11 @@ export default function CompetitionPage() {
         open={ruleBookOpen}
         onClose={() => setRuleBookOpen(false)}
         targetDay={ruleBookTargetDay}
+      />
+      <EventsModal
+        open={eventsModalOpen}
+        onClose={() => setEventsModalOpen(false)}
+        onViewRuleBook={openRuleBook}
       />
     </main>
   );
