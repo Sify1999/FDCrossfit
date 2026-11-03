@@ -82,12 +82,6 @@ class _Row:
     def name(self) -> str:
         return self.participant.name
 
-    @property
-    def key(self) -> tuple:
-        # Legacy (manual close): ascending = better — more completed events
-        # first, then lower total, then more first places.
-        return (-self.completed, self.total, -self.firsts)
-
 
 @dataclass
 class _Computation:
@@ -377,11 +371,11 @@ def _tie_at_cut(rows: list[_Row], n: int) -> TieInfo | None:
     """Legacy (manual close): athletes tied across the line at position n."""
     if not 0 < n < len(rows):
         return None
-    k = rows[n - 1].key
-    if rows[n].key != k:
+    k = rows[n - 1].tie_key
+    if rows[n].tie_key != k:
         return None
-    group = [r for r in rows if r.key == k]
-    better = sum(1 for r in rows if r.key < k)
+    group = [r for r in rows if r.tie_key == k]
+    better = sum(1 for r in rows if r.tie_key < k)
     return TieInfo(names=[r.name for r in group], slots=n - better)
 
 
@@ -515,8 +509,8 @@ async def close_stage(
             raise ValueError(
                 f"The cut splits a tie — choose exactly {tie.slots} of: {', '.join(tie.names)}."
             )
-        k = rows[advance_count - 1].key
-        advancing = {r.name for r in rows if r.key < k} | set(winners)
+        k = rows[advance_count - 1].tie_key
+        advancing = {r.name for r in rows if r.tie_key < k} | set(winners)
     else:
         advancing = {r.name for r in rows[:advance_count]}
 

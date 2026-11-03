@@ -63,13 +63,13 @@ def row_event_for(event_no: int) -> int:
 
 
 def event3_finished(r: CompetitionAthlete) -> bool:
-    """Event 3: True only if the athlete finished BEFORE the 9:00 cap.
+    """Event 3: True only if the athlete finished at or before the 9:00 cap.
 
-    Hitting the cap (stored as 09:00, whatever the hundredths) or having no
-    time at all is NOT a finish — those athletes are ranked by meters.
+    Finishing exactly on the cap (09:00 / 540 seconds) IS a finish. Having
+    no time at all is NOT a finish — those athletes are ranked by meters.
     """
     t = r.time_seconds
-    return t is not None and t < EVENT3_TIME_CAP
+    return t is not None and t <= EVENT3_TIME_CAP
 
 
 def event4_finished(r: CompetitionAthlete) -> bool:
@@ -102,7 +102,7 @@ def _ev12(part: int) -> KeyFn:
 
 def _ev3(r: CompetitionAthlete) -> Key:
     """Event 3:
-    - Finishers (time under the 9:00 cap): lower time wins; equal time →
+    - Finishers (time at or under the 9:00 cap): lower time wins; equal time →
       lower tie-breaker time wins.
     - Non-finishers: more meters wins; equal meters → lower tie-breaker time wins.
     - Every finisher ranks above every non-finisher.
@@ -235,6 +235,16 @@ def display_result(r: CompetitionAthlete, event_no: int) -> str | None:
         if event3_finished(r):
             return fmt_time(r.time_seconds or 0, r.time_hundredths)
         return f"{r.reps} m" if r.reps is not None else None
+    if event_no == 7:
+        # Manual-rank event — show the supporting data (time, or weight + reps on a DNF).
+        if r.time_seconds is not None:
+            return fmt_time(r.time_seconds, r.time_hundredths)
+        bits = []
+        if r.weight is not None:
+            bits.append(f"{r.weight} kg")
+        if r.reps is not None:
+            bits.append(f"{r.reps} reps")
+        return " • ".join(bits) if bits else None
     # Events 4 & 7 (and the rest): time if finished, otherwise weight / reps.
     if r.time_seconds is not None:
         return fmt_time(r.time_seconds, r.time_hundredths)
