@@ -709,6 +709,14 @@
       "event6": {
         "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
         "workout": "AMRAP 6MIN | 6 Front Squats + 12 cal Air-Bike"
+      },
+      "event7": {
+        "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
+        "workout": "Snatch Ladder | For Time | Time cap : 2Min / Stage"
+      },
+      "event8": {
+        "desc": "A For-Time workout with a fixed time cap. If you finish before the cap, your time is your score; if not, total work completed determines your ranking.",
+        "workout": "5,000M BikeErg + 2,500m SkiErg | Advance Only | For Time | Time Cap : 20Min"
       }
     },
     "scores": {
