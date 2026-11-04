@@ -80,6 +80,47 @@ def event4_finished(r: CompetitionAthlete) -> bool:
     """
     return r.time_seconds is not None
 
+# Event 8 is ADVANCED-only "meters" (like event 3). None = no cap: a saved
+# time means finished. Set to a number of seconds if a cap is ever needed.
+EVENT8_ADVANCED_TIME_CAP: int | None = None
+
+
+def _is_advanced(r: CompetitionAthlete) -> bool:
+    return normalize_level(r.level) == "advanced"
+
+
+def _finished_time(r: CompetitionAthlete, cap: int | None) -> bool:
+    t = r.time_seconds
+    return t is not None and (cap is None or t <= cap)
+
+
+def _time_or_dnf(r: CompetitionAthlete, cap: int | None = None) -> Key:
+    """Finishers: lower time wins, tie → lower tiebreaker time.
+    Non-finishers: more reps (meters) wins, tie → lower tiebreaker time.
+    Every finisher ranks above every non-finisher."""
+    tb = r.tiebreaker_value if r.tiebreaker_value is not None else INF
+
+    if _finished_time(r, cap):
+        th = r.time_hundredths or 0
+        return (0, (r.time_seconds or 0) + th / 100.0, tb)
+
+    if r.time_seconds is None and r.reps is None:
+        return None  # nothing entered yet
+
+    return (1, 0, -(r.reps or 0), tb)
+
+
+def _ev8(r: CompetitionAthlete) -> Key:
+    """Event 8: advanced = time / meters (event 3 style, optional cap);
+    beginner & intermediate = time / reps. Decided per athlete level."""
+    if _is_advanced(r):
+        return _time_or_dnf(r, EVENT8_ADVANCED_TIME_CAP)
+    return _time_or_dnf(r)
+
+
+def _ev9(r: CompetitionAthlete) -> Key:
+    """Event 9 (advanced only): time if finished, otherwise reps."""
+    return _time_or_dnf(r)
 
 # ─── Rules ────────────────────────────────────────────────────────────
 
@@ -184,7 +225,8 @@ RULES: dict[int, KeyFn] = {
     5: _ev5,
     6: _ev6,
     7: _ev7,
-    # 8-9 → _auto until their real rules are defined
+    8: _ev8,
+    9: _ev9,
 }
 
 
@@ -244,6 +286,13 @@ def display_result(r: CompetitionAthlete, event_no: int) -> str | None:
             bits.append(f"{r.weight} kg")
         if r.reps is not None:
             bits.append(f"{r.reps} reps")
+        if event_no in (8, 9):
+            cap = EVENT8_ADVANCED_TIME_CAP if event_no == 8 and _is_advanced(r) else None
+            if _finished_time(r, cap):
+                return fmt_time(r.time_seconds or 0, r.time_hundredths)
+            if r.reps is None:
+                return None
+        return f"{r.reps} m" if event_no == 8 and _is_advanced(r) else f"{r.reps} reps"
         return " • ".join(bits) if bits else None
     # Events 4 & 7 (and the rest): time if finished, otherwise weight / reps.
     if r.time_seconds is not None:

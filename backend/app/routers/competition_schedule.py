@@ -69,7 +69,10 @@ async def edit_event(
     current_user: User = Depends(require_admin),
 ) -> CompetitionEventRead:
     """Admin only — update an event."""
-    updated = await update_event(db, event_id, data)
+    try:
+        updated = await update_event(db, event_id, data)
+    except ValueError as exc:
+        raise _guard(exc) from exc
     event = await get_event(db, event_id)
     if not updated or event is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Event not found")

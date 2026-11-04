@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, getErrorMessage } from "@/lib/api-client";
 import { dayDateLabel } from "@/lib/competition-days";
+import { scheduleEventBadge } from "@/lib/competition-events";
 import { useBodyScrollLock } from "./useScrollLock";
 
 type HeatItem = {
@@ -303,7 +304,7 @@ export default function ScheduleManagerModal({ open, onClose, onDataChanged }: P
                   {/* Event row — pre-built name + day (1–4) selector */}
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-[#B4E3BD]/15 px-2.5 text-xs font-black text-[#B4E3BD]">
-                      {ev.event_number === 1 ? "1&2" : ev.event_number}
+                      {scheduleEventBadge(ev.event_number)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
                       {ev.name}
@@ -494,8 +495,9 @@ export default function ScheduleManagerModal({ open, onClose, onDataChanged }: P
           {/* Pre-built events note */}
           <div className="rounded-2xl border border-dashed border-gray-800 bg-[#141414]/40 px-4 py-3 text-center">
             <p className="text-[11px] leading-4 text-gray-500">
-              Events are pre-built (Event 1&2, Event 3 … Event 9). Just add the
-              heats &amp; their times for each event.
+              Events are pre-built (Event 1&2, Event 3, Event 4, Event 5&6,
+              Event 7, Event 8, Event 9). Just add the heats &amp; their times
+              for each event.
             </p>
           </div>
         </div>

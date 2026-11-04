@@ -149,13 +149,29 @@ async def _apply_assignments(
     if not heats and not lines:
         return
     heat_ids = await _heat_id_map(db, level) if heats else {}
-    for row in await _rows_for(db, name, level):
+    rows = await _rows_for(db, name, level)
+    for row in rows:
         if row.event in heats:
             hn = heats[row.event]
             row.heat = hn
             row.heat_id = heat_ids.get((row.event, hn)) if hn is not None else None
         if row.event in lines:
             row.line = lines[row.event]
+
+    # Events 5 & 6 run as the combined "Event 5&6" schedule session, so the
+    # heat/line assigned to the session (event 5) also applies to the event-6
+    # scoring row — both score entries show the same heat and line. heat_id is
+    # intentionally left NULL on event-6 so the schedule day card shows each
+    # athlete exactly once (only the event-5 row is linked to the heat record).
+    has_heat5 = 5 in heats
+    has_line5 = 5 in lines
+    if (has_heat5 or has_line5) and any(r.event == 6 for r in rows):
+        for row in rows:
+            if row.event == 6:
+                if has_heat5 and 6 not in heats:
+                    row.heat = heats[5]
+                if has_line5 and 6 not in lines:
+                    row.line = lines[5]
     await db.flush()
 
 

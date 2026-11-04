@@ -1,6 +1,6 @@
 "use client";
 
-import { COMPETITION_DAY_EVENT_GROUPS, eventLabel } from "@/lib/competition-events";
+import { COMPETITION_DAY_EVENT_GROUPS, scheduleEventLabel } from "@/lib/competition-events";
 import { dayDateLabel } from "@/lib/competition-days";
 import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
@@ -19,6 +19,12 @@ import EventsModal from "../components/EventsModal";
    now. The backend still calculates them and nothing is deleted — set this
    to true to show them again. */
 const SHOW_LATER_STAGES = false;
+
+/* ─── Public stages ──────────────────────────────────────────────────
+   Highest stage whose button AND table are shown to everyone.
+   Stage 3 stays hidden (the backend still calculates it). */
+const MAX_PUBLIC_STAGE = 1;
+
 
 /* ─── Icons (inline, currentColor so they inherit) ─────────────────── */
 function IconSignIn() {
@@ -316,6 +322,18 @@ function LevelTabs({
       })}
     </div>
   );
+}
+
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(true);
+  useEffect(() => {
+    const m = window.matchMedia(query);
+    const onChange = () => setMatches(m.matches);
+    onChange();
+    m.addEventListener("change", onChange);
+    return () => m.removeEventListener("change", onChange);
+  }, [query]);
+  return matches;
 }
 
 /* ─── Schedule types + dynamic builders ─────────────────────────────
@@ -1126,7 +1144,7 @@ function RuleBookDayCard({
             key={ev}
             className="rounded-full border border-[#B4E3BD]/20 bg-[#B4E3BD]/10 px-2.5 py-1 text-[10px] font-semibold text-[#B4E3BD] sm:text-[11px]"
           >
-            {eventLabel(ev)}
+            {scheduleEventLabel(ev)}
           </span>
         ))}
       </div>
@@ -1352,10 +1370,13 @@ export default function CompetitionPage() {
   // ── Leaderboard / Stage standings filters ──────────────────────────
   const [levelFilter, setLevelFilter] = useState<LevelKey>("beginner");
   const [stageFilter, setStageFilter] = useState<number>(1);
-  // While later stages are hidden, the scoreboard is ALWAYS stage 1.
-  const maxStage = SHOW_LATER_STAGES ? 3 : 1;
-  const activeStage = Math.min(stageFilter, maxStage);
 
+  // While later stages are hidden, the scoreboard is ALWAYS stage 1.
+  // Stage the data on screen belongs to. This avoids a frame of "Stage 2 Total"
+  // header over stage 1 rows while a new stage is loading.
+
+  const [shownStage, setShownStage] = useState(1);
+  const isDesktop = useMediaQuery("(min-width: 640px)");
   const [standingRows, setStandingRows] = useState<StageStandingRow[]>([]);
   const [standingEvents, setStandingEvents] = useState<number[]>([]);
   const [stages, setStages] = useState<StageInfo[]>([]);
@@ -1372,6 +1393,10 @@ export default function CompetitionPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   const isAdmin = currentUser?.role === "admin";
+
+  // Stage 3 is admin-only for now; everyone else sees stages 1–2.
+  const maxStage = isAdmin ? 3 : MAX_PUBLIC_STAGE;
+  const activeStage = Math.min(stageFilter, maxStage);
 
   function openAthleteDetails(name: string) {
     setShowAthletesInitialName(name);
@@ -1469,6 +1494,7 @@ export default function CompetitionPage() {
         )}&stage=${activeStage}`
       );
       if (reqId !== leaderboardReq.current) return;
+      setShownStage(activeStage);
 
       setStandingRows(res.standing.rows ?? []);
       setStandingEvents(res.standing.events ?? []);
@@ -1499,11 +1525,13 @@ export default function CompetitionPage() {
 
   // The cut line is only drawn when it is active (someone is actually cut).
   const cut = standingCut?.active ? standingCut : null;
-  // The stage the athletes advance to — only named while later stages are visible.
-  const cutNextStage = SHOW_LATER_STAGES && standingCut ? standingCut.next_stage : null;
-  // #, Name, Level, events…, Total
-  const colCount = 3 + standingEvents.length + 1;
+  // Only name the next stage when that stage is public (stage 2 → null).
+  const cutNextStage =
+    standingCut && standingCut.next_stage <= maxStage ? standingCut.next_stage : null;
+  // Stage 3 has 8–9 event columns, so the table gets tighter widths.
+  const compact = standingEvents.length > 6;
 
+  const colCount = 3 + (isDesktop ? 1 : 0) + standingEvents.length;
   // Stage buttons that are allowed to be shown.
   const visibleStages = (
     stages.length > 0
@@ -1893,7 +1921,7 @@ export default function CompetitionPage() {
       ════════════════════════════════════════════════════════════════ */}
       <section
         id="section-scores"
-        className="relative min-h-screen w-full overflow-hidden bg-black px-4 py-20 sm:px-12 sm:py-24"
+        className="relative min-h-screen w-full overflow-hidden bg-black px-2 py-20 sm:px-12 sm:py-24"
       >
         <div
           aria-hidden
@@ -2010,9 +2038,9 @@ export default function CompetitionPage() {
                   }`}
                 >
                   <span className="relative z-10">Stage {s.stage}</span>
-                  {s.state === "closed" && activeStage !== s.stage && (
-                    <span className="absolute -end-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#B4E3BD] text-[8px] font-black text-black shadow">
-                      ✓
+                  {s.stage > MAX_PUBLIC_STAGE && (
+                    <span className="ms-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 align-middle text-[9px] font-bold tracking-wider text-amber-300">
+                      ADMIN
                     </span>
                   )}
                 </button>
@@ -2024,211 +2052,202 @@ export default function CompetitionPage() {
             )}
           </div>
 
-          {/* Leaderboard */}
-          <div
-            dir="ltr"
-            className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#121212] shadow-xl shadow-black/50"
-          >
-            <span
-              aria-hidden
-              className="block h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent"
-            />
-
-            {/* Cut line summary: who advances, and whether it is still live */}
-            <StageBanner
-              tx={cutTx}
-              stage={activeStage}
-              cut={standingCut}
-              nextStage={cutNextStage}
-              entryCut={entryCut}
-              provisional={fieldProvisional}
-              fieldSize={displayed.length}
-              isRTL={isRTL}
-            />
-
-            <div className="max-h-[65vh] overflow-auto [scrollbar-color:#333_transparent] [scrollbar-width:thin]">
-              <table className="w-full min-w-max">
-                <thead>
-                  <tr>
-                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
-                      #
-                    </th>
-
-                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-left text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px]">
-                      Name
-                    </th>
-
-                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-2 text-left sm:px-5">
-                      <FilterDropdown
-                        label="Level"
-                        options={[
-                          { value: "beginner", label: "Beginner" },
-                          { value: "intermediate", label: "Intermediate" },
-                          { value: "advanced", label: "Advanced" },
-                        ]}
-                        selected={levelFilter}
-                        onSelect={(v) => setLevelFilter(v as LevelKey)}
-                      />
-                    </th>
-
-                    {/* Dynamic event columns: E1-E3 (stage 1), E1-E6 (stage 2), E1-E9 (stage 3) */}
-                    {standingEvents.map((eventNumber) => (
-                      <th
-                        key={eventNumber}
-                        className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-2 py-3 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-[#B4E3BD]/70 sm:px-3 sm:text-[11px]"
-                      >
-                        E{eventNumber}
-                      </th>
-                    ))}
-
-                    <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-3 py-3 text-right text-[10px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70 sm:px-5 sm:text-[11px]">
-                      Stage {activeStage} Total
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {displayed.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={colCount}
-                        className="px-4 py-14 text-center sm:px-6"
-                      >
-                        <p className="text-sm font-semibold text-gray-300">
-                          No results yet.
-                        </p>
-                        <p className="mt-1 text-xs text-gray-500">
-                          Enter scores for this stage&apos;s events to see rankings.
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    displayed.map((row, i) => {
-                      const podium =
-                        row.position === 1
-                          ? {
-                              badge:
-                                "bg-[#FFD700]/15 text-[#FFD700] border-[#FFD700]/40",
-                              row:
-                                "bg-[#FFD700]/[0.05] hover:bg-[#FFD700]/[0.09] shadow-[inset_3px_0_0_0_#FFD700]",
-                              score: "text-[#FFD700]",
-                            }
-                          : row.position === 2
-                            ? {
-                                badge:
-                                  "bg-[#C0C0C0]/15 text-[#D4D4D4] border-[#C0C0C0]/40",
-                                row:
-                                  "bg-[#C0C0C0]/[0.04] hover:bg-[#C0C0C0]/[0.08] shadow-[inset_3px_0_0_0_#C0C0C0]",
-                                score: "text-[#D4D4D4]",
-                              }
-                            : row.position === 3
-                              ? {
-                                  badge:
-                                    "bg-[#CD7F32]/15 text-[#E09A5A] border-[#CD7F32]/40",
-                                  row:
-                                    "bg-[#CD7F32]/[0.05] hover:bg-[#CD7F32]/[0.09] shadow-[inset_3px_0_0_0_#CD7F32]",
-                                  score: "text-[#E09A5A]",
-                                }
-                              : {
-                                  badge: "border-transparent text-gray-500",
-                                  row: "hover:bg-white/[0.04]",
-                                  score: "text-white",
-                                };
-
-                      // Rows under the cut line are dimmed; tied athletes get a badge.
-                      const below = cut !== null && i >= cut.after;
-                      const isTied = cut !== null && cut.tied.includes(row.name);
-                      const showCutLine =
-                        cut !== null && i + 1 === cut.after && i + 1 < displayed.length;
-
-                      return (
-                        <Fragment key={row.name}>
-                          <tr
-                            className={`border-b border-white/5 transition-all duration-200 last:border-0 ${podium.row} ${
-                              below ? "opacity-60 hover:opacity-90" : ""
-                            }`}
-                          >
-                            <td className="px-3 py-3 sm:px-5 sm:py-4">
-                              <span
-                                className={`inline-flex min-w-[28px] items-center justify-center rounded-lg border px-2 py-0.5 text-xs font-black tabular-nums sm:min-w-[32px] sm:py-1 sm:text-sm ${podium.badge}`}
-                              >
-                                {row.position}
-                              </span>
-                            </td>
-
-                            <td className="px-3 py-3 sm:px-5 sm:py-4">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => openAthleteDetails(row.name)}
-                                  title={`View ${row.name}'s results`}
-                                  className="block max-w-[120px] truncate text-left text-xs font-semibold text-white underline-offset-4 transition hover:text-[#B4E3BD] hover:underline sm:max-w-none sm:text-sm"
-                                >
-                                  {row.name}
-                                </button>
-                                {isTied && (
-                                  <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
-                                    {cutTx.tieBadge}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            <td className="px-3 py-3 sm:px-5 sm:py-4">
-                              <LevelBadge level={row.level} />
-                            </td>
-
-                            {/* Dynamic event rankings */}
-                            {standingEvents.map((eventNumber) => {
-                              const eventResult =
-                                row.events?.[String(eventNumber)];
-
-                              return (
-                                <td
-                                  key={eventNumber}
-                                  className="px-2 py-3 text-center sm:px-3 sm:py-4"
-                                >
-                                  <span className="inline-flex min-w-[32px] items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[11px] font-bold tabular-nums text-gray-200 sm:text-sm">
-                                    {eventResult?.rank != null ? (
-                                      eventResult.rank
-                                    ) : (
-                                      <span className="text-gray-600">—</span>
-                                    )}
-                                  </span>
-                                </td>
-                              );
-                            })}
-
-                            <td
-                              className={`whitespace-nowrap px-3 py-3 text-right text-sm font-black tabular-nums sm:px-5 sm:py-4 sm:text-base ${podium.score}`}
-                            >
-                              {row.total}
-                            </td>
-                          </tr>
-
-                          {showCutLine && cut && (
-                            <CutLineRow
-                              colSpan={colCount}
-                              label={cutTx.line(cut.limit, cutNextStage)}
-                              out={displayed.length - cut.after}
-                              outLabel={cutTx.out}
-                              tieText={
-                                cut.tied.length > 0
-                                  ? cutTx.tie(cut.tied.join(isRTL ? "، " : ", "))
-                                  : null
-                              }
-                              isRTL={isRTL}
-                            />
-                          )}
-                        </Fragment>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+            {/* Level filter */}
+            <div dir="ltr" className="mb-4 flex items-center justify-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-widest text-gray-500">Level</span>
+              <FilterDropdown
+                label="Level"
+                options={[
+                  { value: "beginner", label: "Beginner" },
+                  { value: "intermediate", label: "Intermediate" },
+                  { value: "advanced", label: "Advanced" },
+                ]}
+                selected={levelFilter}
+                onSelect={(v) => setLevelFilter(v as LevelKey)}
+              />
             </div>
-          </div>
 
+            {/* Leaderboard */}
+            <div
+              dir="ltr"
+              className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#121212] shadow-xl shadow-black/50"
+            >
+              <span aria-hidden className="block h-px w-full bg-gradient-to-r from-transparent via-[#B4E3BD]/40 to-transparent" />
+
+              <StageBanner
+                tx={cutTx}
+                stage={shownStage}
+                cut={standingCut}
+                nextStage={cutNextStage}
+                entryCut={entryCut}
+                provisional={fieldProvisional}
+                fieldSize={displayed.length}
+                isRTL={isRTL}
+              />
+
+              {/* overflow-x-auto is only a safety net for extremely narrow screens */}
+              <div className="max-h-[65vh] overflow-auto [scrollbar-color:#333_transparent] [scrollbar-width:thin]">
+                <table className="w-full table-fixed">
+                  <colgroup>
+                    <col className="w-8 sm:w-14" />
+                    <col />
+                    {isDesktop && <col className="w-36" />}
+                    {standingEvents.map((n) => (
+                      <col key={n} className="w-[26px] sm:w-14" />
+                    ))}
+                    <col className="w-14 sm:w-28" />
+                  </colgroup>
+
+                  <thead>
+                    <tr>
+                      <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-1 py-3 text-center text-[10px] font-bold uppercase tracking-normal text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-left sm:text-[11px] sm:tracking-[0.2em]">
+                        #
+                      </th>
+                      <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-1.5 py-3 text-left text-[10px] font-bold uppercase tracking-normal text-[#B4E3BD]/70 sm:px-5 sm:py-4 sm:text-[11px] sm:tracking-[0.2em]">
+                        Name
+                      </th>
+                      {isDesktop && (
+                        <th className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-5 py-4 text-left text-[11px] font-bold uppercase tracking-[0.2em] text-[#B4E3BD]/70">
+                          Level
+                        </th>
+                      )}
+                      {standingEvents.map((eventNumber) => (
+                        <th
+                          key={eventNumber}
+                          className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-0 py-3 text-center text-[9px] font-bold uppercase tracking-normal text-[#B4E3BD]/70 sm:px-3 sm:text-[11px] sm:tracking-[0.15em]"
+                        >
+                          E{eventNumber}
+                        </th>
+                      ))}
+                      <th className="sticky top-0 z-10 whitespace-normal border-b border-white/10 bg-[#161616] px-1.5 py-3 text-right text-[9px] font-bold uppercase leading-tight tracking-normal text-[#B4E3BD]/70 sm:px-5 sm:text-[11px] sm:tracking-[0.2em]">
+                        <span className="sm:hidden">S{shownStage} Total</span>
+                        <span className="hidden sm:inline">Stage {shownStage} Total</span>
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {displayed.length === 0 ? (
+                      <tr>
+                        <td colSpan={colCount} className="px-4 py-14 text-center sm:px-6">
+                          <p className="text-sm font-semibold text-gray-300">No results yet.</p>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Enter scores for this stage&apos;s events to see rankings.
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      displayed.map((row, i) => {
+                        const podium =
+                          row.position === 1
+                            ? {
+                                badge: "bg-[#FFD700]/15 text-[#FFD700] border-[#FFD700]/40",
+                                row: "bg-[#FFD700]/[0.05] hover:bg-[#FFD700]/[0.09] shadow-[inset_3px_0_0_0_#FFD700]",
+                                score: "text-[#FFD700]",
+                              }
+                            : row.position === 2
+                              ? {
+                                  badge: "bg-[#C0C0C0]/15 text-[#D4D4D4] border-[#C0C0C0]/40",
+                                  row: "bg-[#C0C0C0]/[0.04] hover:bg-[#C0C0C0]/[0.08] shadow-[inset_3px_0_0_0_#C0C0C0]",
+                                  score: "text-[#D4D4D4]",
+                                }
+                              : row.position === 3
+                                ? {
+                                    badge: "bg-[#CD7F32]/15 text-[#E09A5A] border-[#CD7F32]/40",
+                                    row: "bg-[#CD7F32]/[0.05] hover:bg-[#CD7F32]/[0.09] shadow-[inset_3px_0_0_0_#CD7F32]",
+                                    score: "text-[#E09A5A]",
+                                  }
+                                : {
+                                    badge: "border-transparent text-gray-500",
+                                    row: "hover:bg-white/[0.04]",
+                                    score: "text-white",
+                                  };
+
+                        const below = cut !== null && i >= cut.after;
+                        const isTied = cut !== null && cut.tied.includes(row.name);
+                        const showCutLine = cut !== null && i + 1 === cut.after && i + 1 < displayed.length;
+
+                        return (
+                          <Fragment key={row.name}>
+                            <tr
+                              className={`border-b border-white/5 transition-all duration-200 last:border-0 ${podium.row} ${
+                                below ? "opacity-60 hover:opacity-90" : ""
+                              }`}
+                            >
+                              <td className="px-1 py-3 text-center sm:px-5 sm:py-4 sm:text-left">
+                                <span
+                                  className={`inline-flex min-w-[24px] items-center justify-center rounded-lg border px-1 py-0.5 text-[11px] font-black tabular-nums sm:min-w-[32px] sm:px-2 sm:py-1 sm:text-sm ${podium.badge}`}
+                                >
+                                  {row.position}
+                                </span>
+                              </td>
+
+                              <td className="px-1.5 py-3 sm:px-5 sm:py-4">
+                                <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => openAthleteDetails(row.name)}
+                                    title={`View ${row.name}'s results`}
+                                    className="min-w-0 text-left text-xs font-semibold leading-tight text-white underline-offset-4 transition [overflow-wrap:anywhere] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden hover:text-[#B4E3BD] hover:underline sm:text-sm"
+                                  >
+                                    {row.name}
+                                  </button>
+                                  {isTied && (
+                                    <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-300">
+                                      {cutTx.tieBadge}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {isDesktop && (
+                                <td className="px-5 py-4">
+                                  <LevelBadge level={row.level} />
+                                </td>
+                              )}
+
+                              {standingEvents.map((eventNumber) => {
+                                const eventResult = row.events?.[String(eventNumber)];
+                                return (
+                                  <td key={eventNumber} className="px-0 py-3 text-center sm:px-3 sm:py-4">
+                                    <span className="inline-flex min-w-[22px] items-center justify-center rounded-md border border-white/10 bg-white/[0.03] px-0.5 py-1 text-[11px] font-bold tabular-nums text-gray-200 sm:min-w-[32px] sm:px-2 sm:text-sm">
+                                      {eventResult?.rank != null ? (
+                                        eventResult.rank
+                                      ) : (
+                                        <span className="text-gray-600">—</span>
+                                      )}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+
+                              <td
+                                className={`whitespace-nowrap px-1.5 py-3 text-right text-xs font-black tabular-nums sm:px-5 sm:py-4 sm:text-base ${podium.score}`}
+                              >
+                                {row.total}
+                              </td>
+                            </tr>
+
+                            {showCutLine && cut && (
+                              <CutLineRow
+                                colSpan={colCount}
+                                label={cutTx.line(cut.limit, cutNextStage)}
+                                out={displayed.length - cut.after}
+                                outLabel={cutTx.out}
+                                tieText={
+                                  cut.tied.length > 0 ? cutTx.tie(cut.tied.join(isRTL ? "، " : ", ")) : null
+                                }
+                                isRTL={isRTL}
+                              />
+                            )}
+                          </Fragment>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           <div className="mt-10 flex justify-center sm:mt-12">
             <BackToTop onClick={() => scrollTo("hero")} />
           </div>

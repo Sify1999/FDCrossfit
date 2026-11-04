@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useBodyScrollLock } from "./useScrollLock";
-import { COMPETITION_DAY_EVENT_GROUPS, eventLabel } from "@/lib/competition-events";
+import { COMPETITION_DAY_EVENT_GROUPS, scheduleEventLabel } from "@/lib/competition-events";
 import { dayDateLabel } from "@/lib/competition-days";
 
 /* ─── Rule book chapters ─────────────────────────────────────────────
@@ -207,7 +207,7 @@ export default function RuleBookModal({ open, onClose, targetDay }: Props) {
         title: t(ch.titleKey),
         body: (t.raw(ch.bodyKey) as string[] | undefined) ?? [],
         dateLabel: ch.day ? dayDateLabel(ch.day, locale as "en" | "fa") : null,
-        events: ch.day ? (COMPETITION_DAY_EVENT_GROUPS[ch.day] ?? []).map((ev) => eventLabel(ev)) : [],
+        events: ch.day ? (COMPETITION_DAY_EVENT_GROUPS[ch.day] ?? []).map((ev) => scheduleEventLabel(ev)) : [],
       })),
     [t, locale]
   );

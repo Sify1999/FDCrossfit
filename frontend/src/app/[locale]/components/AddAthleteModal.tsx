@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, getErrorMessage } from "@/lib/api-client";
 import { useBodyScrollLock } from "./useScrollLock";
-import { eventLabel, levelHasEvent } from "@/lib/competition-events";
+import { levelHasEvent, scheduleEventLabel } from "@/lib/competition-events";
 
 function IconX({ size = 18 }: { size?: number }) {
   return (
@@ -378,7 +378,7 @@ export default function AddAthleteModal({
                   return (
                     <div key={ev.id} className="flex items-center gap-2">
                       <span className="inline-flex w-[5.25rem] shrink-0 items-center justify-center rounded-md border border-[#344157] bg-[#0B0F15] px-2 py-1.5 text-[10px] font-bold text-[#A5B4D0]">
-                        {eventLabel(evNum)}
+                        {scheduleEventLabel(evNum)}
                       </span>
 
                       <div className="relative min-w-0 flex-1">
@@ -389,7 +389,7 @@ export default function AddAthleteModal({
                           disabled={saving || !hasHeats}
                           aria-haspopup="listbox"
                           aria-expanded={openHeatMenu === evNum}
-                          aria-label={`Heat for ${eventLabel(evNum)}`}
+                          aria-label={`Heat for ${scheduleEventLabel(evNum)}`}
                           className={`flex w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-2 text-xs font-semibold outline-none transition focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 ${
                             openHeatMenu === evNum
                               ? "border-[#79E8B8] bg-[#0A1513] text-white"
@@ -466,7 +466,7 @@ export default function AddAthleteModal({
                         value={lineSel[evNum] ?? ""}
                         onChange={(e) => handleLineChange(evNum, e.target.value)}
                         placeholder="Line"
-                        aria-label={`Line for ${eventLabel(evNum)}`}
+                        aria-label={`Line for ${scheduleEventLabel(evNum)}`}
                         disabled={saving}
                         className="w-[4.25rem] shrink-0 rounded-lg border border-[#344157] bg-[#0B0F15] px-2 py-2 text-center text-xs font-semibold text-white outline-none transition placeholder:text-[#71819F] focus:border-[#79E8B8] disabled:cursor-not-allowed disabled:opacity-50 [color-scheme:dark]"
                       />

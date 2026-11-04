@@ -18,41 +18,60 @@ from app.schemas.competition_schedule import (
 
 # Pre-built events. Events 1 & 2 run back-to-back as one combined session,
 # so it is a single entry labeled "Event 1&2"; event number 2 is skipped.
+# Events 5 & 6 run the same way and are one entry labeled "Event 5&6";
+# event number 6 is skipped. Scheduled groups: 1 (="1&2"), 3, 4, 5 (="5&6"),
+# 7, 8, 9.
 DEFAULT_EVENT_LEVELS = ("beginner", "intermediate", "advanced")
-DEFAULT_EVENT_NUMBERS = [1, 3, 4, 5, 6, 7, 8, 9]
+DEFAULT_EVENT_NUMBERS = [1, 3, 4, 5, 7, 8, 9]
 DEFAULT_EVENT_NAMES = {
     1: "Event 1&2",
     3: "Event 3",
     4: "Event 4",
-    5: "Event 5",
-    6: "Event 6",
+    5: "Event 5&6",
     7: "Event 7",
     8: "Event 8",
     9: "Event 9",
 }
+# Day each pre-built event runs on (1..4). Used only when inserting a missing
+# row; existing rows keep whatever day the coach set in the UI.
+DEFAULT_EVENT_DAYS = {
+    1: 1,
+    3: 2,
+    4: 3,
+    5: 3,
+    7: 4,
+    8: 4,
+    9: 4,
+}
+# Event numbers merged into a combined "X&Y" session can never be standalone
+# schedule events (2 → "Event 1&2", 6 → "Event 5&6").
+RESERVED_SCHEDULE_EVENT_NUMBERS = {2, 6}
 
 
 async def ensure_default_events(db: AsyncSession) -> None:
     """Idempotently ensure the pre-built events exist for every level, so
     coaches only need to add heats & their times. Any missing (level,
-    event_number) is inserted (two events share a day → 4 days)."""
+    event_number) is inserted with its correct name/day, and the display name
+    of an existing pre-built event is normalized (data-preserving)."""
     for level in DEFAULT_EVENT_LEVELS:
         result = await db.execute(
             select(CompetitionEvent).where(CompetitionEvent.level == level)
         )
-        existing_numbers = {e.event_number for e in result.scalars().all()}
-        for idx, number in enumerate(DEFAULT_EVENT_NUMBERS):
-            if number in existing_numbers:
-                continue
-            db.add(
-                CompetitionEvent(
-                    level=level,
-                    event_number=number,
-                    name=DEFAULT_EVENT_NAMES[number],
-                    day=idx // 2 + 1,
-                    date=None,
+        existing = {e.event_number: e for e in result.scalars().all()}
+        for number in DEFAULT_EVENT_NUMBERS:
+            row = existing.get(number)
+            if row is None:
+                db.add(
+                    CompetitionEvent(
+                        level=level,
+                        event_number=number,
+                        name=DEFAULT_EVENT_NAMES[number],
+                        day=DEFAULT_EVENT_DAYS[number],
+                        date=None,
+                    )
                 )
-            )
+            elif row.name != DEFAULT_EVENT_NAMES[number]:
+                row.name = DEFAULT_EVENT_NAMES[number]
     await db.flush()
 
 
@@ -137,6 +156,12 @@ async def create_event(
     db: AsyncSession,
     data: CompetitionEventCreate,
 ) -> CompetitionEvent:
+    if data.event_number in RESERVED_SCHEDULE_EVENT_NUMBERS:
+        raise ValueError(
+            f"Event {data.event_number} is part of a combined schedule "
+            "session (Event 1&2 / Event 5&6) and cannot exist on its own."
+        )
+
     existing = await db.execute(
         select(CompetitionEvent).where(
             CompetitionEvent.level == data.level,
@@ -158,6 +183,12 @@ async def update_event(
     event_id: int,
     data: CompetitionEventUpdate,
 ) -> CompetitionEvent | None:
+    if data.event_number is not None and data.event_number in RESERVED_SCHEDULE_EVENT_NUMBERS:
+        raise ValueError(
+            f"Event {data.event_number} is part of a combined schedule "
+            "session (Event 1&2 / Event 5&6) and cannot exist on its own."
+        )
+
     values = data.model_dump(exclude_unset=True)
     if values:
         await db.execute(update(CompetitionEvent).where(CompetitionEvent.id == event_id).values(**values))
