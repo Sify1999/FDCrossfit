@@ -26,7 +26,7 @@ import EventsModal from "../components/EventsModal";
    Nothing is deleted or calculated differently — the backend always
    computes every stage; this only decides what the page shows. */
 const PUBLIC_STAGE_LEVELS: Record<number, readonly string[]> = {
-  2: ["beginner"],
+  2: ["beginner" ,  "intermediate"],
   3: [],
 };
 
