@@ -14,16 +14,32 @@ import { Fragment, useCallback, useMemo, useState, useRef, useEffect } from "rea
 import { createPortal } from "react-dom";
 import EventsModal from "../components/EventsModal";
 
-/* ─── Feature switch ─────────────────────────────────────────────────
-   Stages 2 and 3 (their buttons AND tables) are hidden from EVERYONE for
-   now. The backend still calculates them and nothing is deleted — set this
-   to true to show them again. */
-const SHOW_LATER_STAGES = false;
-
 /* ─── Public stages ──────────────────────────────────────────────────
-   Highest stage whose button AND table are shown to everyone.
-   Stage 3 stays hidden (the backend still calculates it). */
-const MAX_PUBLIC_STAGE = 1;
+   Which levels can SEE each later stage (its button AND its table).
+   Stage 1 is always public. Admins always see every stage for every level.
+
+   To open Stage 2 to more levels, add them here, then rebuild the frontend:
+       2: ["beginner", "intermediate"]
+       2: ["beginner", "intermediate", "advanced"]
+   Stage 3 stays admin-only while its list is empty.
+
+   Nothing is deleted or calculated differently — the backend always
+   computes every stage; this only decides what the page shows. */
+const PUBLIC_STAGE_LEVELS: Record<number, readonly string[]> = {
+  2: ["beginner"],
+  3: [],
+};
+
+/** Highest stage the PUBLIC can see for a level. A stage is only public if
+ * every stage before it is public too. */
+function publicMaxStage(level: string): number {
+  let max = 1;
+  for (const stage of [2, 3]) {
+    if (PUBLIC_STAGE_LEVELS[stage]?.includes(level)) max = stage;
+    else break;
+  }
+  return max;
+}
 
 
 /* ─── Icons (inline, currentColor so they inherit) ─────────────────── */
@@ -628,8 +644,8 @@ function LevelBadge({ level }: { level: string }) {
 }
 
 /* ─── Cut line texts (English / Farsi) ─────────────────────────────────
-   `next` is the stage the athletes advance to — null while later stages are
-   hidden, so the texts never mention a stage nobody can see. */
+   `next` is the stage the athletes advance to — null while that stage is
+   hidden from the viewer, so the texts never mention a stage nobody can see. */
 const CUT_TEXT = {
   en: {
     banner: (limit: number, next: number | null) =>
@@ -669,14 +685,14 @@ type CutText = (typeof CUT_TEXT)["en"];
 
 /* ─── Slim summary bar above the standings: what the cut is + whether it
    is still live. One compact line (it sits OUTSIDE the scrolling table, so
-   it can never widen it). ─────────────────────────────────────────── */
+   it can never widen it). Stage 1 and Stage 2 use this exact same bar. ── */
 function StageBanner({
   tx, stage, cut, nextStage, entryCut, provisional, fieldSize, isRTL,
 }: {
   tx: CutText;
   stage: number;
   cut: CutInfo | null;
-  /** Stage the athletes advance to, or null while later stages are hidden. */
+  /** Stage the athletes advance to, or null while that stage is hidden. */
   nextStage: number | null;
   entryCut: number | null;
   provisional: boolean;
@@ -724,7 +740,9 @@ function StageBanner({
 
       {showEntry && (
         <p className="text-[10px] leading-4 text-gray-500 sm:text-[11px]">
-          {entryCut != null ? tx.entry(entryCut, stage - 1) : tx.entryAll(stage - 1)}
+          {entryCut != null
+            ? tx.entry(fieldSize > 0 ? fieldSize : entryCut, stage - 1)
+            : tx.entryAll(stage - 1)}
           {entryCut != null && fieldSize > 0 && <span> · {tx.rescaled(fieldSize)}</span>}
           {entryCut != null && provisional && (
             <span className="text-amber-300/80"> · {tx.provisional(stage - 1)}</span>
@@ -740,10 +758,10 @@ function StageBanner({
 
        [✂ Cut line · Top 20] - - - - - - - - - - - - - - - - - -  ▼ 12 out
 
-   It has no width of its own (nothing depends on the screen size), so unlike
-   the old version it can never stretch the table or add a horizontal
-   scrollbar. The label pill is `sticky`, so on a phone it stays in view while
-   the table is scrolled sideways. ──────────────────────────────────── */
+   It has no width of its own (nothing depends on the screen size), so it can
+   never stretch the table or add a horizontal scrollbar. The label pill is
+   `sticky`, so on a phone it stays in view while the table is scrolled
+   sideways. Stage 1 (top 20) and Stage 2 (top 10) both use this row. ──── */
 function CutLineRow({
   colSpan, label, out, outLabel, tieText, isRTL,
 }: {
@@ -1371,10 +1389,8 @@ export default function CompetitionPage() {
   const [levelFilter, setLevelFilter] = useState<LevelKey>("beginner");
   const [stageFilter, setStageFilter] = useState<number>(1);
 
-  // While later stages are hidden, the scoreboard is ALWAYS stage 1.
   // Stage the data on screen belongs to. This avoids a frame of "Stage 2 Total"
   // header over stage 1 rows while a new stage is loading.
-
   const [shownStage, setShownStage] = useState(1);
   const isDesktop = useMediaQuery("(min-width: 640px)");
   const [standingRows, setStandingRows] = useState<StageStandingRow[]>([]);
@@ -1394,8 +1410,11 @@ export default function CompetitionPage() {
 
   const isAdmin = currentUser?.role === "admin";
 
-  // Stage 3 is admin-only for now; everyone else sees stages 1–2.
-  const maxStage = isAdmin ? 3 : MAX_PUBLIC_STAGE;
+  // Highest stage the viewer can see for the selected level: admins see all
+  // three; everyone else follows PUBLIC_STAGE_LEVELS. If the selected stage is
+  // not available for a level (e.g. Stage 2 on Intermediate), it falls back to
+  // the highest one that is — nothing is deleted, it just isn't shown.
+  const maxStage = isAdmin ? 3 : publicMaxStage(levelFilter);
   const activeStage = Math.min(stageFilter, maxStage);
 
   function openAthleteDetails(name: string) {
@@ -1525,14 +1544,13 @@ export default function CompetitionPage() {
 
   // The cut line is only drawn when it is active (someone is actually cut).
   const cut = standingCut?.active ? standingCut : null;
-  // Only name the next stage when that stage is public (stage 2 → null).
+  // Only name the next stage when the viewer can actually see that stage.
   const cutNextStage =
     standingCut && standingCut.next_stage <= maxStage ? standingCut.next_stage : null;
-  // Stage 3 has 8–9 event columns, so the table gets tighter widths.
-  const compact = standingEvents.length > 6;
 
+  // #, Name, (Level on desktop), events…, Total
   const colCount = 3 + (isDesktop ? 1 : 0) + standingEvents.length;
-  // Stage buttons that are allowed to be shown.
+  // Stage buttons that this viewer is allowed to see for the selected level.
   const visibleStages = (
     stages.length > 0
       ? stages
@@ -2022,8 +2040,9 @@ export default function CompetitionPage() {
           </div>
 
           {/* Stage selector — pill row above the standings table.
-              Stages 2 and 3 are hidden while SHOW_LATER_STAGES is false; the
-              lone "Stage 1" pill is then just a label. */}
+              Which stages appear depends on the selected level and on who is
+              looking (see PUBLIC_STAGE_LEVELS). With only Stage 1 available,
+              the lone "Stage 1" pill is just a label. */}
           <div dir="ltr" className="mb-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3">
             {visibleStages.length > 1 ? (
               visibleStages.map((s) => (
@@ -2038,7 +2057,8 @@ export default function CompetitionPage() {
                   }`}
                 >
                   <span className="relative z-10">Stage {s.stage}</span>
-                  {s.stage > MAX_PUBLIC_STAGE && (
+                  {/* Only stages the public cannot see (for this level) get the ADMIN tag */}
+                  {s.stage > publicMaxStage(levelFilter) && (
                     <span className="ms-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-1.5 py-0.5 align-middle text-[9px] font-bold tracking-wider text-amber-300">
                       ADMIN
                     </span>
