@@ -857,7 +857,7 @@ export default function ShowAthletesModal({
       if (isFinished) {
         setPart1(partFromStored(null, null, null, entry.time_seconds));
       } else {
-        setPart1(emptyPart());
+        setPart1({ ...emptyPart(), unit: "reps", num: numToStr(entry.reps) });
         setDnfValue(numToStr(entry.weight));
       }
       setTie1(emptyTime());
@@ -985,14 +985,12 @@ export default function ShowAthletesModal({
 
       let timeSecs: number | null = null;
       let weight: number | null = null;
+      let reps: number | null = null;
       if (finished) {
         timeSecs = timeDraftToSeconds({ min: part1.min, sec: part1.sec });
       } else {
         weight = strToNum(dnfValue);
-        if (weight === null) {
-          setSaveError("Enter the weight, or turn “Finished” back on and enter the time.");
-          return;
-        }
+        reps = strToNum(part1.num);
       }
 
       await submitScore(entryId, {
@@ -1000,7 +998,7 @@ export default function ShowAthletesModal({
         time_seconds: timeSecs,
         time_hundredths: null,
         weight,
-        reps: null,
+        reps,
         score_2: null,
         reps_2: null,
         weight_2: null,
@@ -1235,6 +1233,7 @@ export default function ShowAthletesModal({
                                             <span className="font-bold text-amber-300/90">DNF</span>
                                             <span className="text-gray-700">•</span>
                                             <span>Weight <b className="font-bold text-gray-400">{entry.weight != null ? `${entry.weight.toLocaleString()} kg` : "—"}</b></span>
+                                            <span>Reps <b className="font-bold text-gray-400">{entry.reps != null ? `${entry.reps.toLocaleString()}` : "—"}</b></span>
                                           </>
                                         )
                                       ) : isCombined ? (
@@ -1478,9 +1477,27 @@ export default function ShowAthletesModal({
                                             <TimeInput value={{ min: part1.min, sec: part1.sec }} onChange={(t) => setPart1({ ...part1, unit: "time", min: t.min, sec: t.sec })} ariaPrefix="Event 7 time" />
                                           </div>
                                         ) : (
-                                          <div className="mt-4 max-w-[220px]">
-                                            <span className={FIELD_LABEL}>Weight</span>
-                                            <NumInput value={dnfValue} onChange={setDnfValue} placeholder="Weight (kg)" ariaLabel="Event 7 weight" suffix="kg" />
+                                          <div className="mt-4">
+                                            <span className={FIELD_LABEL}>Result</span>
+                                            <div className="flex items-stretch gap-3" dir="ltr">
+                                              <div className="min-w-0 flex-1">
+                                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-gray-500">Weight (kg)</span>
+                                                <NumInput value={dnfValue} onChange={setDnfValue} placeholder="Weight" ariaLabel="Event 7 weight" suffix="kg" />
+                                              </div>
+                                              <div className="min-w-0 flex-1">
+                                                <span className="mb-1 block text-[9px] font-semibold uppercase tracking-wider text-gray-500">Reps</span>
+                                                <input
+                                                  type="text"
+                                                  inputMode="numeric"
+                                                  autoComplete="off"
+                                                  value={part1.num}
+                                                  onChange={(e) => setPart1({ ...part1, num: e.target.value.replace(/\D/g, "").slice(0, 6), unit: "reps" })}
+                                                  placeholder="Reps"
+                                                  aria-label="Reps"
+                                                  className="w-full min-w-0 rounded-xl border border-gray-700 bg-gray-900 px-3 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition placeholder:font-medium placeholder:text-gray-500 focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20"
+                                                />
+                                              </div>
+                                            </div>
                                           </div>
                                         )}
 
