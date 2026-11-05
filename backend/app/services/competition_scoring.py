@@ -13,6 +13,14 @@ EVERY STAGE RE-RANKS ITS EVENTS among the athletes who reached it:
     stage 3 = the top 10 of stage 2, events 1-9 (1-8 for beginner/intermediate)
 Nothing is stored — ranks are always derived from the raw results.
 
+Events 4, 8 and 9 share one rule ("time or DNF"):
+    - Finishers (a time was saved): lower time wins, equal time -> lower
+      tie-breaker time wins.
+    - Non-finishers (no time, `reps` saved): more wins, equal -> lower
+      tie-breaker time wins. `reps` holds the TOTAL METERS for Event 8 of the
+      advanced level and the REPS everywhere else.
+    - Every finisher ranks above every non-finisher.
+
 Event 7 is entered by hand: the coach types a rank into `score`. Like every
 other event it is re-ranked among the athletes of the stage (typed 1, 4, 5 for
 the three who advanced become 1, 2, 3; equal typed numbers share a rank).
@@ -52,6 +60,10 @@ def is_valid_level(level: str) -> bool:
     return normalize_level(level) in LEVEL_MAX_EVENT
 
 
+def is_advanced(r: CompetitionAthlete) -> bool:
+    return normalize_level(r.level) == "advanced"
+
+
 def stage_events(level: str, stage: int) -> list[int]:
     max_event = LEVEL_MAX_EVENT.get(normalize_level(level), 9)
     return [e for e in STAGE_EVENTS[stage] if e <= max_event]
@@ -63,64 +75,24 @@ def row_event_for(event_no: int) -> int:
 
 
 def event3_finished(r: CompetitionAthlete) -> bool:
-    """Event 3: True only if the athlete finished at or before the 9:00 cap.
+    """Event 3: True only if the athlete finished BEFORE the 9:00 cap.
 
-    Finishing exactly on the cap (09:00 / 540 seconds) IS a finish. Having
-    no time at all is NOT a finish — those athletes are ranked by meters.
+    Hitting the cap (stored as 09:00, whatever the hundredths) or having no
+    time at all is NOT a finish — those athletes are ranked by meters.
     """
     t = r.time_seconds
-    return t is not None and t <= EVENT3_TIME_CAP
+    return t is not None and t < EVENT3_TIME_CAP
 
 
 def event4_finished(r: CompetitionAthlete) -> bool:
-    """Event 4: finished = a completion time was saved.
+    """Events 4, 8 and 9: finished = a completion time was saved.
 
-    A did-not-finish is saved with NO time and the reps completed, so there is
-    no cap to compare against.
+    A did-not-finish is saved with NO time and the reps / meters completed, so
+    there is no cap to compare against (penalties can legitimately push a
+    finisher's time past the cap).
     """
     return r.time_seconds is not None
 
-# Event 8 is ADVANCED-only "meters" (like event 3). None = no cap: a saved
-# time means finished. Set to a number of seconds if a cap is ever needed.
-EVENT8_ADVANCED_TIME_CAP: int | None = None
-
-
-def _is_advanced(r: CompetitionAthlete) -> bool:
-    return normalize_level(r.level) == "advanced"
-
-
-def _finished_time(r: CompetitionAthlete, cap: int | None) -> bool:
-    t = r.time_seconds
-    return t is not None and (cap is None or t <= cap)
-
-
-def _time_or_dnf(r: CompetitionAthlete, cap: int | None = None) -> Key:
-    """Finishers: lower time wins, tie → lower tiebreaker time.
-    Non-finishers: more reps (meters) wins, tie → lower tiebreaker time.
-    Every finisher ranks above every non-finisher."""
-    tb = r.tiebreaker_value if r.tiebreaker_value is not None else INF
-
-    if _finished_time(r, cap):
-        th = r.time_hundredths or 0
-        return (0, (r.time_seconds or 0) + th / 100.0, tb)
-
-    if r.time_seconds is None and r.reps is None:
-        return None  # nothing entered yet
-
-    return (1, 0, -(r.reps or 0), tb)
-
-
-def _ev8(r: CompetitionAthlete) -> Key:
-    """Event 8: advanced = time / meters (event 3 style, optional cap);
-    beginner & intermediate = time / reps. Decided per athlete level."""
-    if _is_advanced(r):
-        return _time_or_dnf(r, EVENT8_ADVANCED_TIME_CAP)
-    return _time_or_dnf(r)
-
-
-def _ev9(r: CompetitionAthlete) -> Key:
-    """Event 9 (advanced only): time if finished, otherwise reps."""
-    return _time_or_dnf(r)
 
 # ─── Rules ────────────────────────────────────────────────────────────
 
@@ -143,7 +115,7 @@ def _ev12(part: int) -> KeyFn:
 
 def _ev3(r: CompetitionAthlete) -> Key:
     """Event 3:
-    - Finishers (time at or under the 9:00 cap): lower time wins; equal time →
+    - Finishers (time under the 9:00 cap): lower time wins; equal time →
       lower tie-breaker time wins.
     - Non-finishers: more meters wins; equal meters → lower tie-breaker time wins.
     - Every finisher ranks above every non-finisher.
@@ -160,14 +132,8 @@ def _ev3(r: CompetitionAthlete) -> Key:
     return (1, 0, -(r.reps or 0), tb)
 
 
-def _ev4(r: CompetitionAthlete) -> Key:
-    """Event 4:
-    - Finishers (a time was saved): lower time wins; equal time → lower
-      tie-breaker time wins.
-    - Non-finishers (no time, reps saved): more reps wins; equal reps → lower
-      tie-breaker time wins.
-    - Every finisher ranks above every non-finisher.
-    """
+def _time_or_dnf(r: CompetitionAthlete) -> Key:
+    """Events 4, 8 and 9 (see the module docstring)."""
     tb = r.tiebreaker_value if r.tiebreaker_value is not None else INF
 
     if event4_finished(r):
@@ -204,7 +170,7 @@ def _ev7(r: CompetitionAthlete) -> Key:
 
 
 def _auto(r: CompetitionAthlete) -> Key:
-    """Placeholder for events without a dedicated rule yet: detects what the
+    """Placeholder for events without a dedicated rule: detects what the
     coach entered — time (lower better), weight (higher), or reps (higher) —
     with tiebreaker_value (lower better) as tiebreaker."""
     tb = r.tiebreaker_value if r.tiebreaker_value is not None else INF
@@ -221,12 +187,12 @@ RULES: dict[int, KeyFn] = {
     1: _ev12(1),
     2: _ev12(2),
     3: _ev3,
-    4: _ev4,
+    4: _time_or_dnf,
     5: _ev5,
     6: _ev6,
     7: _ev7,
-    8: _ev8,
-    9: _ev9,
+    8: _time_or_dnf,   # advanced: meters on a DNF · beginner/intermediate: reps
+    9: _time_or_dnf,   # advanced only: reps on a DNF
 }
 
 
@@ -277,24 +243,11 @@ def display_result(r: CompetitionAthlete, event_no: int) -> str | None:
         if event3_finished(r):
             return fmt_time(r.time_seconds or 0, r.time_hundredths)
         return f"{r.reps} m" if r.reps is not None else None
-    if event_no == 7:
-        # Manual-rank event — show the supporting data (time, or weight + reps on a DNF).
-        if r.time_seconds is not None:
-            return fmt_time(r.time_seconds, r.time_hundredths)
-        bits = []
-        if r.weight is not None:
-            bits.append(f"{r.weight} kg")
-        if r.reps is not None:
-            bits.append(f"{r.reps} reps")
-        if event_no in (8, 9):
-            cap = EVENT8_ADVANCED_TIME_CAP if event_no == 8 and _is_advanced(r) else None
-            if _finished_time(r, cap):
-                return fmt_time(r.time_seconds or 0, r.time_hundredths)
-            if r.reps is None:
-                return None
-        return f"{r.reps} m" if event_no == 8 and _is_advanced(r) else f"{r.reps} reps"
-        return " • ".join(bits) if bits else None
-    # Events 4 & 7 (and the rest): time if finished, otherwise weight / reps.
+    # Events 4, 8 and 9: a DNF shows meters (event 8, advanced) or reps.
+    if event_no in (4, 8, 9) and r.time_seconds is None and r.reps is not None:
+        unit = "m" if (event_no == 8 and is_advanced(r)) else "reps"
+        return f"{r.reps} {unit}"
+    # Everything else (incl. Event 7): time if finished, otherwise weight / reps.
     if r.time_seconds is not None:
         return fmt_time(r.time_seconds, r.time_hundredths)
     if r.weight is not None:

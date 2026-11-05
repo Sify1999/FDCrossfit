@@ -166,57 +166,168 @@ function resultText(
   return "—";
 }
 
-// ─── Finished / DNF rules for events 3, 4 and 7 ───────────────────────
+// ─── Finished / DNF rules (events 3, 4, 8, 9 and 7) ───────────────────
 
 /** Must match EVENT3_TIME_CAP in backend/app/services/competition_scoring.py */
 const EVENT3_TIME_CAP = 540;
 
-/** Event 3: an athlete "finished" if the time is at or under the 9:00 cap.
- *  Finishing exactly on the cap (09:00 / 540 seconds) counts as a finish.
- *  Having meters but no time = did not finish. A completely blank row
- *  defaults to "finished". */
+/** Event 8 (advanced) is BikeErg 5,000 m + SkiErg 2,500 m = 7,500 m in total. */
+const EVENT8_ADVANCED_TOTAL_METERS = 7500;
+
+const isAdvancedLevel = (level: string) => level.trim().toLowerCase() === "advanced";
+
+/** Event 3: an athlete only "finished" if the time is UNDER the 9:00 cap.
+ *  Reaching the cap (older rows stored as 09:00) or having meters but no
+ *  time = did not finish. A completely blank row defaults to "finished". */
 function isEvent3Finished(e: { time_seconds?: number | null; reps: number | null }): boolean {
   if (e.time_seconds !== null && e.time_seconds !== undefined) {
-    return e.time_seconds <= EVENT3_TIME_CAP;
+    return e.time_seconds < EVENT3_TIME_CAP;
   }
   return e.reps === null;
 }
 
-/** Event 4: finished = a completion time is saved. A DNF is saved with NO
- *  time and the reps completed. A blank row defaults to "finished". */
-function isEvent4Finished(e: { time_seconds?: number | null; reps: number | null }): boolean {
+/** Events 4, 8 and 9: finished = a completion time is saved. A DNF is saved
+ *  with NO time and the reps (or meters) completed. A blank row defaults to
+ *  "finished". There is no cap here — penalties can push a finisher's time
+ *  past the time cap. */
+function isTimeFinished(e: { time_seconds?: number | null; reps: number | null }): boolean {
   if (e.time_seconds !== null && e.time_seconds !== undefined) return true;
   return e.reps === null;
 }
 
 /** Event 7: finished = a time is saved. A DNF is saved with NO time and the
- *  weight and/or reps. A completely blank row defaults to "finished". */
-function isEvent7Finished(e: { time_seconds?: number | null; weight: number | null; reps?: number | null }): boolean {
+ *  weight. A blank row defaults to "finished". */
+function isEvent7Finished(e: { time_seconds?: number | null; weight: number | null }): boolean {
   if (e.time_seconds !== null && e.time_seconds !== undefined) return true;
-  return e.weight === null && (e.reps === null || e.reps === undefined);
+  return e.weight === null;
 }
 
-/** Wording of the Finished switch, per event. */
-const SWITCH_COPY = {
-  3: {
-    finished: "Finished the 2000 m",
-    dnf: "Did not finish (time cap)",
-    finishedHint: "Ranked by completion time — lower is better",
-    dnfHint: "Ranked by meters reached — higher is better",
-  },
-  4: {
-    finished: "Finished the workout",
-    dnf: "Did not finish (time cap)",
-    finishedHint: "Ranked by completion time — lower is better",
-    dnfHint: "Ranked by reps completed — higher is better",
-  },
-  7: {
-    finished: "Finished",
-    dnf: "Did not finish",
-    finishedHint: "Enter the finish time",
-    dnfHint: "Enter the weight and reps instead of a time",
-  },
-} as const;
+type SwitchCopy = {
+  finished: string;
+  dnf: string;
+  finishedHint: string;
+  dnfHint: string;
+};
+
+/** Everything that differs between the events that use the Finished switch. */
+type FinishConfig = {
+  copy: SwitchCopy;
+  /** Label above the not-finished input. */
+  dnfLabel: string;
+  dnfPlaceholder: string;
+  dnfSuffix?: string;
+  /** Error shown when the not-finished value is missing. */
+  dnfNeeded: string;
+  /** "Meters" or "Reps" — used in the summary row and in error messages. */
+  summaryWord: string;
+  /** "meters" or "reps" — used in the tie breaker label. */
+  tieWord: string;
+  /** Explanation under the editor. */
+  note: string;
+  /** A finish time must be UNDER this many seconds (Event 3 only). */
+  cap?: number;
+  /** A not-finished value must be UNDER this (Event 8 advanced: the full distance). */
+  maxDnf?: number;
+};
+
+const REPS_COPY: SwitchCopy = {
+  finished: "Finished the workout",
+  dnf: "Did not finish (time cap)",
+  finishedHint: "Ranked by completion time — lower is better",
+  dnfHint: "Ranked by reps completed — higher is better",
+};
+
+const REPS_NOTE =
+  "Finishers rank above everyone else, by time (lower better). Athletes who did not finish rank by reps (higher better). Equal results are decided by the tie breaker time (lower better). Score = rank.";
+
+/** The editor config of an entry, or null for events that don't use the Finished switch. */
+function finishConfig(entry: { event: number; level: string }): FinishConfig | null {
+  switch (entry.event) {
+    case 3:
+      return {
+        copy: {
+          finished: "Finished the 2000 m",
+          dnf: "Did not finish (time cap)",
+          finishedHint: "Ranked by completion time — lower is better",
+          dnfHint: "Ranked by meters reached — higher is better",
+        },
+        dnfLabel: "Meters reached (higher is better)",
+        dnfPlaceholder: "Meters",
+        dnfSuffix: "m",
+        dnfNeeded: "Enter the meters reached, or turn “Finished” back on and enter the time.",
+        summaryWord: "Meters",
+        tieWord: "meters",
+        note:
+          "Finishers rank above everyone else, by time (lower better). Athletes who hit the time cap rank by meters (higher better). Equal results are decided by the tie breaker time (lower better). Score = rank.",
+        cap: EVENT3_TIME_CAP,
+      };
+    case 4:
+      return {
+        copy: REPS_COPY,
+        dnfLabel: "Reps completed (higher is better)",
+        dnfPlaceholder: "Reps",
+        dnfNeeded: "Enter the reps completed, or turn “Finished” back on and enter the time.",
+        summaryWord: "Reps",
+        tieWord: "reps",
+        note: REPS_NOTE,
+      };
+    case 8:
+      if (isAdvancedLevel(entry.level)) {
+        // BikeErg 5,000 m + SkiErg 2,500 m — a DNF is the TOTAL meters reached.
+        return {
+          copy: {
+            finished: "Finished BikeErg + SkiErg",
+            dnf: "Did not finish (time cap)",
+            finishedHint: "Ranked by completion time — lower is better",
+            dnfHint: "Ranked by total meters reached — higher is better",
+          },
+          dnfLabel: "Total meters reached (higher is better)",
+          dnfPlaceholder: "Meters",
+          dnfSuffix: "m",
+          dnfNeeded: "Enter the total meters reached, or turn “Finished” back on and enter the time.",
+          summaryWord: "Meters",
+          tieWord: "meters",
+          note:
+            "Finishers rank above everyone else, by time (lower better). Athletes who did not finish rank by total meters (higher better). Equal results are decided by the tie breaker time (lower better). Score = rank.",
+          maxDnf: EVENT8_ADVANCED_TOTAL_METERS,
+        };
+      }
+      return {
+        copy: REPS_COPY,
+        dnfLabel: "Reps completed (higher is better)",
+        dnfPlaceholder: "Reps",
+        dnfNeeded: "Enter the reps completed, or turn “Finished” back on and enter the time.",
+        summaryWord: "Reps",
+        tieWord: "reps",
+        note: REPS_NOTE,
+      };
+    case 9:
+      return {
+        copy: REPS_COPY,
+        dnfLabel: "Reps completed (higher is better)",
+        dnfPlaceholder: "Reps",
+        dnfNeeded: "Enter the reps completed, or turn “Finished” back on and enter the time.",
+        summaryWord: "Reps",
+        tieWord: "reps",
+        note: REPS_NOTE,
+      };
+    default:
+      return null;
+  }
+}
+
+/** Did this entry finish? (Event 3 has a cap, the others just need a time.) */
+function isFinishedFor(e: AthleteEntry): boolean {
+  return e.event === 3 ? isEvent3Finished(e) : isTimeFinished(e);
+}
+
+/** Wording of the Event 7 Finished switch. */
+const SWITCH_COPY_7: SwitchCopy = {
+  finished: "Finished",
+  dnf: "Did not finish",
+  finishedHint: "Enter the finish time",
+  dnfHint: "Enter the weight instead of a time",
+};
 
 // ─── Icons ────────────────────────────────────────────────────────────
 
@@ -538,7 +649,7 @@ function PartTitle({ children, hint }: { children: React.ReactNode; hint?: strin
   );
 }
 
-/** On/off switch used for the Finished toggle (events 3, 4 and 7). */
+/** On/off switch used for the Finished toggle (events 3, 4, 7, 8 and 9). */
 function FinishedSwitch({
   checked,
   onChange,
@@ -546,7 +657,7 @@ function FinishedSwitch({
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
-  copy: { finished: string; dnf: string; finishedHint: string; dnfHint: string };
+  copy: SwitchCopy;
 }) {
   return (
     <button
@@ -614,16 +725,15 @@ export default function ShowAthletesModal({
   const [part2, setPart2] = useState<PartDraft>(emptyPart());
   const [tie1, setTie1] = useState<TimeDraft>(emptyTime());
   const [tie2, setTie2] = useState<TimeDraft>(emptyTime());
-  // Events 3, 4 and 7 — "Finished" switch (on by default).
+  // Events 3, 4, 7, 8 and 9 — "Finished" switch (on by default).
   const [finished, setFinished] = useState<boolean>(true);
-  // The value asked for when NOT finished: meters (Ev 3), reps (Ev 4), weight kg (Ev 7).
+  // The value asked for when NOT finished: meters (Ev 3, Ev 8 advanced),
+  // reps (Ev 4, Ev 8 beginner/intermediate, Ev 9) or weight kg (Ev 7).
   const [dnfValue, setDnfValue] = useState<string>("");
-  // Hundredths of a second of the completion time (events 3 and 4).
+  // Hundredths of a second of the completion time (events 3, 4, 8 and 9).
   const [hundredthsDraft, setHundredthsDraft] = useState<string>("");
   // Event 7: the rank the coach types in by hand.
   const [manualRank, setManualRank] = useState<string>("");
-  // Event 7 DNF: reps completed (alongside the weight) — shown, never ranked.
-  const [ev7Reps, setEv7Reps] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -706,12 +816,13 @@ export default function ShowAthletesModal({
     setEditingId(entry.id);
     setSaveError(null);
 
-    // Reset the helpers shared by events 3, 4 and 7.
+    // Reset the helpers shared by events 3, 4, 7, 8 and 9.
     setFinished(true);
     setDnfValue("");
     setHundredthsDraft("");
     setManualRank("");
-    setEv7Reps("");
+
+    const fcfg = finishConfig(entry);
 
     if (entry.event === 1) {
       // Auto-scored Event 1&2 (two separate rankings)
@@ -721,17 +832,17 @@ export default function ShowAthletesModal({
       setTie1(secondsToTimeDraft(entry.time_seconds));
       setPart2(partFromStored(null, entry.reps_2, null, null));
       setTie2(secondsToTimeDraft(entry.time_seconds_2));
-    } else if (entry.event === 3 || entry.event === 4) {
-      // Auto-scored Events 3 & 4.
+    } else if (fcfg) {
+      // Auto-scored Events 3, 4, 8 and 9.
       //   Finished     → completion time (+ hundredths), tie breaker
-      //   Not finished → meters (Ev 3) / reps (Ev 4) reached, tie breaker
-      const isFinished = entry.event === 3 ? isEvent3Finished(entry) : isEvent4Finished(entry);
+      //   Not finished → meters (Ev 3, Ev 8 advanced) / reps (the others), tie breaker
+      const isFinished = isFinishedFor(entry);
       setFinished(isFinished);
       if (isFinished) {
         setPart1(partFromStored(null, null, null, entry.time_seconds));
         setHundredthsDraft(numToStr(entry.time_hundredths));
       } else {
-        // Row is a DNF — no valid finish time stored, so show the meters/reps reached.
+        // Older Event 3 rows stored the cap (09:00) as the time — don't show it.
         setPart1(emptyPart());
         setDnfValue(numToStr(entry.reps));
       }
@@ -739,18 +850,15 @@ export default function ShowAthletesModal({
       setPart2(emptyPart());
       setTie2(emptyTime());
     } else if (entry.event === 7) {
-      // Manual-rank Event 7: rank typed by hand + time (finished) or weight & reps (DNF).
+      // Manual-rank Event 7: rank typed by hand + time (finished) or weight (DNF).
       const isFinished = isEvent7Finished(entry);
       setFinished(isFinished);
       setManualRank(numToStr(entry.score));
       if (isFinished) {
         setPart1(partFromStored(null, null, null, entry.time_seconds));
-        setDnfValue("");
-        setEv7Reps("");
       } else {
         setPart1(emptyPart());
         setDnfValue(numToStr(entry.weight));
-        setEv7Reps(numToStr(entry.reps));
       }
       setTie1(emptyTime());
       setPart2(emptyPart());
@@ -762,7 +870,7 @@ export default function ShowAthletesModal({
       setPart2(emptyPart());
       setTie2(emptyTime());
     } else {
-      // Manual scoring for all other events
+      // Manual scoring for any other event
       setPart1(partFromStored(entry.score, entry.reps, entry.weight, entry.time_seconds));
       setPart2(partFromStored(entry.score_2, entry.reps_2, entry.weight_2, entry.time_seconds_2));
       setTie1(secondsToTimeDraft(entry.tiebreaker_value));
@@ -777,7 +885,6 @@ export default function ShowAthletesModal({
     setDnfValue("");
     setHundredthsDraft("");
     setManualRank("");
-    setEv7Reps("");
   }
 
   /** Send one entry's update, merge it locally, and refresh the athlete. */
@@ -806,6 +913,8 @@ export default function ShowAthletesModal({
       return;
     }
 
+    const fcfg = finishConfig(entry);
+
     if (entry.event === 1) {
       // Auto-scored: Event 1&2 two separate rankings
       await submitScore(entryId, {
@@ -821,29 +930,32 @@ export default function ShowAthletesModal({
         tiebreaker_value: timeDraftToSeconds(tie1),
         tiebreaker_value_2: timeDraftToSeconds(tie2),
       });
-    } else if (entry.event === 3 || entry.event === 4) {
-      // Auto-scored: Events 3 & 4. Score (rank) is calculated by the backend.
-      const isEvent3 = entry.event === 3;
+    } else if (fcfg) {
+      // Auto-scored: Events 3, 4, 8 and 9. Score (rank) is calculated by the backend.
       const tieSecs = timeDraftToSeconds(tie1);
 
       let timeSecs: number | null = null;
       let hundredths: number | null = null;
-      let measure: number | null = null; // meters (Ev 3) / reps (Ev 4) when not finished
+      let measure: number | null = null; // meters / reps when not finished
 
       if (finished) {
         timeSecs = timeDraftToSeconds({ min: part1.min, sec: part1.sec });
         hundredths = timeSecs === null ? null : strToNum(hundredthsDraft);
-        if (isEvent3 && timeSecs !== null && timeSecs > EVENT3_TIME_CAP) {
-          setSaveError("Finish time must be 09:00 or under. If the athlete went past the time cap, turn off “Finished”.");
+        if (fcfg.cap != null && timeSecs !== null && timeSecs >= fcfg.cap) {
+          setSaveError(
+            `Finish time must be under ${formatTime(fcfg.cap)}. If the athlete reached the time cap, turn off “Finished”.`
+          );
           return;
         }
       } else {
         measure = strToNum(dnfValue);
         if (measure === null) {
+          setSaveError(fcfg.dnfNeeded);
+          return;
+        }
+        if (fcfg.maxDnf != null && measure >= fcfg.maxDnf) {
           setSaveError(
-            isEvent3
-              ? "Enter the meters reached, or turn “Finished” back on and enter the time."
-              : "Enter the reps completed, or turn “Finished” back on and enter the time."
+            `${fcfg.summaryWord} must be under ${fcfg.maxDnf.toLocaleString()} — that is the full distance. If the athlete completed it, turn “Finished” back on and enter the time.`
           );
           return;
         }
@@ -873,14 +985,12 @@ export default function ShowAthletesModal({
 
       let timeSecs: number | null = null;
       let weight: number | null = null;
-      let reps: number | null = null;
       if (finished) {
         timeSecs = timeDraftToSeconds({ min: part1.min, sec: part1.sec });
       } else {
         weight = strToNum(dnfValue);
-        reps = strToNum(ev7Reps);
-        if (weight === null && reps === null) {
-          setSaveError("Enter the weight or reps, or turn “Finished” back on and enter the time.");
+        if (weight === null) {
+          setSaveError("Enter the weight, or turn “Finished” back on and enter the time.");
           return;
         }
       }
@@ -890,7 +1000,7 @@ export default function ShowAthletesModal({
         time_seconds: timeSecs,
         time_hundredths: null,
         weight,
-        reps,
+        reps: null,
         score_2: null,
         reps_2: null,
         weight_2: null,
@@ -915,7 +1025,7 @@ export default function ShowAthletesModal({
         tiebreaker_value_2: null,
       });
     } else {
-      // Manual scoring for all other events (8-9)
+      // Manual scoring for any other event
       const p1 = partToPayload(part1);
       const p2 = partToPayload(part2);
 
@@ -1056,6 +1166,8 @@ export default function ShowAthletesModal({
                             const ls = LEVEL_STYLES[entry.level] || LEVEL_STYLES["Beginner"];
                             const isEditing = editingId === entry.id;
                             const isCombined = entry.event === 1;
+                            // Events 3, 4, 8 and 9 use the Finished switch.
+                            const fcfg = finishConfig(entry);
 
                             const summaryContent = (
                               <>
@@ -1095,8 +1207,8 @@ export default function ShowAthletesModal({
                                           <span className="text-gray-700">•</span>
                                           <span>E2 Time <b className="font-bold tabular-nums text-gray-400">{entry.time_seconds_2 != null ? formatTime(entry.time_seconds_2) : "—"}</b></span>
                                         </>
-                                      ) : entry.event === 3 || entry.event === 4 ? (
-                                        (entry.event === 3 ? isEvent3Finished(entry) : isEvent4Finished(entry)) ? (
+                                      ) : fcfg ? (
+                                        isFinishedFor(entry) ? (
                                           <>
                                             <span>Time <b className="font-bold tabular-nums text-gray-400">
                                               {entry.time_seconds != null
@@ -1110,7 +1222,7 @@ export default function ShowAthletesModal({
                                           <>
                                             <span className="font-bold text-amber-300/90">DNF</span>
                                             <span className="text-gray-700">•</span>
-                                            <span>{entry.event === 3 ? "Meters" : "Reps"} <b className="font-bold text-gray-400">{entry.reps != null ? entry.reps.toLocaleString() : "—"}</b></span>
+                                            <span>{fcfg.summaryWord} <b className="font-bold text-gray-400">{entry.reps != null ? entry.reps.toLocaleString() : "—"}</b></span>
                                             <span className="text-gray-700">•</span>
                                             <span>Tie <b className="font-bold tabular-nums text-gray-400">{formatTiebreaker(entry.tiebreaker_type, entry.tiebreaker_value)}</b></span>
                                           </>
@@ -1123,8 +1235,6 @@ export default function ShowAthletesModal({
                                             <span className="font-bold text-amber-300/90">DNF</span>
                                             <span className="text-gray-700">•</span>
                                             <span>Weight <b className="font-bold text-gray-400">{entry.weight != null ? `${entry.weight.toLocaleString()} kg` : "—"}</b></span>
-                                            <span className="text-gray-700">•</span>
-                                            <span>Reps <b className="font-bold text-gray-400">{entry.reps != null ? entry.reps.toLocaleString() : "—"}</b></span>
                                           </>
                                         )
                                       ) : isCombined ? (
@@ -1270,16 +1380,16 @@ export default function ShowAthletesModal({
                                           Each event is scored separately: ranked by reps (higher better) then tie‑breaker time (lower better). Score = rank.
                                         </p>
                                       </>
-                                    ) : entry.event === 3 || entry.event === 4 ? (
+                                    ) : fcfg ? (
                                       <>
-                                        {/* Auto-scored: Events 3 & 4 — the Finished switch decides which fields are asked */}
+                                        {/* Auto-scored: Events 3, 4, 8 and 9 — the Finished switch decides which fields are asked */}
                                         <FinishedSwitch
                                           checked={finished}
                                           onChange={(next) => {
                                             setFinished(next);
                                             setSaveError(null);
                                           }}
-                                          copy={SWITCH_COPY[entry.event as 3 | 4]}
+                                          copy={fcfg.copy}
                                         />
 
                                         {finished ? (
@@ -1304,21 +1414,19 @@ export default function ShowAthletesModal({
                                                 className="w-14 shrink-0 rounded-xl border border-gray-700 bg-gray-900 px-2 py-3 text-center text-sm font-bold tabular-nums text-white outline-none transition placeholder:font-medium placeholder:text-gray-500 focus:border-[#B4E3BD] focus:ring-1 focus:ring-[#B4E3BD]/20"
                                               />
                                             </div>
-                                            {entry.event === 3 && (
-                                              <p className="mt-1.5 text-[10px] text-gray-500">At or under 09:00.</p>
+                                            {fcfg.cap != null && (
+                                              <p className="mt-1.5 text-[10px] text-gray-500">Must be under {formatTime(fcfg.cap)}.</p>
                                             )}
                                           </div>
                                         ) : (
                                           <div className="mt-4 max-w-[220px]">
-                                            <span className={FIELD_LABEL}>
-                                              {entry.event === 3 ? "Meters reached (higher is better)" : "Reps completed (higher is better)"}
-                                            </span>
+                                            <span className={FIELD_LABEL}>{fcfg.dnfLabel}</span>
                                             <NumInput
                                               value={dnfValue}
                                               onChange={setDnfValue}
-                                              placeholder={entry.event === 3 ? "Meters" : "Reps"}
-                                              ariaLabel={entry.event === 3 ? "Meters reached" : "Reps completed"}
-                                              suffix={entry.event === 3 ? "m" : undefined}
+                                              placeholder={fcfg.dnfPlaceholder}
+                                              ariaLabel={fcfg.dnfLabel}
+                                              suffix={fcfg.dnfSuffix}
                                             />
                                           </div>
                                         )}
@@ -1328,7 +1436,7 @@ export default function ShowAthletesModal({
                                             label={
                                               finished
                                                 ? "Tie Breaker (equal times — lower is better)"
-                                                : `Tie Breaker (equal ${entry.event === 3 ? "meters" : "reps"} — lower is better)`
+                                                : `Tie Breaker (equal ${fcfg.tieWord} — lower is better)`
                                             }
                                             value={tie1}
                                             onChange={setTie1}
@@ -1336,14 +1444,12 @@ export default function ShowAthletesModal({
                                         </div>
 
                                         <p className="mt-2 text-[10px] italic leading-relaxed text-gray-500">
-                                          {entry.event === 3
-                                            ? "Finishers rank above everyone else, by time (lower better). Athletes who hit the time cap rank by meters (higher better). Equal results are decided by the tie breaker time (lower better). Score = rank."
-                                            : "Finishers rank above everyone else, by time (lower better). Athletes who did not finish rank by reps (higher better). Equal results are decided by the tie breaker time (lower better). Score = rank."}
+                                          {fcfg.note}
                                         </p>
                                       </>
                                     ) : entry.event === 7 ? (
                                       <>
-                                        {/* Manual rank: the coach types the rank; nothing is calculated */}
+                                        {/* Manual rank: the coach types the rank; it is re-ranked among the athletes of the stage */}
                                         <div className="max-w-[220px]">
                                           <span className={FIELD_LABEL}>Score (rank)</span>
                                           <NumInput
@@ -1362,7 +1468,7 @@ export default function ShowAthletesModal({
                                               setFinished(next);
                                               setSaveError(null);
                                             }}
-                                            copy={SWITCH_COPY[7]}
+                                            copy={SWITCH_COPY_7}
                                           />
                                         </div>
 
@@ -1372,17 +1478,14 @@ export default function ShowAthletesModal({
                                             <TimeInput value={{ min: part1.min, sec: part1.sec }} onChange={(t) => setPart1({ ...part1, unit: "time", min: t.min, sec: t.sec })} ariaPrefix="Event 7 time" />
                                           </div>
                                         ) : (
-                                          <div className="mt-4 max-w-[460px]">
-                                            <span className={FIELD_LABEL}>Result (DNF)</span>
-                                            <div className="grid grid-cols-2 gap-2">
-                                              <NumInput value={dnfValue} onChange={setDnfValue} placeholder="Weight (kg)" ariaLabel="Event 7 weight" suffix="kg" />
-                                              <NumInput value={ev7Reps} onChange={setEv7Reps} placeholder="Reps" ariaLabel="Event 7 reps" />
-                                            </div>
+                                          <div className="mt-4 max-w-[220px]">
+                                            <span className={FIELD_LABEL}>Weight</span>
+                                            <NumInput value={dnfValue} onChange={setDnfValue} placeholder="Weight (kg)" ariaLabel="Event 7 weight" suffix="kg" />
                                           </div>
                                         )}
 
                                         <p className="mt-3 text-[10px] italic leading-relaxed text-gray-500">
-                                          Manual scoring: the rank you type here is shown on the scoreboard exactly as entered. Nothing is calculated.
+                                          Manual scoring: type the rank this athlete got in Event 7. On the scoreboard it is re-ranked among the athletes in that stage (for example 1, 4, 5 become 1, 2, 3). Equal numbers share a rank.
                                         </p>
                                       </>
                                     ) : entry.event === 5 ? (

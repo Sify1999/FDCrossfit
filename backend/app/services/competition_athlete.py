@@ -16,6 +16,7 @@ from app.services.competition_scoring import (
     event3_finished,
     event4_finished,
     normalize_level,
+    rank_event,
 )
 
 # Row events: Event 2 lives on the combined "Event 1&2" row (event number 1).
@@ -149,29 +150,13 @@ async def _apply_assignments(
     if not heats and not lines:
         return
     heat_ids = await _heat_id_map(db, level) if heats else {}
-    rows = await _rows_for(db, name, level)
-    for row in rows:
+    for row in await _rows_for(db, name, level):
         if row.event in heats:
             hn = heats[row.event]
             row.heat = hn
             row.heat_id = heat_ids.get((row.event, hn)) if hn is not None else None
         if row.event in lines:
             row.line = lines[row.event]
-
-    # Events 5 & 6 run as the combined "Event 5&6" schedule session, so the
-    # heat/line assigned to the session (event 5) also applies to the event-6
-    # scoring row — both score entries show the same heat and line. heat_id is
-    # intentionally left NULL on event-6 so the schedule day card shows each
-    # athlete exactly once (only the event-5 row is linked to the heat record).
-    has_heat5 = 5 in heats
-    has_line5 = 5 in lines
-    if (has_heat5 or has_line5) and any(r.event == 6 for r in rows):
-        for row in rows:
-            if row.event == 6:
-                if has_heat5 and 6 not in heats:
-                    row.heat = heats[5]
-                if has_line5 and 6 not in lines:
-                    row.line = lines[5]
     await db.flush()
 
 
@@ -301,9 +286,10 @@ async def recompute_event_ranks(
     time_cap_seconds: int | None = None,
 ) -> None:
     """
-    LEGACY — writes the old `score` column for events 1, 3, 4, 5 and 6 across
-    ALL athletes. The new stage standings don't read it (ranks are derived from
-    the raw results), so it is harmless; it can be removed later.
+    LEGACY — writes the old `score` column for events 1, 3, 4, 5, 6, 8 and 9
+    across ALL athletes. The stage standings don't read it (ranks are derived
+    from the raw results), so it is harmless; it only feeds the "Rank" chip in
+    the Show Athletes screen.
 
     Event 7 is NOT recomputed on purpose: its `score` is the rank the coach
     typed in by hand.
@@ -394,6 +380,24 @@ async def recompute_event_ranks(
                 a.tiebreaker_value if a.tiebreaker_value is not None else float("inf"),
             ))
             for rank, athlete in enumerate(group, start=1):
+                if athlete.score != rank:
+                    await db.execute(
+                        upd(CompetitionAthlete)
+                        .where(CompetitionAthlete.id == athlete.id)
+                        .values(score=rank)
+                    )
+    elif event_number in (8, 9):
+        # Events 8 & 9: finishers by time ASC, then DNFs by meters / reps DESC,
+        # tie-breaker time ASC — the very same rule the scoreboard uses, applied
+        # per level. Only athletes WITH a result get a rank written; nothing
+        # else is touched.
+        groups: dict[str, dict[str, CompetitionAthlete]] = {}
+        for a in athletes:
+            groups.setdefault(normalize_level(a.level), {})[a.name] = a
+        for group in groups.values():
+            ranks = rank_event(group, event_number)
+            for name, rank in ranks.items():
+                athlete = group[name]
                 if athlete.score != rank:
                     await db.execute(
                         upd(CompetitionAthlete)
