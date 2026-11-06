@@ -13,7 +13,7 @@ import RuleBookModal from "../components/RuleBookModal";
 import { Fragment, useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import EventsModal from "../components/EventsModal";
-
+import { finalEventNumber } from "@/lib/lib/final-event";
 /* ─── Public stages ──────────────────────────────────────────────────
    Which levels can SEE each later stage (its button AND its table).
    Stage 1 is always public. Admins always see every stage for every level.
@@ -27,7 +27,7 @@ import EventsModal from "../components/EventsModal";
    computes every stage; this only decides what the page shows. */
 const PUBLIC_STAGE_LEVELS: Record<number, readonly string[]> = {
   2: ["beginner" ,  "intermediate" , "advanced"],
-  3: [],
+  3: ["beginner" ,  "intermediate" , "advanced"],
 };
 
 /** Highest stage the PUBLIC can see for a level. A stage is only public if
@@ -1349,7 +1349,7 @@ export default function CompetitionPage() {
   const locale = useLocale();
   const isRTL = locale === "fa";
   const cutTx = CUT_TEXT[isRTL ? "fa" : "en"];
-
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1405,6 +1405,8 @@ export default function CompetitionPage() {
   const [showAthletesOpen, setShowAthletesOpen] = useState(false);
   const [showAthletesReadOnly, setShowAthletesReadOnly] = useState(false);
   const [showAthletesInitialName, setShowAthletesInitialName] = useState<string | null>(null);
+
+  
   // Admin-only controls (Schedule manager / Add Athlete / Show Athletes list).
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
@@ -1540,16 +1542,52 @@ export default function CompetitionPage() {
   }, [loadLeaderboard]);
 
   // Rows to display — the API already returns them sorted by stage total (lowest best)
-  const displayed = standingRows;
+// Final event (E8 / E9) is admin-only. Until we know the user is an admin it stays hidden.
+const hiddenEvent = isAdmin ? null : finalEventNumber(levelFilter);
+const hidingFinal = hiddenEvent !== null && standingEvents.includes(hiddenEvent);
 
-  // The cut line is only drawn when it is active (someone is actually cut).
-  const cut = standingCut?.active ? standingCut : null;
+const visibleEvents = useMemo(
+  () => (hidingFinal ? standingEvents.filter((n) => n !== hiddenEvent) : standingEvents),
+  [hidingFinal, standingEvents, hiddenEvent]
+);
+
+const displayed = useMemo(() => {
+  if (!hidingFinal || hiddenEvent === null) return standingRows;
+  const key = String(hiddenEvent);
+
+  const adjusted = standingRows.map((row) => {
+    const hiddenRank = row.events?.[key]?.rank ?? 0;
+    const events = { ...(row.events ?? {}) };
+    delete events[key];
+    return {
+      ...row,
+      events,
+      total: row.total == null ? null : row.total - hiddenRank,
+    };
+  });
+
+  // Lowest total first (nulls last); the original order breaks ties.
+  adjusted.sort((a, b) => {
+    if (a.total == null && b.total == null) return a.position - b.position;
+    if (a.total == null) return 1;
+    if (b.total == null) return -1;
+    if (a.total !== b.total) return a.total - b.total;
+    return a.position - b.position;
+  });
+
+  // Equal totals share a position.
+  return adjusted.map((row, i) => ({
+    ...row,
+    position: i > 0 && row.total === adjusted[i - 1].total ? adjusted[i - 1].position : i + 1,
+  }));
+}, [hidingFinal, hiddenEvent, standingRows]);
   // Only name the next stage when the viewer can actually see that stage.
   const cutNextStage =
     standingCut && standingCut.next_stage <= maxStage ? standingCut.next_stage : null;
 
+  const cut = !hidingFinal && standingCut?.active ? standingCut : null;
   // #, Name, (Level on desktop), events…, Total
-  const colCount = 3 + (isDesktop ? 1 : 0) + standingEvents.length;
+  const colCount = 3 + (isDesktop ? 1 : 0) + visibleEvents.length;
   // Stage buttons that this viewer is allowed to see for the selected level.
   const visibleStages = (
     stages.length > 0
@@ -2112,7 +2150,7 @@ export default function CompetitionPage() {
                     <col className="w-8 sm:w-14" />
                     <col />
                     {isDesktop && <col className="w-36" />}
-                    {standingEvents.map((n) => (
+                    {visibleEvents.map((n) => (
                       <col key={n} className="w-[26px] sm:w-14" />
                     ))}
                     <col className="w-14 sm:w-28" />
@@ -2131,7 +2169,7 @@ export default function CompetitionPage() {
                           Level
                         </th>
                       )}
-                      {standingEvents.map((eventNumber) => (
+                      {visibleEvents.map((eventNumber) => (
                         <th
                           key={eventNumber}
                           className="sticky top-0 z-10 border-b border-white/10 bg-[#161616] px-0 py-3 text-center text-[9px] font-bold uppercase tracking-normal text-[#B4E3BD]/70 sm:px-3 sm:text-[11px] sm:tracking-[0.15em]"
@@ -2226,7 +2264,7 @@ export default function CompetitionPage() {
                                 </td>
                               )}
 
-                              {standingEvents.map((eventNumber) => {
+                              {visibleEvents.map((eventNumber) => {
                                 const eventResult = row.events?.[String(eventNumber)];
                                 return (
                                   <td key={eventNumber} className="px-0 py-3 text-center sm:px-3 sm:py-4">
@@ -2296,6 +2334,7 @@ export default function CompetitionPage() {
         initialName={showAthletesInitialName}
         hideList={showAthletesReadOnly}
         onEditAthlete={handleEditAthlete}
+        showFinalEvent={isAdmin}
       />
       <ScheduleManagerModal
         open={scheduleOpen}

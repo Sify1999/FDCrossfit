@@ -5,6 +5,7 @@ import { api, getErrorMessage } from "@/lib/api-client";
 import { useBodyScrollLock } from "./useScrollLock";
 import { useLocale } from "next-intl";
 import { eventLabel } from "@/lib/competition-events";
+import { finalEventNumber } from "@/lib/lib/final-event";
 
 type AthleteEntry = {
   id: number;
@@ -47,6 +48,9 @@ type Props = {
     level: string;
     events: { event: number; heat: number | null; line: number | null }[];
   }) => void;
+  /** Admins only: show the secret final event (E8 for beginner/intermediate, E9 for advanced).
+   *  Defaults to hidden, so the public never sees it. */
+  showFinalEvent?: boolean;
 };
 
 const EVENT_COLORS: Record<number, { chip: string; dot: string; bg: string }> = {
@@ -706,6 +710,7 @@ export default function ShowAthletesModal({
   initialName = null,
   hideList = false,
   onEditAthlete = undefined,
+  showFinalEvent = false,
 }: Props) {
   const locale = useLocale();
   const isRTL = locale === "fa";
@@ -1043,6 +1048,13 @@ export default function ShowAthletesModal({
     }
   }
 
+  // The secret final event (E8 for beginner/intermediate, E9 for advanced) is
+  // only listed for admins. Everyone else never gets it rendered. Only what is
+  // SHOWN changes — saving, refreshing and "Edit athlete" still use `entries`.
+  const visibleEntries = showFinalEvent
+    ? entries
+    : entries.filter((e) => e.event !== finalEventNumber(e.level));
+
   if (!open) return null;
 
   const visibleNames = hideList && initialName ? [initialName] : athleteNames;
@@ -1156,10 +1168,10 @@ export default function ShowAthletesModal({
                       <div className="space-y-3 border-t border-gray-800/60 px-4 py-4">
                         {entriesLoading ? (
                           <p className="py-4 text-center text-sm text-gray-500">Loading entries...</p>
-                        ) : entries.length === 0 ? (
+                        ) : visibleEntries.length === 0 ? (
                           <p className="py-4 text-center text-sm text-gray-500">No entries found.</p>
                         ) : (
-                          entries.map((entry) => {
+                          visibleEntries.map((entry) => {
                             const ec = EVENT_COLORS[entry.event] ?? EVENT_COLORS[1];
                             const ls = LEVEL_STYLES[entry.level] || LEVEL_STYLES["Beginner"];
                             const isEditing = editingId === entry.id;
