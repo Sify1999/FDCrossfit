@@ -2,6 +2,7 @@
 
 import { COMPETITION_DAY_EVENT_GROUPS, scheduleEventLabel } from "@/lib/competition-events";
 import { dayDateLabel } from "@/lib/competition-days";
+import { finalEventNumber , HIDE_FINAL_EVENT } from "@/lib/lib/final-event";
 import { useLocale, useTranslations } from "next-intl";
 import Image from "next/image";
 import { api } from "@/lib/api-client";
@@ -13,21 +14,21 @@ import RuleBookModal from "../components/RuleBookModal";
 import { Fragment, useCallback, useMemo, useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import EventsModal from "../components/EventsModal";
-import { finalEventNumber } from "@/lib/lib/final-event";
+
 /* ─── Public stages ──────────────────────────────────────────────────
    Which levels can SEE each later stage (its button AND its table).
    Stage 1 is always public. Admins always see every stage for every level.
 
-   To open Stage 2 to more levels, add them here, then rebuild the frontend:
-       2: ["beginner", "intermediate"]
-       2: ["beginner", "intermediate", "advanced"]
-   Stage 3 stays admin-only while its list is empty.
+   Stage 3 is now public for every level. The FINAL event of each level
+   (E8 for beginner/intermediate, E9 for advanced) is hidden from the public
+   inside the table (see `finalEventNumber`), and the Stage 3 total is
+   recalculated without it, so nobody can work out the final score.
 
    Nothing is deleted or calculated differently — the backend always
    computes every stage; this only decides what the page shows. */
 const PUBLIC_STAGE_LEVELS: Record<number, readonly string[]> = {
-  2: ["beginner" ,  "intermediate" , "advanced"],
-  3: ["beginner" ,  "intermediate" , "advanced"],
+  2: ["beginner", "intermediate", "advanced"],
+  3: ["beginner", "intermediate", "advanced"],
 };
 
 /** Highest stage the PUBLIC can see for a level. A stage is only public if
@@ -1349,7 +1350,7 @@ export default function CompetitionPage() {
   const locale = useLocale();
   const isRTL = locale === "fa";
   const cutTx = CUT_TEXT[isRTL ? "fa" : "en"];
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1392,6 +1393,10 @@ export default function CompetitionPage() {
   // Stage the data on screen belongs to. This avoids a frame of "Stage 2 Total"
   // header over stage 1 rows while a new stage is loading.
   const [shownStage, setShownStage] = useState(1);
+  // Level the data on screen belongs to. The secret final event is picked from
+  // THIS level (not the selected filter), so old rows can never be shown for a
+  // frame with the wrong event hidden while a new level is loading.
+  const [shownLevel, setShownLevel] = useState<LevelKey>("beginner");
   const isDesktop = useMediaQuery("(min-width: 640px)");
   const [standingRows, setStandingRows] = useState<StageStandingRow[]>([]);
   const [standingEvents, setStandingEvents] = useState<number[]>([]);
@@ -1405,8 +1410,6 @@ export default function CompetitionPage() {
   const [showAthletesOpen, setShowAthletesOpen] = useState(false);
   const [showAthletesReadOnly, setShowAthletesReadOnly] = useState(false);
   const [showAthletesInitialName, setShowAthletesInitialName] = useState<string | null>(null);
-
-  
   // Admin-only controls (Schedule manager / Add Athlete / Show Athletes list).
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
@@ -1516,6 +1519,7 @@ export default function CompetitionPage() {
       );
       if (reqId !== leaderboardReq.current) return;
       setShownStage(activeStage);
+      setShownLevel(levelFilter);
 
       setStandingRows(res.standing.rows ?? []);
       setStandingEvents(res.standing.events ?? []);
@@ -1541,51 +1545,65 @@ export default function CompetitionPage() {
     loadLeaderboard();
   }, [loadLeaderboard]);
 
-  // Rows to display — the API already returns them sorted by stage total (lowest best)
-// Final event (E8 / E9) is admin-only. Until we know the user is an admin it stays hidden.
-const hiddenEvent = isAdmin ? null : finalEventNumber(levelFilter);
-const hidingFinal = hiddenEvent !== null && standingEvents.includes(hiddenEvent);
+  // ── Secret final event (E8 for beginner/intermediate, E9 for advanced) ──
+  // Admins see everything. For everyone else (including while we are still
+  // finding out who the user is) the final event column is removed, and the
+  // total is recalculated WITHOUT it, so the final score can't be worked out
+  // by subtracting. Nothing is changed in the data — this is display only.
+  const hiddenEvent = isAdmin || !HIDE_FINAL_EVENT ? null : finalEventNumber(shownLevel);
+  const hidingFinal = hiddenEvent !== null && standingEvents.includes(hiddenEvent);
 
-const visibleEvents = useMemo(
-  () => (hidingFinal ? standingEvents.filter((n) => n !== hiddenEvent) : standingEvents),
-  [hidingFinal, standingEvents, hiddenEvent]
-);
+  // Event columns that are actually shown.
+  const visibleEvents = useMemo(
+    () => (hidingFinal ? standingEvents.filter((n) => n !== hiddenEvent) : standingEvents),
+    [hidingFinal, standingEvents, hiddenEvent]
+  );
 
-const displayed = useMemo(() => {
-  if (!hidingFinal || hiddenEvent === null) return standingRows;
-  const key = String(hiddenEvent);
+  // Rows to display. Admins: exactly what the API returns (already sorted by
+  // stage total, lowest best). Public while the final event is hidden: remove
+  // the final event from each row, subtract its rank from the total, then
+  // sort again and number the positions again (equal totals share a position).
+  const displayed = useMemo(() => {
+    if (!hidingFinal || hiddenEvent === null) return standingRows;
+    const key = String(hiddenEvent);
 
-  const adjusted = standingRows.map((row) => {
-    const hiddenRank = row.events?.[key]?.rank ?? 0;
-    const events = { ...(row.events ?? {}) };
-    delete events[key];
-    return {
-      ...row,
-      events,
-      total: row.total == null ? null : row.total - hiddenRank,
-    };
-  });
+    const adjusted = standingRows.map((row) => {
+      const hiddenRank = row.events?.[key]?.rank ?? 0;
+      const events = { ...(row.events ?? {}) };
+      delete events[key];
+      return {
+        ...row,
+        events,
+        total: row.total == null ? null : row.total - hiddenRank,
+      };
+    });
 
-  // Lowest total first (nulls last); the original order breaks ties.
-  adjusted.sort((a, b) => {
-    if (a.total == null && b.total == null) return a.position - b.position;
-    if (a.total == null) return 1;
-    if (b.total == null) return -1;
-    if (a.total !== b.total) return a.total - b.total;
-    return a.position - b.position;
-  });
+    // Lowest total first (no total = last); the original order breaks ties.
+    adjusted.sort((a, b) => {
+      if (a.total == null && b.total == null) return a.position - b.position;
+      if (a.total == null) return 1;
+      if (b.total == null) return -1;
+      if (a.total !== b.total) return a.total - b.total;
+      return a.position - b.position;
+    });
 
-  // Equal totals share a position.
-  return adjusted.map((row, i) => ({
-    ...row,
-    position: i > 0 && row.total === adjusted[i - 1].total ? adjusted[i - 1].position : i + 1,
-  }));
-}, [hidingFinal, hiddenEvent, standingRows]);
+    let prevTotal: number | null | undefined;
+    let prevPos = 0;
+    return adjusted.map((row, i) => {
+      const pos = i > 0 && row.total === prevTotal ? prevPos : i + 1;
+      prevTotal = row.total;
+      prevPos = pos;
+      return { ...row, position: pos };
+    });
+  }, [hidingFinal, hiddenEvent, standingRows]);
+
+  // The cut line is only drawn when it is active (someone is actually cut),
+  // and never while the final event is hidden (it was decided with it).
+  const cut = !hidingFinal && standingCut?.active ? standingCut : null;
   // Only name the next stage when the viewer can actually see that stage.
   const cutNextStage =
     standingCut && standingCut.next_stage <= maxStage ? standingCut.next_stage : null;
 
-  const cut = !hidingFinal && standingCut?.active ? standingCut : null;
   // #, Name, (Level on desktop), events…, Total
   const colCount = 3 + (isDesktop ? 1 : 0) + visibleEvents.length;
   // Stage buttons that this viewer is allowed to see for the selected level.
@@ -2135,7 +2153,7 @@ const displayed = useMemo(() => {
               <StageBanner
                 tx={cutTx}
                 stage={shownStage}
-                cut={standingCut}
+                cut={hidingFinal ? null : standingCut}
                 nextStage={cutNextStage}
                 entryCut={entryCut}
                 provisional={fieldProvisional}
@@ -2334,7 +2352,7 @@ const displayed = useMemo(() => {
         initialName={showAthletesInitialName}
         hideList={showAthletesReadOnly}
         onEditAthlete={handleEditAthlete}
-        showFinalEvent={isAdmin}
+        showFinalEvent={isAdmin || !HIDE_FINAL_EVENT}
       />
       <ScheduleManagerModal
         open={scheduleOpen}
